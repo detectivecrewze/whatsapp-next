@@ -354,10 +354,14 @@ export default function MessageBubble({
     return null;
   }
 
-  // Effective zoom scale: per-message override takes priority if specified
-  const effectiveZoomed = message.enableZoom !== undefined ? message.enableZoom : isZoomed;
+  // Active check: is this message currently playing in the sequence?
+  const { activeMsgId } = usePlayerStore.getState();
+  const isActiveMsg = activeMsgId === message.id;
+
+  // Per-message enableZoom override takes priority when this message is active
+  const shouldZoom = message.enableZoom !== undefined ? (message.enableZoom && isActiveMsg) : isZoomed;
   const effectiveScale = message.customScale || zoomScale;
-  const isCurrentlyZoomed = isPlaying && effectiveZoomed;
+  const isCurrentlyZoomed = isPlaying && shouldZoom;
 
   return (
     <div
