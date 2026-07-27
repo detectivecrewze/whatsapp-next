@@ -339,7 +339,7 @@ export default function MessageBubble({
   };
 
   if (message.type === 'notification') {
-    return renderBubble();
+    return null;
   }
 
   return (

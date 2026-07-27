@@ -31,6 +31,9 @@ export interface Message {
   time?: string;
   senderName?: string;      // For group chat badge
   senderColor?: string;
+  notifSender?: string;     // Push Notification sender name (e.g. WhatsApp / Mama)
+  notifTitle?: string;      // Push Notification title
+  notifApp?: string;        // App name e.g. WhatsApp / Bank / Instagram
   customHoldMs?: number;
   waveform?: number[];      // Array 0-100 for VN waveform
   duration?: string;        // Voice note duration display

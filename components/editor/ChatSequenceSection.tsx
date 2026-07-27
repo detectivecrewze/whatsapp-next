@@ -175,6 +175,31 @@ function MessageRow({
             </div>
           )}
 
+          {/* Notification extra fields */}
+          {message.type === 'notification' && (
+            <div className="flex flex-col gap-2 p-2 rounded border border-purple-500/20 bg-purple-500/5">
+              <span className="text-[11px] font-semibold text-purple-400">🔔 Push Notification Popup HP</span>
+              <div>
+                <label className="section-label">Pengirim Notifikasi</label>
+                <input
+                  className="input"
+                  value={message.notifSender ?? message.senderName ?? 'WhatsApp'}
+                  onChange={(e) => onUpdate({ notifSender: e.target.value })}
+                  placeholder="cth: WhatsApp / Mama / Bank BCA"
+                />
+              </div>
+              <div>
+                <label className="section-label">Judul Notifikasi</label>
+                <input
+                  className="input"
+                  value={message.notifTitle ?? 'Pesan Baru'}
+                  onChange={(e) => onUpdate({ notifTitle: e.target.value })}
+                  placeholder="cth: 💬 Pesan Baru"
+                />
+              </div>
+            </div>
+          )}
+
           {/* Voice note duration */}
           {message.type === 'voice_note' && (
             <div>

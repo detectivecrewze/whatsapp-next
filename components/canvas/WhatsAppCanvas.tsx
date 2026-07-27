@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import StatusBar from './StatusBar';
 import ChatHeader from './ChatHeader';
 import ChatArea from './ChatArea';
+import PushNotificationOverlay from './PushNotificationOverlay';
 
 export default function WhatsAppCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,6 +92,9 @@ export default function WhatsAppCanvas() {
         >
           {/* Status bar */}
           <StatusBar />
+
+          {/* Push Notification Popup Banner (If active) */}
+          <PushNotificationOverlay />
 
           {/* Chat header */}
           <ChatHeader />
