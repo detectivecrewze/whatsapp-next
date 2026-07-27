@@ -10,9 +10,8 @@ const DEFAULT_KEY_PART2 = 'pwzgNe1z-uVYoqwQ';
 const GEMINI_KEY =
   process.env.GEMINI_API_KEY || (DEFAULT_KEY_PART1 + DEFAULT_KEY_PART2);
 
-// ── Gemini model fallback chain (verified working models) ──
+// ── Gemini model (gemini-3.6-flash = ~6s, terbukti paling cepat untuk key ini) ──
 const MODEL_CHAIN = [
-  'gemini-3.5-flash-lite',
   'gemini-3.6-flash',
 ];
 
@@ -76,6 +75,8 @@ ${dramaticRuleInstruction}
 }
 
 export async function POST(req: NextRequest) {
+  const t0 = Date.now();
+  console.log(`[AI] ─── NEW REQUEST ───────────────────────────`);
   try {
     const {
       prompt,
@@ -94,12 +95,16 @@ export async function POST(req: NextRequest) {
     const systemInstruction = buildSystemPrompt(Number(count), voiceStyle);
     const userPrompt = `${systemInstruction}\n\nIde Cerita & Spesifikasi User:\n${prompt.trim()}`;
 
+    console.log(`[AI] Prompt built. Chars: ${userPrompt.length}, Count: ${count}, VoiceStyle: ${voiceStyle}`);
+
     let geminiRes: Response | null = null;
     let lastError = '';
 
-    // ── Try each model in chain with strict 15s timeout per attempt ─────────
+    // ── Try each model in chain ─────────────────────────────────────────────
     for (const model of MODEL_CHAIN) {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+      const tModel = Date.now();
+      console.log(`[AI] → Trying model: ${model}...`);
       try {
         const res = await fetch(geminiUrl, {
           method: 'POST',
@@ -115,29 +120,36 @@ export async function POST(req: NextRequest) {
           }),
         });
 
+        const elapsed = Date.now() - tModel;
+        console.log(`[AI] ← Model ${model} responded: HTTP ${res.status} in ${elapsed}ms`);
+
         if (res.ok) {
           geminiRes = res;
           break;
         } else {
           const errText = await res.text();
-          lastError = `Model ${model} HTTP ${res.status}: ${errText.slice(0, 200)}`;
-          console.warn(`[AI Generator] ${lastError}`);
+          lastError = `Model ${model} HTTP ${res.status}: ${errText.slice(0, 300)}`;
+          console.warn(`[AI] FAIL: ${lastError}`);
         }
       } catch (e: any) {
-        lastError = `Model ${model} exception: ${e.message}`;
-        console.warn(`[AI Generator] ${lastError}`);
+        const elapsed = Date.now() - tModel;
+        lastError = `Model ${model} exception after ${elapsed}ms: ${e.message}`;
+        console.warn(`[AI] FAIL: ${lastError}`);
       }
     }
 
     if (!geminiRes) {
+      console.error(`[AI] All models failed after ${Date.now() - t0}ms. Last: ${lastError}`);
       return NextResponse.json(
         { error: `Semua Gemini model gagal. Error terakhir: ${lastError}` },
         { status: 500 }
       );
     }
 
+    const tParse = Date.now();
     const geminiJson = await geminiRes.json();
     let rawText: string = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    console.log(`[AI] Response parsed in ${Date.now() - tParse}ms. Raw length: ${rawText.length} chars`);
 
     // ── Clean markdown wrappers ──────────────────────────────────────────────
     rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -152,13 +164,14 @@ export async function POST(req: NextRequest) {
     // ── Parse & return ───────────────────────────────────────────────────────
     try {
       const parsed = JSON.parse(rawText);
+      console.log(`[AI] ✅ DONE in ${Date.now() - t0}ms. Messages: ${parsed.messages?.length ?? 0}, Name: ${parsed.name}`);
       return NextResponse.json(parsed);
     } catch (parseErr) {
-      console.error('[AI Generator] JSON parse failed. Raw:', rawText.slice(0, 500));
+      console.error('[AI] JSON parse failed. Raw:', rawText.slice(0, 500));
       return NextResponse.json({ error: 'AI menghasilkan format yang tidak valid — coba generate ulang.' }, { status: 500 });
     }
   } catch (e: any) {
-    console.error('[POST /api/ai-generator] Error:', e);
+    console.error(`[AI] FATAL after ${Date.now() - t0}ms:`, e);
     return NextResponse.json(
       { error: `Internal server error: ${e.message}` },
       { status: 500 }
