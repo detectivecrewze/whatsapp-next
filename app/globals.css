@@ -355,3 +355,89 @@ body {
   color: var(--wa-text-muted);
   margin-bottom: 6px;
 }
+
+/* ============================================================
+   MOBILE RESPONSIVE IMPROVEMENTS
+   ============================================================ */
+
+/* Prevent iOS auto-zoom on input focus (must be >= 16px) */
+@media (max-width: 767px) {
+  .input,
+  .select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* Larger tap targets for buttons and interactive elements */
+  .btn {
+    min-height: 44px;
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Larger slider thumb for touch */
+  .slider::-webkit-slider-thumb {
+    width: 22px;
+    height: 22px;
+  }
+
+  /* Taller inputs for touch */
+  .input,
+  .select {
+    min-height: 44px;
+    padding: 10px 14px;
+  }
+
+  /* Toggle larger for touch */
+  .toggle {
+    width: 48px;
+    height: 26px;
+  }
+  .toggle-track {
+    border-radius: 13px;
+  }
+  .toggle-thumb {
+    width: 20px;
+    height: 20px;
+    top: 3px;
+    left: 3px;
+  }
+  .toggle input:checked ~ .toggle-thumb {
+    transform: translateX(22px);
+  }
+
+  /* Accordion headers easier to tap */
+  .accordion-header {
+    padding: 13px 16px;
+    min-height: 52px;
+  }
+}
+
+/* Touch-action optimization on all interactive elements */
+button,
+a,
+input,
+select,
+textarea,
+label,
+.btn,
+.toggle,
+.slider,
+.accordion-header {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Safe area bottom support for tab bars and fixed footers */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
