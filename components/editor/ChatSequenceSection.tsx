@@ -56,8 +56,41 @@ function MessageRow({
           >
             {message.direction === 'outgoing' ? 'OUT' : 'IN'}
           </span>
-          <span className="truncate text-[12px]" style={{ color: 'var(--wa-text)' }}>
-            {message.text || MESSAGE_TYPE_LABELS[message.type]}
+
+          {/* Type Badge */}
+          <span
+            className="px-1.5 py-0.5 rounded text-[10px] font-medium shrink-0 flex items-center gap-1"
+            style={{
+              background:
+                message.type === 'notification' ? 'rgba(168,85,247,0.2)' :
+                message.type === 'image' ? 'rgba(59,130,246,0.2)' :
+                message.type === 'transfer' ? 'rgba(34,197,94,0.2)' :
+                message.type === 'location' ? 'rgba(239,68,68,0.2)' :
+                message.type === 'view_once' ? 'rgba(234,179,8,0.2)' :
+                message.type === 'deleted' ? 'rgba(107,114,128,0.2)' : 'rgba(255,255,255,0.06)',
+              color:
+                message.type === 'notification' ? '#c084fc' :
+                message.type === 'image' ? '#60a5fa' :
+                message.type === 'transfer' ? '#4ade80' :
+                message.type === 'location' ? '#f87171' :
+                message.type === 'view_once' ? '#facc15' :
+                message.type === 'deleted' ? '#9ca3af' : 'var(--wa-text-muted)',
+            }}
+          >
+            {MESSAGE_TYPE_LABELS[message.type]}
+          </span>
+
+          {/* Zoom Badge if enabled */}
+          {message.enableZoom && (
+            <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 shrink-0">
+              🔍 {message.customScale ? `${message.customScale}x` : 'Zoom'}
+            </span>
+          )}
+
+          <span className="truncate text-[12px] flex-1" style={{ color: 'var(--wa-text)' }}>
+            {message.type === 'notification'
+              ? `${message.notifSender || 'Notif'}: ${message.text || 'Pesan Baru'}`
+              : message.text || MESSAGE_TYPE_LABELS[message.type]}
           </span>
           {open ? <ChevronDown size={12} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} /> : <ChevronRight size={12} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} />}
         </button>
@@ -213,10 +246,10 @@ function MessageRow({
             </div>
           )}
 
-          {/* Group sender name */}
+          {/* Waktu & Hold Duration */}
           <div className="grid grid-cols-2 gap-2">
             <div>
-              <label className="section-label">Waktu</label>
+              <label className="section-label">Waktu Pesan</label>
               <input
                 className="input"
                 type="time"
@@ -225,20 +258,51 @@ function MessageRow({
               />
             </div>
             <div>
-              <label className="section-label">Hold (ms)</label>
+              <label className="section-label">Hold Tampil (ms)</label>
               <input
                 className="input"
                 type="number"
                 min={500}
-                max={10000}
-                step={100}
+                max={15000}
+                step={500}
                 value={message.customHoldMs ?? ''}
                 onChange={(e) =>
                   onUpdate({ customHoldMs: e.target.value ? Number(e.target.value) : undefined })
                 }
-                placeholder="Default"
+                placeholder={message.type === 'notification' ? 'Default 4500ms' : 'Default 2500ms'}
               />
             </div>
+          </div>
+
+          {/* Zoom Kamera Custom (Sama persis Project Lama) */}
+          <div className="flex flex-col gap-1.5 p-2 rounded border border-amber-500/20 bg-amber-500/5">
+            <div className="flex items-center justify-between">
+              <label className="section-label text-amber-400 font-semibold mb-0">🔍 Zoom Kamera Khusus Pesan Ini</label>
+              {message.enableZoom && (
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/20 px-1.5 py-0.5 rounded">
+                  {message.customScale ? `${message.customScale}x` : 'Standard'}
+                </span>
+              )}
+            </div>
+            <select
+              className="select text-[11.5px]"
+              value={!message.enableZoom ? 'off' : String(message.customScale || '1.3')}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'off') {
+                  onUpdate({ enableZoom: false, customScale: undefined });
+                } else {
+                  onUpdate({ enableZoom: true, customScale: Number(val) });
+                }
+              }}
+            >
+              <option value="off">OFF (Ikuti Auto Zoom Global)</option>
+              <option value="1.15">1.15x (Soft Zoom)</option>
+              <option value="1.30">1.30x (Standard Focus)</option>
+              <option value="1.50">1.50x (Drama Focus)</option>
+              <option value="1.80">1.80x (Close-Up)</option>
+              <option value="2.20">2.20x (Extreme Focus)</option>
+            </select>
           </div>
 
           {/* Group sender name */}

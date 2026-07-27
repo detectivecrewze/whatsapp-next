@@ -319,6 +319,7 @@ export default function MessageBubble({
   zoomSpeed = 400,
 }: MessageBubbleProps) {
   const { chatType } = useEditorStore();
+  const { isPlaying } = usePlayerStore();
   const isOut = message.direction === 'outgoing';
 
   if (!isVisible) return null;
@@ -342,11 +343,16 @@ export default function MessageBubble({
     return null;
   }
 
+  // Effective zoom scale: per-message override takes priority if specified
+  const effectiveZoomed = message.enableZoom !== undefined ? message.enableZoom : isZoomed;
+  const effectiveScale = message.customScale || zoomScale;
+  const isCurrentlyZoomed = isPlaying && effectiveZoomed;
+
   return (
     <div
-      className={`flex flex-col relative ${isOut ? 'items-end' : 'items-start'} ${isZoomed ? 'my-2.5 z-30' : 'mb-2 z-10'}`}
+      className={`flex flex-col relative ${isOut ? 'items-end' : 'items-start'} ${isCurrentlyZoomed ? 'my-2.5 z-30' : 'mb-2 z-10'}`}
       style={{
-        transform: isZoomed ? `scale(${zoomScale})` : 'scale(1)',
+        transform: isCurrentlyZoomed ? `scale(${effectiveScale})` : 'scale(1)',
         transformOrigin: isOut ? 'right center' : 'left center',
         transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}

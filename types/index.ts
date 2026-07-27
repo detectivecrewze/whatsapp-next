@@ -34,7 +34,9 @@ export interface Message {
   notifSender?: string;     // Push Notification sender name (e.g. WhatsApp / Mama)
   notifTitle?: string;      // Push Notification title
   notifApp?: string;        // App name e.g. WhatsApp / Bank / Instagram
-  customHoldMs?: number;
+  customHoldMs?: number;    // Custom display duration in ms (e.g. 2500 - 10000)
+  enableZoom?: boolean;     // Enable camera zoom for this message
+  customScale?: number;     // Custom scale multiplier (1.15, 1.3, 1.5, 1.8, 2.2)
   waveform?: number[];      // Array 0-100 for VN waveform
   duration?: string;        // Voice note duration display
 }
