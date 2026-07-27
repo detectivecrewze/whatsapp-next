@@ -157,17 +157,7 @@ export default function TtsSection() {
           {ttsProvider === 'elevenlabs' && (
             <>
               <div>
-                <label className="section-label">API Key ElevenLabs</label>
-                <input
-                  type="password"
-                  className="input font-mono text-[11px]"
-                  value={elevenKey}
-                  onChange={(e) => setElevenKey(e.target.value)}
-                  placeholder="sk_xxxx..."
-                />
-              </div>
-              <div>
-                <label className="section-label">Model</label>
+                <label className="section-label">Model Voice</label>
                 <select
                   className="select"
                   value={elevenModel}

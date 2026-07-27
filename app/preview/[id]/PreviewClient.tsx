@@ -181,16 +181,19 @@ export default function PreviewClient({ presetId }: Props) {
             alignItems: 'center',
             justifyContent: 'center',
             position: 'relative',
+            overflow: 'hidden',
           }}
         >
           <div
             style={{
-              flex: '1 1 0',
               width: '100%',
+              height: 'calc(100vh - 72px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              paddingBottom: 64,
+              padding: '16px',
+              boxSizing: 'border-box',
+              overflow: 'hidden',
             }}
           >
             <WhatsAppCanvas />
