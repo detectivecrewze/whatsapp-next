@@ -180,7 +180,37 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      console.error('[TTS/Qwen] Error:', lastError);
+      console.warn('[TTS/Qwen] Qwen API call failed, falling back to Free Neural TTS:', lastError);
+      
+      // Seamless Fallback to Free Neural TTS
+      const truncated = text.slice(0, 200);
+      const url = new URL(GOOGLE_TTS_BASE);
+      url.searchParams.set('ie', 'UTF-8');
+      url.searchParams.set('q', truncated);
+      url.searchParams.set('tl', 'id');
+      url.searchParams.set('client', 'tw-ob');
+      url.searchParams.set('ttsspeed', String(speed));
+
+      const fallbackRes = await fetch(url.toString(), {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: 'https://translate.google.com/',
+        },
+      });
+
+      if (fallbackRes.ok) {
+        const audioBuffer = await fallbackRes.arrayBuffer();
+        return new NextResponse(audioBuffer, {
+          status: 200,
+          headers: {
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': String(audioBuffer.byteLength),
+            'Cache-Control': 'no-store',
+          },
+        });
+      }
+
       return NextResponse.json(
         { error: `Qwen TTS Error: ${lastError.slice(0, 220)}` },
         { status: 400 }
