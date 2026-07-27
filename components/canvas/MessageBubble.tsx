@@ -302,7 +302,7 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`flex flex-col mb-1 ${isOut ? 'items-end' : 'items-start'} transition-transform duration-300`}
+      className={`flex flex-col relative ${isOut ? 'items-end' : 'items-start'} ${isZoomed ? 'my-2.5 z-30' : 'mb-2 z-10'}`}
       style={{
         transform: isZoomed ? `scale(${zoomScale})` : 'scale(1)',
         transformOrigin: isOut ? 'right center' : 'left center',
