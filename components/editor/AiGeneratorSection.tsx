@@ -128,13 +128,13 @@ Aturan:
 
       {/* Message count */}
       <div>
-        <label className="section-label">Jumlah Pesan</label>
-        <div className="flex gap-1.5">
+        <label className="section-label">Jumlah Pesan (Pilih atau Ketik Sendiri)</label>
+        <div className="flex gap-1.5 flex-wrap items-center">
           {MSG_COUNTS.map((n) => (
             <button
               key={n}
               onClick={() => setMsgCount(n)}
-              className="flex-1 py-1 rounded-lg text-[12px] font-medium border transition-all"
+              className="py-1 px-2.5 rounded-lg text-[12px] font-medium border transition-all"
               style={{
                 background: msgCount === n ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
                 borderColor: msgCount === n ? 'var(--wa-green)' : 'var(--ui-border)',
@@ -144,6 +144,18 @@ Aturan:
               {n} Pesan
             </button>
           ))}
+          <div className="flex items-center gap-1 bg-[var(--ui-card)] border border-[var(--ui-border)] rounded-lg px-2 py-0.5 ml-auto">
+            <span className="text-[11px]" style={{ color: 'var(--wa-text-muted)' }}>Kustom:</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              value={msgCount}
+              onChange={(e) => setMsgCount(Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1)))}
+              className="w-12 bg-transparent text-center text-[12px] font-bold focus:outline-none"
+              style={{ color: 'var(--wa-green)' }}
+            />
+          </div>
         </div>
       </div>
 
