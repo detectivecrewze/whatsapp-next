@@ -45,25 +45,42 @@ function playSfx(direction: 'incoming' | 'outgoing') {
 }
 
 // ── TTS Voiceover Playback ──────────────────────────────────────────────────
-function playTtsAudio(msgId: string, msgIndex?: number) {
-  const state = useEditorStore.getState();
-  if (!state.enableTts) return;
+// Returns a Promise that resolves ONLY when the TTS audio finishes playing.
+// Resolves immediately if TTS is disabled or no audio URL found for this message.
+function playTtsAudio(msgId: string, speed: number, msgIndex?: number): Promise<void> {
+  return new Promise((resolve) => {
+    const state = useEditorStore.getState();
+    if (!state.enableTts) return resolve();
 
-  const audioMap = state.ttsAudioMap as Record<string, string> | undefined;
-  const audioUrl =
-    audioMap?.[msgId] ??
-    (msgIndex !== undefined ? (audioMap?.[msgIndex] ?? audioMap?.[String(msgIndex)]) : undefined);
+    const audioMap = state.ttsAudioMap as Record<string, string> | undefined;
+    const audioUrl =
+      audioMap?.[msgId] ??
+      (msgIndex !== undefined ? (audioMap?.[msgIndex] ?? audioMap?.[String(msgIndex)]) : undefined);
 
-  if (audioUrl) {
+    if (!audioUrl) return resolve();
+
     try {
       const audio = new Audio(audioUrl);
       audio.volume = 1.0;
-      audio.play().catch((e) => console.warn('[TTS] Audio play error:', e));
-    } catch (e) {
-      console.warn('[TTS] Audio init error:', e);
+      // Match playback rate to animation speed (clamped for browser support)
+      audio.playbackRate = Math.min(Math.max(speed, 0.5), 4.0);
+
+      audio.addEventListener('ended', () => resolve(), { once: true });
+      audio.addEventListener('error', () => resolve(), { once: true });
+      // Stalled / suspended fallback
+      audio.addEventListener('stalled', () => {
+        setTimeout(resolve, 5000);
+      }, { once: true });
+
+      audio.play().catch(() => resolve());
+    } catch {
+      resolve();
     }
-  }
+  });
 }
+
+// Guard flag: set to false by stop() to cancel in-flight async playback
+let isRunning = false;
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
   isPlaying: false,
@@ -77,12 +94,14 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
   pause: () => {
     clearTimer();
+    isRunning = false;
     set({ isPaused: true });
     useEditorStore.getState().setActiveHeaderStatusOverride(null);
   },
 
   stop: () => {
     clearTimer();
+    isRunning = false; // cancel any in-flight async sequence
     set({
       isPlaying: false,
       isPaused: false,
@@ -95,6 +114,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
   play: () => {
     clearTimer();
+    isRunning = false; // cancel previous run if any
 
     const editorState = useEditorStore.getState();
     const messages = editorState.messages;
@@ -102,6 +122,9 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     if (!messages || messages.length === 0) return;
 
     const speed = get().playbackSpeed;
+
+    // Mark new run as active
+    isRunning = true;
 
     // Reset to start of sequence
     set({
@@ -114,12 +137,16 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
     let currentIdx = 0;
 
-    const playNextStep = () => {
+    const playNextStep = async () => {
+      // Bail if stop() was called
+      if (!isRunning) return;
+
       const state = useEditorStore.getState();
       const currentMessages = state.messages;
 
       if (currentIdx >= currentMessages.length) {
-        // Animation finished
+        // ── Animation finished ──────────────────────────────────────────────
+        isRunning = false;
         set({ isPlaying: false, isPaused: false, visibleCount: -1, isTyping: false, activeMsgId: null });
         state.setActiveHeaderStatusOverride(null);
         return;
@@ -133,45 +160,45 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
       const replyDelayDuration = (state.replyDelay || 1200) / speed;
 
       if (shouldType) {
-        // Phase 1: Typing indicator
-        set({
-          isTyping: true,
-          activeMsgId: null,
-        });
+        // ── Phase 1: Show typing indicator ───────────────────────────────
+        set({ isTyping: true, activeMsgId: null });
         state.setActiveHeaderStatusOverride('typing');
 
-        animationTimer = setTimeout(() => {
-          // Phase 2: Show message
-          currentIdx++;
-          set({
-            visibleCount: currentIdx,
-            isTyping: false,
-            activeMsgId: msg.id,
-          });
-          state.setActiveHeaderStatusOverride(null);
+        await new Promise<void>((r) => { animationTimer = setTimeout(r, replyDelayDuration); });
+        if (!isRunning) return;
 
-          // Play Sound Effect & TTS
-          playSfx(msg.direction);
-          playTtsAudio(msg.id, currentIdx - 1);
-
-          // Schedule next step after hold duration
-          animationTimer = setTimeout(playNextStep, holdDuration);
-        }, replyDelayDuration);
-      } else {
-        // Direct show message without typing delay
+        // ── Phase 2: Show message ─────────────────────────────────────────
         currentIdx++;
-        set({
-          visibleCount: currentIdx,
-          isTyping: false,
-          activeMsgId: msg.id,
-        });
+        set({ visibleCount: currentIdx, isTyping: false, activeMsgId: msg.id });
+        state.setActiveHeaderStatusOverride(null);
 
-        // Play Sound Effect & TTS
+        // SFX fires immediately (non-blocking)
         playSfx(msg.direction);
-        playTtsAudio(msg.id, currentIdx - 1);
 
-        animationTimer = setTimeout(playNextStep, holdDuration);
+        // TTS: wait for voice to finish before proceeding
+        await playTtsAudio(msg.id, speed, currentIdx - 1);
+        if (!isRunning) return;
+
+        // Hold pause after audio ends (configured per-message or global)
+        await new Promise<void>((r) => { animationTimer = setTimeout(r, holdDuration); });
+      } else {
+        // ── Direct show (no typing indicator) ────────────────────────────
+        currentIdx++;
+        set({ visibleCount: currentIdx, isTyping: false, activeMsgId: msg.id });
+
+        // SFX fires immediately (non-blocking)
+        playSfx(msg.direction);
+
+        // TTS: wait for voice to finish before proceeding
+        await playTtsAudio(msg.id, speed, currentIdx - 1);
+        if (!isRunning) return;
+
+        // Hold pause after audio ends
+        await new Promise<void>((r) => { animationTimer = setTimeout(r, holdDuration); });
       }
+
+      if (!isRunning) return;
+      playNextStep();
     };
 
     // Start sequence
