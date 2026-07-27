@@ -174,7 +174,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   zoomSpeed: 400,
   enableTts: false,
   ttsProvider: 'elevenlabs',
-  elevenKey: 'sk_dd3ed95fa937222315a2a3d3aaa40b40caabe67f2fafc50f',
+  elevenKey: 'sk_a0156fb3be716832cafb958b953d7a09d641be1ae3acbaa5',
   elevenModel: 'eleven_v3',
   ttsVoiceIn: 'EXAVITQu4vr4xnSDxMaL',
   ttsVoiceOut: 'pNInz6obpgDQGcFmaJgB',

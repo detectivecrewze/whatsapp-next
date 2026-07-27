@@ -26,14 +26,15 @@ export async function POST(req: NextRequest) {
 
     // ── ElevenLabs ──────────────────────────────────────────────
     if (provider === 'elevenlabs') {
-      if (!apiKey) {
-        return NextResponse.json({ error: 'API Key ElevenLabs diperlukan' }, { status: 400 });
+      const activeKey = apiKey?.trim() || process.env.ELEVENLABS_API_KEY || '';
+      if (!activeKey) {
+        return NextResponse.json({ error: 'API Key ElevenLabs tidak dikonfigurasi' }, { status: 400 });
       }
 
       const res = await fetch(`${ELEVEN_BASE}/text-to-speech/${voiceId}`, {
         method: 'POST',
         headers: {
-          'xi-api-key': apiKey,
+          'xi-api-key': activeKey,
           'Content-Type': 'application/json',
           Accept: 'audio/mpeg',
         },
