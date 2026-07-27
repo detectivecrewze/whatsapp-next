@@ -1,137 +1,255 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { RotateCcw, Play } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { RotateCcw, Play, Pause } from 'lucide-react';
+import { useEditorStore } from '@/store/useEditorStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import dynamic from 'next/dynamic';
+
+const WhatsAppCanvas = dynamic(
+  () => import('@/components/canvas/WhatsAppCanvas'),
+  { ssr: false }
+);
 
 interface Props {
   presetId: string;
 }
 
+type Status = 'loading' | 'countdown' | 'playing' | 'done' | 'error';
+
 export default function PreviewClient({ presetId }: Props) {
-  const [status, setStatus] = useState<'loading' | 'ready' | 'playing' | 'done' | 'error'>('loading');
+  const [status, setStatus] = useState<Status>('loading');
   const [errorMsg, setErrorMsg] = useState('');
   const [countdown, setCountdown] = useState(3);
+  const countdownRef = useRef<NodeJS.Timeout | null>(null);
 
+  const { applyPayload } = useEditorStore();
+  const { play, stop, isPlaying, isPaused, pause } = usePlayerStore();
+
+  // ── Load preset from cloud / API ──────────────────────────────────────────
   useEffect(() => {
-    // In Phase 7, this will fetch the preset from cloud using presetId
-    // For now, just show a ready state after 1s
-    const timer = setTimeout(() => setStatus('ready'), 1000);
-    return () => clearTimeout(timer);
+    async function load() {
+      try {
+        const res = await fetch(`/api/presets?id=${encodeURIComponent(presetId)}`, {
+          cache: 'no-store',
+        });
+        
+        let presetData = null;
+
+        if (res.ok) {
+          const json = await res.json();
+          presetData = json?.preset?.data ?? json?.templates?.[presetId]?.data;
+        } else {
+          // Fallback: fetch all templates
+          const resAll = await fetch('/api/presets', { cache: 'no-store' });
+          if (resAll.ok) {
+            const dataAll = await resAll.json();
+            presetData = dataAll?.templates?.[presetId]?.data;
+          }
+        }
+
+        if (!presetData) {
+          throw new Error('Preset tidak ditemukan atau telah dihapus.');
+        }
+
+        applyPayload(presetData);
+
+        // Short pause then start countdown
+        setTimeout(() => startCountdown(), 400);
+      } catch (e: any) {
+        setErrorMsg(e.message || 'Gagal memuat preview');
+        setStatus('error');
+      }
+    }
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetId]);
 
-  function handlePlay() {
-    setStatus('playing');
+  // ── Countdown → play ──────────────────────────────────────────────────────
+  function startCountdown() {
+    setStatus('countdown');
     setCountdown(3);
     let c = 3;
-    const interval = setInterval(() => {
+    countdownRef.current = setInterval(() => {
       c--;
-      setCountdown(c);
       if (c <= 0) {
-        clearInterval(interval);
-        setStatus('done');
+        clearInterval(countdownRef.current!);
+        setStatus('playing');
+        play();
+      } else {
+        setCountdown(c);
       }
     }, 1000);
   }
 
+  // ── Watch playback end ────────────────────────────────────────────────────
+  useEffect(() => {
+    if (status === 'playing' && !isPlaying) {
+      setStatus('done');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying]);
+
+  // ── Replay ────────────────────────────────────────────────────────────────
+  function handleReplay() {
+    stop();
+    setCountdown(3);
+    startCountdown();
+  }
+
+  // ── Cleanup on unmount ────────────────────────────────────────────────────
+  useEffect(() => {
+    return () => {
+      if (countdownRef.current) clearInterval(countdownRef.current);
+      stop();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div
       style={{
+        minHeight: '100vh',
+        background: '#000',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        minHeight: '100vh',
-        background: '#000',
-        color: '#fff',
-        fontFamily: 'system-ui, sans-serif',
-        gap: 24,
-        padding: 24,
-        textAlign: 'center',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
+      {/* ── Loading ── */}
       {status === 'loading' && (
-        <>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
           <div
             style={{
               width: 48, height: 48, borderRadius: '50%',
-              border: '3px solid #25d366',
-              borderTopColor: 'transparent',
+              border: '3px solid rgba(37,211,102,0.3)',
+              borderTopColor: '#25d366',
               animation: 'spin 0.8s linear infinite',
             }}
           />
-          <p style={{ color: '#8696a0', fontSize: 14 }}>Memuat preview…</p>
+          <p style={{ color: '#8696a0', fontSize: 14, margin: 0 }}>Memuat animasi…</p>
           <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-        </>
+        </div>
       )}
 
-      {status === 'ready' && (
-        <>
-          <div
-            style={{
-              fontSize: 13,
-              color: '#8696a0',
-              background: 'rgba(255,255,255,0.05)',
-              padding: '6px 14px',
-              borderRadius: 20,
-            }}
-          >
-            ID: {presetId}
-          </div>
-          <div style={{ fontSize: 40 }}>📱</div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>Preview Siap!</h1>
-          <p style={{ color: '#8696a0', fontSize: 14, margin: 0 }}>
-            Player animasi WhatsApp akan muncul di sini (Fase 7)
-          </p>
-          <button
-            onClick={handlePlay}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 24px', borderRadius: 50,
-              background: '#25d366', color: '#000',
-              fontWeight: 700, fontSize: 14, border: 'none', cursor: 'pointer',
-            }}
-          >
-            <Play size={16} /> Mulai Animasi
-          </button>
-        </>
+      {/* ── Error ── */}
+      {status === 'error' && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16, padding: 32, textAlign: 'center' }}>
+          <div style={{ fontSize: 48 }}>⚠️</div>
+          <p style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: 0 }}>Preset Tidak Ditemukan</p>
+          <p style={{ color: '#8696a0', fontSize: 13, margin: 0, maxWidth: 320 }}>{errorMsg}</p>
+          <p style={{ color: '#555', fontSize: 12, margin: 0, fontFamily: 'monospace' }}>ID: {presetId}</p>
+        </div>
       )}
 
-      {status === 'playing' && (
-        <>
+      {/* ── Countdown ── */}
+      {status === 'countdown' && (
+        <div style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}>
           <div
+            key={countdown}
             style={{
-              fontSize: 80, fontWeight: 900,
+              fontSize: 120,
+              fontWeight: 900,
               color: '#25d366',
-              animation: 'pulse 0.5s ease',
+              lineHeight: 1,
+              animation: 'countPop 0.6s cubic-bezier(.175,.885,.32,1.275)',
+              textShadow: '0 0 60px rgba(37,211,102,0.5)',
             }}
           >
-            {countdown > 0 ? countdown : '▶'}
+            {countdown}
           </div>
-          <p style={{ color: '#8696a0', fontSize: 14 }}>Bersiap memutar animasi…</p>
-          <style>{`@keyframes pulse { from { transform: scale(1.3); opacity: 0.5; } to { transform: scale(1); opacity: 1; } }`}</style>
-        </>
+          <style>{`
+            @keyframes countPop {
+              from { transform: scale(1.8); opacity: 0; }
+              to   { transform: scale(1);   opacity: 1; }
+            }
+          `}</style>
+        </div>
       )}
 
-      {status === 'done' && (
-        <>
-          <div style={{ fontSize: 48 }}>✅</div>
-          <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>Selesai!</h2>
-          <p style={{ color: '#8696a0', fontSize: 14, margin: 0 }}>
-            Player lengkap akan diimplementasi di Fase 7
-          </p>
-          <button
-            onClick={() => setStatus('ready')}
+      {/* ── Phone Canvas ── */}
+      {(status === 'countdown' || status === 'playing' || status === 'done') && (
+        <div
+          style={{
+            width: '100vw',
+            height: '100vh',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            position: 'relative',
+          }}
+        >
+          <div
             style={{
-              display: 'flex', alignItems: 'center', gap: 8,
-              padding: '10px 24px', borderRadius: 50,
-              background: 'rgba(37,211,102,0.15)', color: '#25d366',
-              border: '1px solid rgba(37,211,102,0.3)',
-              fontWeight: 600, fontSize: 14, cursor: 'pointer',
+              flex: '1 1 0',
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingBottom: 64,
             }}
           >
-            <RotateCcw size={14} /> Putar Ulang
-          </button>
-        </>
+            <WhatsAppCanvas />
+          </div>
+
+          {/* Bottom HUD */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 64,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 16,
+              background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)',
+              zIndex: 40,
+            }}
+          >
+            {status === 'playing' && (
+              <button
+                onClick={() => (isPaused ? play() : pause())}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '10px 24px', borderRadius: 50,
+                  background: 'rgba(37,211,102,0.15)',
+                  border: '1px solid rgba(37,211,102,0.4)',
+                  color: '#25d366', fontWeight: 600, fontSize: 13,
+                  cursor: 'pointer', backdropFilter: 'blur(8px)',
+                }}
+              >
+                {isPaused
+                  ? <><Play size={14} /> Lanjutkan</>
+                  : <><Pause size={14} /> Pause</>
+                }
+              </button>
+            )}
+
+            {status === 'done' && (
+              <>
+                <button
+                  onClick={handleReplay}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '11px 28px', borderRadius: 50,
+                    background: '#25d366', color: '#000',
+                    fontWeight: 700, fontSize: 14,
+                    border: 'none', cursor: 'pointer',
+                    boxShadow: '0 4px 24px rgba(37,211,102,0.35)',
+                  }}
+                >
+                  <RotateCcw size={15} /> Putar Ulang
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
