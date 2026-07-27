@@ -168,7 +168,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   useTyping: true,
   useSoundIn: true,
   useSoundOut: true,
-  autoZoom: true,
+  autoZoom: false,
   zoomScale: 1.08,
   zoomSpeed: 400,
   enableTts: false,
