@@ -50,14 +50,14 @@ Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
 }
 
 Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT):
-1. ADAPTIF & PINTAR MEMILIH TIPE PESAN (JANGAN HANYA TEKS FULL, VARIASKAN SESUAI CERITA!):
-   - Jangan kaku berpaku pada pesan teks 100%! Pilih tipe pesan yang paling cocok dan natural untuk mendukung cerita (terutama GAMBAR/PAP FOTO):
+1. ADAPTIF & PINTAR MEMILIH TIPE PESAN (VARIASKAN SESUAI CERITA — DILARANG VOICE NOTE!):
+   - Jangan kaku berpaku pada pesan teks 100%! Pilih tipe pesan yang paling cocok dan natural untuk mendukung cerita (terutama GAMBAR/PAP FOTO, NOTIFIKASI, TRANSFER, DLL.):
+   - DILARANG PAKAI type 'voice_note' (Jangan pernah gunakan Voice Note / VN).
    - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." }
    - Type 'view_once': Gunakan saat kirim foto rahasia / sekali lihat (view once).
    - Type 'notification': Gunakan saat ada notifikasi HP yang memotong obrolan (cth: Notifikasi m-Banking, WhatsApp pesan dari Mama/Mantan, Notifikasi IG, dll.). Contoh: { "type": "notification", "direction": "incoming", "time": "21:33", "notifSender": "m-Banking", "notifTitle": "Transfer Masuk", "text": "Rp 500.000 masuk dari Budi" }
    - Type 'transfer': Gunakan saat ada momen bayar utang / transfer saldo.
    - Type 'location': Gunakan saat share location / janjian ketemuan.
-   - Type 'voice_note': Gunakan saat tokoh ngomong panik/bisik-bisik/menangis via Voice Note.
    - Type 'deleted': Gunakan saat ada momen salah kirim lalu ditarik (Pesan ini telah dihapus).
    - Type 'text': Gunakan untuk obrolan teks biasa.
 

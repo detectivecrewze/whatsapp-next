@@ -134,11 +134,12 @@ export default function AiGeneratorSection() {
       let currentHour = now.getHours();
       let currentMin = now.getMinutes();
 
-      const validTypes = ['text', 'image', 'view_once', 'voice_note', 'notification', 'transfer', 'contact', 'location', 'deleted'];
+      const validTypes = ['text', 'image', 'view_once', 'notification', 'transfer', 'contact', 'location', 'deleted'];
 
       const newMessages: Message[] = raw.map((item) => {
-        // Validate message type
-        const rawType = (item.type || 'text').toLowerCase();
+        // Validate message type (convert voice_note to text)
+        let rawType = (item.type || 'text').toLowerCase();
+        if (rawType === 'voice_note') rawType = 'text';
         const type = (validTypes.includes(rawType) ? rawType : 'text') as Message['type'];
 
         // Determine timestamp
