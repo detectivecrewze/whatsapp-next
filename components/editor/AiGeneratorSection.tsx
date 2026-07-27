@@ -357,9 +357,11 @@ export default function AiGeneratorSection() {
       {/* Prompt Input Textarea */}
       <div>
         <label className="section-label">
-          {generatorMode === 'improvise'
-            ? 'Arahan Improvisasi / Lanjutan Cerita (Opsional)'
-            : 'Prompt / Cerita yang Ingin Dibuat'}
+          {generatorMode === 'enhance_emotion'
+            ? 'Instruksi Khusus Tag Emosi (Opsional)'
+            : generatorMode === 'improvise'
+              ? 'Arahan Improvisasi / Lanjutan Cerita (Opsional)'
+              : 'Prompt / Cerita yang Ingin Dibuat'}
         </label>
         <textarea
           className="input resize-none text-[12.5px] leading-relaxed"
@@ -370,9 +372,11 @@ export default function AiGeneratorSection() {
             setSelectedPreset(null);
           }}
           placeholder={
-            generatorMode === 'improvise'
-              ? 'Ketik arahan lanjutan (cth: "Tiba-tiba ada yang ketuk jendela dan mama kirim notif transfer 500rb"), atau kosongkan untuk improvisasi otomatis AI...'
-              : 'Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, dll)...'
+            generatorMode === 'enhance_emotion'
+              ? 'cth: "Fokus kasih tag ketakutan horor ekstrem" atau kosongkan untuk otomatis AI...'
+              : generatorMode === 'improvise'
+                ? 'Ketik arahan lanjutan (cth: "Tiba-tiba ada yang ketuk jendela dan mama kirim notif transfer 500rb"), atau kosongkan untuk improvisasi otomatis AI...'
+                : 'Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, dll)...'
           }
           onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) generate(); }}
         />
@@ -381,75 +385,90 @@ export default function AiGeneratorSection() {
         </p>
       </div>
 
-      {/* Voice Style Toggle */}
-      <div>
-        <label className="section-label">Gaya Suara / Emosi</label>
-        <div className="flex gap-2">
-          <button
-            onClick={() => setVoiceStyle('dramatic')}
-            className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
-            style={{
-              background: voiceStyle === 'dramatic' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
-              borderColor: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--ui-border)',
-              color: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-            }}
-          >
-            <Mic size={11} />
-            Dramatis (ElevenLabs)
-          </button>
-          <button
-            onClick={() => setVoiceStyle('normal')}
-            className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
-            style={{
-              background: voiceStyle === 'normal' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
-              borderColor: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--ui-border)',
-              color: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-            }}
-          >
-            <MicOff size={11} />
-            Normal (Tanpa Tag)
-          </button>
-        </div>
-        <p className="text-[10px] mt-1" style={{ color: 'var(--wa-text-muted)' }}>
-          {voiceStyle === 'dramatic'
-            ? '🎭 Akan ditambahkan tag emosi [scared], [laughing], dll. — bagus untuk TTS ElevenLabs'
-            : '💬 Tanpa tag emosi — cocok untuk pesan biasa tanpa voice over'}
-        </p>
-      </div>
-
-      {/* Message count */}
-      <div>
-        <label className="section-label">Jumlah Pesan (Pilih atau Ketik Sendiri)</label>
-        <div className="flex gap-1.5 flex-wrap items-center">
-          {MSG_COUNTS.map((n) => (
+      {/* Voice Style Toggle (Shown for create & improvise) */}
+      {generatorMode !== 'enhance_emotion' && (
+        <div>
+          <label className="section-label">Gaya Suara / Emosi</label>
+          <div className="flex gap-2">
             <button
-              key={n}
-              onClick={() => setMsgCount(n)}
-              className="py-1 px-2.5 rounded-lg text-[12px] font-medium border transition-all"
+              onClick={() => setVoiceStyle('dramatic')}
+              className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
               style={{
-                background: msgCount === n ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
-                borderColor: msgCount === n ? 'var(--wa-green)' : 'var(--ui-border)',
-                color: msgCount === n ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+                background: voiceStyle === 'dramatic' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
+                borderColor: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--ui-border)',
+                color: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
               }}
             >
-              {n}
+              <Mic size={11} />
+              Dramatis (ElevenLabs)
             </button>
-          ))}
-          {/* Custom input */}
-          <div className="flex items-center gap-1 bg-[var(--ui-card)] border border-[var(--ui-border)] rounded-lg px-2 py-0.5 ml-auto">
-            <span className="text-[11px]" style={{ color: 'var(--wa-text-muted)' }}>Kustom:</span>
-            <input
-              type="number"
-              min={1}
-              max={30}
-              value={msgCount}
-              onChange={(e) => setMsgCount(Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1)))}
-              className="w-12 bg-transparent text-center text-[12px] font-bold focus:outline-none"
-              style={{ color: 'var(--wa-green)' }}
-            />
+            <button
+              onClick={() => setVoiceStyle('normal')}
+              className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
+              style={{
+                background: voiceStyle === 'normal' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
+                borderColor: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--ui-border)',
+                color: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+              }}
+            >
+              <MicOff size={11} />
+              Normal (Tanpa Tag)
+            </button>
+          </div>
+          <p className="text-[10px] mt-1" style={{ color: 'var(--wa-text-muted)' }}>
+            {voiceStyle === 'dramatic'
+              ? '🎭 Akan ditambahkan tag emosi [scared], [laughing], dll. — bagus untuk TTS ElevenLabs'
+              : '💬 Tanpa tag emosi — cocok untuk pesan biasa tanpa voice over'}
+          </p>
+        </div>
+      )}
+
+      {/* Message count selector */}
+      {generatorMode !== 'enhance_emotion' ? (
+        <div>
+          <label className="section-label">
+            {generatorMode === 'improvise'
+              ? 'Jumlah Pesan Baru yang Ingin Ditambahkan'
+              : 'Jumlah Pesan (Pilih atau Ketik Sendiri)'}
+          </label>
+          <div className="flex gap-1.5 flex-wrap items-center">
+            {MSG_COUNTS.map((n) => (
+              <button
+                key={n}
+                onClick={() => setMsgCount(n)}
+                className="py-1 px-2.5 rounded-lg text-[12px] font-medium border transition-all"
+                style={{
+                  background: msgCount === n ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
+                  borderColor: msgCount === n ? 'var(--wa-green)' : 'var(--ui-border)',
+                  color: msgCount === n ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+                }}
+              >
+                {n}
+              </button>
+            ))}
+            {/* Custom input */}
+            <div className="flex items-center gap-1 bg-[var(--ui-card)] border border-[var(--ui-border)] rounded-lg px-2 py-0.5 ml-auto">
+              <span className="text-[11px]" style={{ color: 'var(--wa-text-muted)' }}>Kustom:</span>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={msgCount}
+                onChange={(e) => setMsgCount(Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1)))}
+                className="w-12 bg-transparent text-center text-[12px] font-bold focus:outline-none"
+                style={{ color: 'var(--wa-green)' }}
+              />
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="p-2 rounded-lg bg-pink-950/30 border border-pink-500/20 text-[11.5px] text-pink-300 flex items-center justify-between">
+          <span className="font-medium">📊 Target Pesan:</span>
+          <span className="font-bold bg-pink-500/20 px-2 py-0.5 rounded text-pink-200">
+            {messages.length} Chat di Editor (Sama Persis)
+          </span>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
