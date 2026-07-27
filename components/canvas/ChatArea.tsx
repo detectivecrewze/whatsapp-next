@@ -43,13 +43,8 @@ export default function ChatArea() {
 
   return (
     <div
-      className="relative flex-1 flex flex-col overflow-hidden transition-transform duration-300"
-      style={{
-        ...backgroundStyle,
-        transform: `scale(${currentZoomScale})`,
-        transformOrigin: 'bottom center',
-        transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-      }}
+      className="relative flex-1 flex flex-col overflow-hidden"
+      style={backgroundStyle}
     >
       {/* Pinned message banner */}
       {pinnedMessage && (
@@ -73,8 +68,16 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* Messages area */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]">
+      {/* Messages area — auto-zoom applies only inside the chat viewport */}
+      <div
+        ref={scrollRef}
+        className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]"
+        style={{
+          transform: `scale(${currentZoomScale})`,
+          transformOrigin: 'bottom center',
+          transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+        }}
+      >
         {displayedMessages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} isVisible={true} />
         ))}
