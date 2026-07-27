@@ -47,40 +47,28 @@ Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
   "messages": [
     { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Sayang" },
     { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Kamu udah tidur belom?" },
-    { "type": "view_once", "direction": "incoming", "time": "21:31", "text": "Nih liat foto ini jgn dispill" },
-    { "type": "voice_note", "direction": "incoming", "time": "21:31", "duration": "0:12", "text": "[whispers] Ssst... jangan berisik..." },
-    { "type": "image", "direction": "outgoing", "time": "21:32", "caption": "Nih bukti kejadiannya!", "imageData": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80" },
-    { "type": "transfer", "direction": "incoming", "time": "21:33", "text": "Rp 500.000", "caption": "Transfer M-Banking Berhasil" },
-    { "type": "location", "direction": "outgoing", "time": "21:34", "text": "Kopi Kenangan Rest Area KM 19", "caption": "Jl. Tol Jakarta-Cikampek" },
-    { "type": "contact", "direction": "incoming", "time": "21:35", "text": "Dr. Hendra (Spesialis)", "caption": "+62 812-3456-7890" },
-    { "type": "deleted", "direction": "incoming", "time": "21:36" }
+    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Belom nih, baru kelar cuci muka. Kenapa?" }
   ]
 }
 
 Aturan Penulisan Gaya Chat WhatsApp (SANGAT PENTING):
-1. GAYA KETIKAN TEXT HP REALISTIS & MANUSIAWI (BUKAN BOT / BAKU OPERA):
+1. INTI CHAT HARUS TEKS BUBBLE REALISTIS (95%+ PESAN ADALAH TEKS):
+   - Sebagian besar percakapan (95%+) HARUS menggunakan type "text".
    - Pesan buatanmu HARUS terasa seperti teks asli orang Indonesia yang diketik pakai jempol di HP (singkat, 1-8 kata per bubble, spontan, pakai bahasa gaul/santai sehari-hari seperti: wkwk, njir, banget, gak, lu, gua, aku, kamu, dll. sesuai konteks).
    - DILARANG BIKIN KALIMAT NARRATIVE TEATER PANJANG BAKU BOHONGAN.
    - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
 
-2. PENGGUNAAN VARIASI TIPE PESAN INTERAKTIF & CERDAS (SANGAT DIANJURKAN):
-   Gunakan tipe pesan yang sesuai dengan konteks dan alur cerita agar chat terasa 100% hidup & dramatis:
-   - "text" : Pesan teks biasa (bisa disertai audio tag seperti [excited], [scared], [laughing], dll.)
-   - "image" : Gunakan saat lawan bicara/pengguna mengirim foto bukti, foto suasana tempat/kamar/makanan/cafe/horor. Masukkan URL Unsplash yang relevan jika ada, atau sertakan caption menarik.
-   - "view_once" : Gunakan "Foto Sekali Lihat" (Foto 1x) saat ada pesan rahasia, pap privat, bukti sensitif, atau foto horor yang hanya bisa dilihat 1 kali.
-   - "voice_note" : Gunakan Voice Note saat suasana mendesak, emosi tinggi, bisikan ketakutan, atau malas ketik. Isi field "duration": "0:05", "0:14", "0:28", dll.
-   - "transfer" : Gunakan kartu Transfer Uang saat ada adegan bayar utang, kirim uang jajan, beli barang, atau transferan bokap. Isi field "text": "Rp 250.000" & "caption": "Transfer M-Banking Berhasil".
-   - "contact" : Gunakan saat ada adegan merekomendasikan/mengirim nomor kontak orang lain. Isi field "text": "Nama Kontak" & "caption": "+62 812-xxxx-xxxx".
-   - "location" : Gunakan saat adegan share location / janjian / lokasi tersesat / posisi tempat nongkrong. Isi field "text": "Nama Tempat" & "caption": "Alamat".
-   - "deleted" : Gunakan "Pesan ini telah dihapus" saat ada adegan salah kirim, pesan ditarik karena malu/panik, atau misteri.
-   - "notification" : Notifikasi sistem (cth: "🔒 Pesan dienkripsi secara end-to-end").
+2. ATURAN PENGGUNAAN TIPE PESAN NON-TEKS (SPARINGLY & KETAT):
+   - DILARANG MENGGUNAKAN type "voice_note" (Jangan pernah pakai Voice Note).
+   - Tipe selain teks ("image", "view_once", "transfer", "location", "contact", "deleted") HANYA DIGUNAKAN JIKA SANGAT COCOK & RELEVAN DENGAN ALUR CERITA (Maksimal 1 atau 2 pesan non-teks dalam seluruh cerita):
+     * "transfer" : Gunakan HANYA jika ada adegan spesifik transfer uang (cth: bokap transfer / bayar utang).
+     * "image" / "view_once" : Gunakan HANYA jika cerita spesifik meminta pap foto / bukti foto.
+     * "location" : Gunakan HANYA jika cerita spesifik tentang share location ketemuan.
+     * "deleted" : Gunakan HANYA jika ada adegan spesifik salah kirim / pesan ditarik.
+   - Jika cerita berupa obrolan santai/drama/curhat biasa, gunakan 100% PESAN TEKS ("text").
 
 3. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
-   - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA:
-     * Kalo ide HOROR/SUSPENSE: Sisipkan Voice Note bisikan ketakutan, Foto Sekali Lihat suasana gelap, atau foto tempat seram.
-     * Kalo ide KOMEDI/LUCU/PRANK: Sisipkan Voice Note tertawa, foto konyol, atau pesan dihapus yang bikin curiga.
-     * Kalo ide ROMANTIS/BUCIN: Sisipkan Voice Note ucapan romantis, Foto Sekali Lihat pap lucu, atau share location ketemuan.
-     * Kalo ide MONEY/UANG/BOKAP/UTANG: Sisipkan kartu Transfer Uang (Rp ...), bukti foto transfer, atau kontak penagih.
+   - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA (Horor, Komedi, Romantis, Olshop, dll.).
 
 ${dramaticRuleInstruction}
 
