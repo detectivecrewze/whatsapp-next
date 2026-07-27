@@ -15,7 +15,7 @@ interface Props {
   presetId: string;
 }
 
-type Status = 'loading' | 'countdown' | 'playing' | 'done' | 'error';
+type Status = 'loading' | 'ready' | 'countdown' | 'playing' | 'done' | 'error';
 
 const LOCAL_PREVIEW_KEY = 'wa_local_preview';
 
@@ -64,8 +64,8 @@ export default function PreviewClient({ presetId }: Props) {
 
         applyPayload(presetData);
 
-        // Short pause then start countdown
-        setTimeout(() => startCountdown(), 400);
+        // Show Start button overlay so user gesture unlocks iOS Audio
+        setStatus('ready');
       } catch (e: any) {
         setErrorMsg(e.message || 'Gagal memuat preview');
         setStatus('error');
@@ -75,6 +75,23 @@ export default function PreviewClient({ presetId }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetId]);
 
+
+  // ── Unlock iOS Safari Audio on User Gesture ────────────────────────────────
+  function unlockAudio() {
+    try {
+      const a = new Audio('/sounds/notification.mp3');
+      a.volume = 0.01;
+      a.play().then(() => {
+        a.pause();
+      }).catch(() => {});
+    } catch {}
+  }
+
+  // ── Start playback via user gesture ───────────────────────────────────────
+  function handleStart() {
+    unlockAudio();
+    startCountdown();
+  }
 
   // ── Countdown → play ──────────────────────────────────────────────────────
   function startCountdown() {
@@ -103,8 +120,8 @@ export default function PreviewClient({ presetId }: Props) {
 
   // ── Replay ────────────────────────────────────────────────────────────────
   function handleReplay() {
+    unlockAudio();
     stop();
-    setCountdown(3);
     startCountdown();
   }
 
@@ -181,8 +198,8 @@ export default function PreviewClient({ presetId }: Props) {
         </div>
       )}
 
-      {/* ── Phone Canvas ── */}
-      {(status === 'countdown' || status === 'playing' || status === 'done') && (
+      {/* ── Phone Canvas Preview ── */}
+      {(status === 'ready' || status === 'countdown' || status === 'playing' || status === 'done') && (
         <div
           style={{
             width: '100vw',
@@ -198,7 +215,7 @@ export default function PreviewClient({ presetId }: Props) {
           <div
             style={{
               width: '100%',
-              height: 'calc(100vh - 72px)',
+              height: 'calc(100vh - 80px)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -210,7 +227,70 @@ export default function PreviewClient({ presetId }: Props) {
             <WhatsAppCanvas />
           </div>
 
-          {/* Bottom HUD - Only shown when done to replay, hidden during playback for clean screen recording */}
+          {/* Start Overlay Button (Required on iOS Safari to unlock HTML5 Audio Context via User Gesture) */}
+          {status === 'ready' && (
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                zIndex: 50,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: 'rgba(0,0,0,0.65)',
+                backdropFilter: 'blur(8px)',
+                padding: 24,
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: 72,
+                  height: 72,
+                  borderRadius: '50%',
+                  background: 'rgba(37,211,102,0.15)',
+                  border: '2px solid #25d366',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                  boxShadow: '0 0 40px rgba(37,211,102,0.3)',
+                }}
+              >
+                <Play size={32} fill="#25d366" color="#25d366" style={{ marginLeft: 4 }} />
+              </div>
+              <p style={{ color: '#fff', fontSize: 18, fontWeight: 700, margin: '0 0 6px 0' }}>
+                Preview Animasi Percakapan
+              </p>
+              <p style={{ color: '#8696a0', fontSize: 13, margin: '0 0 24px 0', maxWidth: 300 }}>
+                Tekan tombol di bawah untuk mengaktifkan audio & memulai animasi percakapan
+              </p>
+              <button
+                onClick={handleStart}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '14px 36px',
+                  borderRadius: 50,
+                  background: '#25d366',
+                  color: '#000',
+                  fontWeight: 800,
+                  fontSize: 15,
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 32px rgba(37,211,102,0.45)',
+                  transition: 'transform 0.15s, background 0.15s',
+                }}
+              >
+                <Play size={18} fill="#000" />
+                Mulai Putar Animasi
+              </button>
+            </div>
+          )}
+
+          {/* Bottom HUD - Replay Button when done */}
           {status === 'done' && (
             <div
               style={{
@@ -228,15 +308,15 @@ export default function PreviewClient({ presetId }: Props) {
                 onClick={handleReplay}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '11px 28px', borderRadius: 50,
+                  padding: '12px 32px', borderRadius: 50,
                   background: '#25d366', color: '#000',
-                  fontWeight: 700, fontSize: 14,
+                  fontWeight: 800, fontSize: 15,
                   border: 'none', cursor: 'pointer',
-                  boxShadow: '0 4px 24px rgba(37,211,102,0.4)',
+                  boxShadow: '0 6px 28px rgba(37,211,102,0.45)',
                   transition: 'transform 0.2s',
                 }}
               >
-                <RotateCcw size={15} /> Putar Ulang
+                <RotateCcw size={16} /> Putar Ulang
               </button>
             </div>
           )}
