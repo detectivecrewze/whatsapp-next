@@ -6,12 +6,12 @@ export const maxDuration = 60; // 60s timeout for longer generations
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
-// ── Gemini model fallback chain (sama persis dengan project lama) ─────────────
+// ── Gemini model fallback chain ───────────────────────────────────────────────
 const MODEL_CHAIN = [
-  'gemini-2.5-flash-lite',
-  'gemini-2.5-flash',
   'gemini-2.0-flash',
+  'gemini-2.0-flash-lite',
   'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
 ];
 
 // ── Build system prompt (porting langsung dari worker.js project lama) ────────
