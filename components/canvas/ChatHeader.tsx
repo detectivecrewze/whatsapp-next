@@ -6,7 +6,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { getInitials } from '@/lib/utils';
 
 export default function ChatHeader() {
-  const { name, pfp, chatType, groupSubtitle, headerStatus, headerStatusText, activeHeaderStatusOverride } = useEditorStore();
+  const { name, pfp, chatType, groupSubtitle, headerStatus, headerStatusText, activeHeaderStatusOverride, unreadCount } = useEditorStore();
 
   const currentStatus = activeHeaderStatusOverride ?? headerStatus;
 
@@ -22,10 +22,14 @@ export default function ChatHeader() {
       className="flex items-center gap-2 px-2 py-2"
       style={{ background: 'var(--wa-header)' }}
     >
-      {/* Back button */}
-      <button className="text-white opacity-90 flex items-center gap-0.5 shrink-0">
-        <ChevronLeft size={22} />
-        <span className="text-[11px] font-medium">1</span>
+      {/* Back button with unread badge counter next to chevron */}
+      <button className="flex items-center gap-0.5 shrink-0 text-white opacity-90">
+        <ChevronLeft size={22} className="text-[#53bdeb]" />
+        {unreadCount > 0 && (
+          <span className="text-[13px] font-semibold text-[#53bdeb] leading-none">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </button>
 
       {/* Avatar */}

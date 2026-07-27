@@ -8,7 +8,7 @@ import MessageBubble from './MessageBubble';
 const WA_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23111b21'/%3E%3Cg opacity='0.04' fill='%2325d366'%3E%3Cpath d='M25 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM75 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM50 35c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function ChatArea() {
-  const { bgType, bgColor, bgImage, messages, pinnedMessage, unreadCount } = useEditorStore();
+  const { bgType, bgColor, bgImage, messages, pinnedMessage } = useEditorStore();
 
   const backgroundStyle: React.CSSProperties =
     bgType === 'default'
@@ -43,17 +43,6 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* Unread badge */}
-      {unreadCount > 0 && (
-        <div className="flex justify-center py-1">
-          <div
-            className="px-3 py-0.5 rounded-full text-[11.5px]"
-            style={{ background: 'rgba(17,27,33,0.7)', color: 'var(--wa-text-muted)' }}
-          >
-            {unreadCount} pesan belum dibaca
-          </div>
-        </div>
-      )}
 
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]">
