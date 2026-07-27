@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
             stability,
             similarity_boost: 0.75,
             style,
+            speed,                  // ← was missing! now forwarded to ElevenLabs
             use_speaker_boost: true,
           },
         }),

@@ -62,12 +62,12 @@ function playTtsAudio(msgId: string, speed: number, msgIndex?: number): Promise<
     try {
       const audio = new Audio(audioUrl);
       audio.volume = 1.0;
-      // Match playback rate to animation speed (clamped for browser support)
-      audio.playbackRate = Math.min(Math.max(speed, 0.5), 4.0);
+      // NOTE: Do NOT set audio.playbackRate here.
+      // ElevenLabs bakes `speed` into the audio file at generation time.
+      // Applying playbackRate on top would cause double-speed effect.
 
       audio.addEventListener('ended', () => resolve(), { once: true });
       audio.addEventListener('error', () => resolve(), { once: true });
-      // Stalled / suspended fallback
       audio.addEventListener('stalled', () => {
         setTimeout(resolve, 5000);
       }, { once: true });
