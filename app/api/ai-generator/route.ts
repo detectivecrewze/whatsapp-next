@@ -58,7 +58,8 @@ Aturan Penulisan Gaya Chat WhatsApp (SANGAT PENTING):
 
 2. ATURAN PENGGUNAAN TIPE PESAN NON-TEKS (SPARINGLY & KETAT):
    - DILARANG MENGGUNAKAN type "voice_note" (Jangan pernah pakai Voice Note).
-   - Tipe selain teks ("image", "view_once", "transfer", "location", "contact", "deleted") HANYA DIGUNAKAN JIKA SANGAT COCOK & RELEVAN DENGAN ALUR CERITA (Maksimal 1 atau 2 pesan non-teks dalam seluruh cerita):
+   - Tipe selain teks ("image", "view_once", "transfer", "location", "contact", "deleted", "notification") HANYA DIGUNAKAN JIKA SANGAT COCOK & RELEVAN DENGAN ALUR CERITA (Maksimal 1 atau 2 pesan non-teks dalam seluruh cerita):
+     * "notification" : Gunakan HANYA jika cerita membutuhkan Notifikasi Push Popup HP di atas layar (cth: Notifikasi m-Banking transfer masuk, notifikasi pesan dari Mama/Orang tua yang memotong obrolan, notifikasi akun Instagram, dll.). Format JSON: { "type": "notification", "notifSender": "Mama", "notifTitle": "Pesan Baru", "text": "Pulang sekarang nak, udah malam!" }
      * "transfer" : Gunakan HANYA jika ada adegan spesifik transfer uang (cth: bokap transfer / bayar utang).
      * "image" / "view_once" : Gunakan HANYA jika cerita spesifik meminta pap foto / bukti foto.
      * "location" : Gunakan HANYA jika cerita spesifik tentang share location ketemuan.

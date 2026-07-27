@@ -127,6 +127,8 @@ export default function AiGeneratorSection() {
           direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
           text: item.text ?? (type === 'text' ? '' : undefined),
           caption: (item as any).caption,
+          notifSender: (item as any).notifSender,
+          notifTitle: (item as any).notifTitle,
           imageData,
           duration: (item as any).duration || (type === 'voice_note' ? '0:12' : undefined),
           waveform,
