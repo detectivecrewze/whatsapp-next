@@ -1,0 +1,79 @@
+'use client';
+
+import React from 'react';
+import { Phone, Video, ChevronLeft, Search } from 'lucide-react';
+import { useEditorStore } from '@/store/useEditorStore';
+import { getInitials } from '@/lib/utils';
+
+export default function ChatHeader() {
+  const { name, pfp, chatType, groupSubtitle, headerStatus, headerStatusText } = useEditorStore();
+
+  const statusText =
+    headerStatus === 'online'
+      ? 'Online'
+      : headerStatus === 'typing'
+      ? 'mengetik...'
+      : headerStatusText || 'Online';
+
+  return (
+    <div
+      className="flex items-center gap-2 px-2 py-2"
+      style={{ background: 'var(--wa-header)' }}
+    >
+      {/* Back button */}
+      <button className="text-white opacity-90 flex items-center gap-0.5 shrink-0">
+        <ChevronLeft size={22} />
+        <span className="text-[11px] font-medium">1</span>
+      </button>
+
+      {/* Avatar */}
+      <div className="relative shrink-0">
+        {pfp ? (
+          <img
+            src={pfp}
+            alt={name}
+            className="w-9 h-9 rounded-full object-cover"
+          />
+        ) : (
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[13px]"
+            style={{ background: 'var(--wa-green-teal)' }}
+          >
+            {getInitials(name || 'WA')}
+          </div>
+        )}
+        {/* Online indicator dot */}
+        {headerStatus === 'online' && (
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-[#1f2c33]" />
+        )}
+      </div>
+
+      {/* Name + Status */}
+      <div className="flex-1 min-w-0">
+        <p className="text-white text-[15px] font-semibold leading-tight truncate">
+          {name || 'Nama Kontak'}
+        </p>
+        <p
+          className="text-[12px] leading-tight truncate"
+          style={{
+            color:
+              headerStatus === 'typing'
+                ? 'var(--wa-green)'
+                : 'var(--wa-text-muted)',
+          }}
+        >
+          {chatType === 'group'
+            ? groupSubtitle || statusText
+            : statusText}
+        </p>
+      </div>
+
+      {/* Action icons */}
+      <div className="flex items-center gap-4 text-white opacity-80 shrink-0">
+        <Video size={20} />
+        <Phone size={18} />
+        <Search size={18} />
+      </div>
+    </div>
+  );
+}

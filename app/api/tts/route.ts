@@ -1,0 +1,117 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const ELEVEN_BASE = 'https://api.elevenlabs.io/v1';
+const GOOGLE_TTS_BASE = 'https://translate.google.com/translate_tts';
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const {
+      text,
+      provider,
+      voiceId,
+      apiKey,
+      model = 'eleven_v3',
+      stability = 0.25,
+      style = 0.5,
+      speed = 1.0,
+    } = body;
+
+    if (!text?.trim()) {
+      return NextResponse.json({ error: 'Teks kosong' }, { status: 400 });
+    }
+
+    // ── ElevenLabs ──────────────────────────────────────────────
+    if (provider === 'elevenlabs') {
+      if (!apiKey) {
+        return NextResponse.json({ error: 'API Key ElevenLabs diperlukan' }, { status: 400 });
+      }
+
+      const res = await fetch(`${ELEVEN_BASE}/text-to-speech/${voiceId}`, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': apiKey,
+          'Content-Type': 'application/json',
+          Accept: 'audio/mpeg',
+        },
+        body: JSON.stringify({
+          text,
+          model_id: model,
+          voice_settings: {
+            stability,
+            similarity_boost: 0.75,
+            style,
+            use_speaker_boost: true,
+          },
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.error('[TTS/ElevenLabs] Error:', err);
+        return NextResponse.json(
+          { error: `ElevenLabs error (${res.status}): ${err}` },
+          { status: res.status }
+        );
+      }
+
+      const audioBuffer = await res.arrayBuffer();
+      return new NextResponse(audioBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': String(audioBuffer.byteLength),
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    // ── Free Neural (Google TTS Proxy) ───────────────────────────
+    if (provider === 'free_neural') {
+      const lang = 'id';
+      const truncated = text.slice(0, 200); // Google TTS limit
+      const url = new URL(GOOGLE_TTS_BASE);
+      url.searchParams.set('ie', 'UTF-8');
+      url.searchParams.set('q', truncated);
+      url.searchParams.set('tl', lang);
+      url.searchParams.set('client', 'tw-ob');
+      url.searchParams.set('ttsspeed', String(speed));
+
+      const res = await fetch(url.toString(), {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: 'https://translate.google.com/',
+        },
+      });
+
+      if (!res.ok) {
+        return NextResponse.json(
+          { error: `Google TTS error (${res.status})` },
+          { status: res.status }
+        );
+      }
+
+      const audioBuffer = await res.arrayBuffer();
+      return new NextResponse(audioBuffer, {
+        status: 200,
+        headers: {
+          'Content-Type': 'audio/mpeg',
+          'Content-Length': String(audioBuffer.byteLength),
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+
+    return NextResponse.json({ error: 'Provider tidak valid' }, { status: 400 });
+  } catch (e) {
+    console.error('[POST /api/tts] Error:', e);
+    return NextResponse.json(
+      { error: 'Internal server error saat generate TTS' },
+      { status: 500 }
+    );
+  }
+}
