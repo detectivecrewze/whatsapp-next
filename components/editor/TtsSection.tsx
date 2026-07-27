@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Loader2, Volume2, Play, CheckCircle, AlertCircle, Mic } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Loader2, Volume2, Play, CheckCircle, AlertCircle, Mic, Eye, EyeOff, Key, ShieldCheck } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { ELEVENLABS_VOICES, ELEVENLABS_MODELS } from '@/types';
 
@@ -19,6 +19,17 @@ export default function TtsSection() {
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [showKey, setShowKey] = useState(false);
+
+  // Load ElevenLabs API key from LocalStorage on mount
+  useEffect(() => {
+    try {
+      const savedKey = localStorage.getItem('wa_elevenlabs_api_key');
+      if (savedKey) {
+        setElevenKey(savedKey);
+      }
+    } catch {}
+  }, [setElevenKey]);
 
   const textMessages = messages.filter((m) => m.type === 'text' && m.text?.trim());
 
@@ -176,6 +187,44 @@ export default function TtsSection() {
           {/* ElevenLabs settings */}
           {ttsProvider === 'elevenlabs' && (
             <>
+              {/* ElevenLabs API Key Input */}
+              <div>
+                <label className="section-label flex items-center gap-1.5">
+                  <Key size={13} />
+                  ElevenLabs API Key
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    className="input pr-9 font-mono text-xs"
+                    placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={elevenKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setElevenKey(val);
+                      try { localStorage.setItem('wa_elevenlabs_api_key', val); } catch {}
+                    }}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 text-gray-400 hover:text-gray-200 transition-colors"
+                    onClick={() => setShowKey((v) => !v)}
+                    title={showKey ? 'Sembunyikan key' : 'Tampilkan key'}
+                  >
+                    {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
+                {/* Security badge */}
+                <div className="mt-1.5 flex items-start gap-1.5 rounded-lg border border-green-700/40 bg-green-950/40 px-2.5 py-1.5 text-[11px] text-green-300">
+                  <ShieldCheck size={13} className="mt-0.5 shrink-0 text-green-400" />
+                  <span>
+                    Key disimpan secara lokal di browser kamu (<span className="font-semibold">LocalStorage</span>) &mdash; tidak pernah dikirim ke server kami. Hanya digunakan langsung ke API ElevenLabs.
+                  </span>
+                </div>
+              </div>
+
               <div>
                 <label className="section-label">Model Voice</label>
                 <select
