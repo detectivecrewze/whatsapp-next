@@ -15,7 +15,7 @@ const MODEL_CHAIN = [
   'gemini-3.6-flash',
 ];
 
-// ── Build system prompt (porting langsung dari worker.js project lama) ────────
+// ── Build system prompt ───────────────────────────────────────────────────────
 function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'normal'): string {
   let lengthRule = `Buat TEPAT ${targetLength} bubble chat dari awal sampai tamat cerita (tidak boleh kurang, tidak boleh lebih).`;
 
@@ -24,15 +24,15 @@ function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'norma
    - DILARANG menyisipkan tag emosi kurung siku seperti [scared], [whispers], [laughing], dll.
    - DILARANG menggunakan format dramatis berlebihan seperti titik-titik berturut-turut banyak atau HURUF KAPITAL TERIAKAN.
    - Tulis teks percakapan biasa yang santai, alami, bercanda/serius sesuai tema, dan manusiawi.`
-    : `3. ELEVENLABS AUDIO EMOTION TAGS & INTENSIFIKASI FORMATTING (SANGAT WAJIB & INTENS):
+    : `3. ELEVENLABS AUDIO EMOTION TAGS & INTENSIFIKASI FORMATTING (SANGAT WAJIB & INTENS PADA BUBBLE TEKS & VOICE NOTE):
    - AI ElevenLabs v3 SANGAT PEKA terhadap simbol tanda baca, kapitalisasi, dan Audio Tag.
-   - WAJIB SISIPKAN AUDIO TAG EMOSI DI SETIAP BUBBLE CHAT (terutama untuk Horor, Suspense, & Drama):
-     * KALO HOROR / SUSPENSE / MISTERI (WAJIB EKSTREM & MENCEKAM):
-       - WAJIB pasang Kombo Tag di AWAL setiap bubble: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly], [angry][shouting].
-       - WAJIB gunakan Jeda Napas Ketakutan (... / ......), Gagap (B-bu..., K-kamu...), Teriakan ALL CAPS (JANGAN BUKA!), & Cutoff (—).
+   - SISIPKAN AUDIO TAG EMOSI DI BUBBLE TEKS ATAU VOICE NOTE (terutama untuk Horor, Suspense, Drama, & Komedi):
+     * KALO HOROR / SUSPENSE / MISTERI:
+       - Pasang Kombo Tag di AWAL bubble teks/VN: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly], [angry][shouting].
+       - Gunakan Jeda Napas Ketakutan (... / ......), Gagap (B-bu..., K-kamu...), Teriakan ALL CAPS (JANGAN BUKA!), & Cutoff (—).
        - Contoh: { "type": "text", "direction": "outgoing", "time": "02:15", "text": "[scared][whispers] B-bu...... di luar kamar...... ada yang ketuk pintu......" }
      * KALO KOMEDI / LUCU / PRANK:
-       - Gunakan tag: [laughing], [excited], [gasp], [angry], [sighs], [quietly]. Contoh: [laughing] Wkwkwk bjir... lu seriusan?!
+       - Gunakan tag: [laughing], [excited], [gasp], [angry], [sighs], [quietly]. Contoh: [laughing] Wkwkwk bjir... lu seriousan?!
      * KALO ROMANTIS / BUCIN:
        - Gunakan tag: [whispers], [shy], [happy], [sighs], [quietly], [crying]. Contoh: [whispers] Aku... aku kangen banget sama kamu...`;
 
@@ -44,27 +44,26 @@ Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
   "name": "Nama Kontak yang Pas untuk Cerita (cth: Sayang 💕, Mantan 💔, Bokap 👨, dll)",
   "messages": [
     { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Sayang" },
-    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Kamu udah tidur belom?" },
-    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Belom nih, baru kelar cuci muka. Kenapa?" }
+    { "type": "image", "direction": "incoming", "time": "21:31", "text": "Lihat nih foto yang tadi di tangga depan kamar...", "imageData": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80" },
+    { "type": "notification", "direction": "incoming", "time": "21:31", "notifSender": "Mama", "notifTitle": "Pesan Baru", "text": "Pulang sekarang nak, udah malam!" }
   ]
 }
 
-Aturan Penulisan Gaya Chat WhatsApp (SANGAT PENTING):
-1. INTI CHAT HARUS TEKS BUBBLE REALISTIS (95%+ PESAN ADALAH TEKS):
-   - Sebagian besar percakapan (95%+) HARUS menggunakan type "text".
-   - Pesan buatanmu HARUS terasa seperti teks asli orang Indonesia yang diketik pakai jempol di HP (singkat, 1-8 kata per bubble, spontan, pakai bahasa gaul/santai sehari-hari seperti: wkwk, njir, banget, gak, lu, gua, aku, kamu, dll. sesuai konteks).
-   - DILARANG BIKIN KALIMAT NARRATIVE TEATER PANJANG BAKU BOHONGAN.
-   - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
+Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT):
+1. ADAPTIF & PINTAR MEMILIH TIPE PESAN (JANGAN HANYA TEKS FULL, VARIASKAN SESUAI CERITA!):
+   - Jangan kaku berpaku pada pesan teks 100%! Pilih tipe pesan yang paling cocok dan natural untuk mendukung cerita (terutama GAMBAR/PAP FOTO):
+   - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." }
+   - Type 'view_once': Gunakan saat kirim foto rahasia / sekali lihat (view once).
+   - Type 'notification': Gunakan saat ada notifikasi HP yang memotong obrolan (cth: Notifikasi m-Banking, WhatsApp pesan dari Mama/Mantan, Notifikasi IG, dll.). Contoh: { "type": "notification", "direction": "incoming", "time": "21:33", "notifSender": "m-Banking", "notifTitle": "Transfer Masuk", "text": "Rp 500.000 masuk dari Budi" }
+   - Type 'transfer': Gunakan saat ada momen bayar utang / transfer saldo.
+   - Type 'location': Gunakan saat share location / janjian ketemuan.
+   - Type 'voice_note': Gunakan saat tokoh ngomong panik/bisik-bisik/menangis via Voice Note.
+   - Type 'deleted': Gunakan saat ada momen salah kirim lalu ditarik (Pesan ini telah dihapus).
+   - Type 'text': Gunakan untuk obrolan teks biasa.
 
-2. ATURAN PENGGUNAAN TIPE PESAN NON-TEKS (SPARINGLY & KETAT):
-   - DILARANG MENGGUNAKAN type "voice_note" (Jangan pernah pakai Voice Note).
-   - Tipe selain teks ("image", "view_once", "transfer", "location", "contact", "deleted", "notification") HANYA DIGUNAKAN JIKA SANGAT COCOK & RELEVAN DENGAN ALUR CERITA (Maksimal 1 atau 2 pesan non-teks dalam seluruh cerita):
-     * "notification" : Gunakan HANYA jika cerita membutuhkan Notifikasi Push Popup HP di atas layar (cth: Notifikasi m-Banking transfer masuk, notifikasi pesan dari Mama/Orang tua yang memotong obrolan, notifikasi akun Instagram, dll.). Format JSON: { "type": "notification", "notifSender": "Mama", "notifTitle": "Pesan Baru", "text": "Pulang sekarang nak, udah malam!" }
-     * "transfer" : Gunakan HANYA jika ada adegan spesifik transfer uang (cth: bokap transfer / bayar utang).
-     * "image" / "view_once" : Gunakan HANYA jika cerita spesifik meminta pap foto / bukti foto.
-     * "location" : Gunakan HANYA jika cerita spesifik tentang share location ketemuan.
-     * "deleted" : Gunakan HANYA jika ada adegan spesifik salah kirim / pesan ditarik.
-   - Jika cerita berupa obrolan santai/drama/curhat biasa, gunakan 100% PESAN TEKS ("text").
+2. CHAT ALAMI BUBBLE PENDEK KETIKAN JEMPOL INDONESIA:
+   - Teks pesan HARUS terasa seperti ketikan orang Indonesia asli di HP (singkat, 1-8 kata per bubble, spontan, pakai bahasa gaul/santai sehari-hari seperti: wkwk, njir, banget, gak, lu, gua, aku, kamu, dll. sesuai konteks).
+   - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
 
 3. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
    - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA (Horor, Komedi, Romantis, Olshop, dll.).

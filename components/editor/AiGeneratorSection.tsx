@@ -134,12 +134,11 @@ export default function AiGeneratorSection() {
       let currentHour = now.getHours();
       let currentMin = now.getMinutes();
 
-      const validTypes = ['text', 'image', 'view_once', 'notification', 'transfer', 'contact', 'location', 'deleted'];
+      const validTypes = ['text', 'image', 'view_once', 'voice_note', 'notification', 'transfer', 'contact', 'location', 'deleted'];
 
       const newMessages: Message[] = raw.map((item) => {
-        // Validate type (convert voice_note to text as requested)
-        let rawType = (item.type || 'text').toLowerCase();
-        if (rawType === 'voice_note') rawType = 'text';
+        // Validate message type
+        const rawType = (item.type || 'text').toLowerCase();
         const type = (validTypes.includes(rawType) ? rawType : 'text') as Message['type'];
 
         // Determine timestamp
@@ -151,13 +150,15 @@ export default function AiGeneratorSection() {
         }
 
         // Image fallback handling
-        let imageData = (item as any).imageData;
-        if (type === 'image' && !imageData) {
+        let imageData = (item as any).imageData || (item as any).imageUrl;
+        if ((type === 'image' || type === 'view_once') && !imageData) {
           const lowerPrompt = topic.toLowerCase();
           if (lowerPrompt.includes('horor') || lowerPrompt.includes('hantu') || lowerPrompt.includes('seram')) {
             imageData = 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80';
           } else if (lowerPrompt.includes('makan') || lowerPrompt.includes('seblak') || lowerPrompt.includes('kafe') || lowerPrompt.includes('kopi')) {
             imageData = 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80';
+          } else if (lowerPrompt.includes('transfer') || lowerPrompt.includes('uang') || lowerPrompt.includes('gaji')) {
+            imageData = 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&q=80';
           } else {
             imageData = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400&q=80';
           }
