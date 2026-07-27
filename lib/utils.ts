@@ -22,12 +22,19 @@ export function escHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
-/** Strip audio/emotion tags (e.g. [sighs], [excited], [gasp]) from text for visual chat display */
+/** Clean text for visual chat display (strips ElevenLabs tags, removes letter stutters like B-Beneran -> Beneran, & caps dots to max 2 ..) */
 export function stripAudioTags(text: string): string {
   if (!text) return '';
   return text
+    // 1. Remove ElevenLabs emotion tags in brackets: [scared], [whispers], [laughing], etc.
     .replace(/<[^>]*>/g, '')
     .replace(/\[[^\]]{1,40}\]/g, '')
+    // 2. Remove single-letter stuttering prefixes: B-Beneran -> Beneran, A-aku -> Aku, K-kamu -> Kamu, b-bu -> bu
+    .replace(/\b([a-zA-Z])-\1/gi, '$1')
+    .replace(/\b([a-zA-Z])-(?=[a-zA-Z])/g, '')
+    // 3. Cap 3 or more consecutive dots (......) down to max 2 dots (..)
+    .replace(/\.{3,}/g, '..')
+    // Clean up leading/trailing whitespace
     .replace(/^\s+/, '')
     .trim();
 }
