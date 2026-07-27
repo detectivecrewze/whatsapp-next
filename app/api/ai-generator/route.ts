@@ -2,142 +2,161 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60; // 60s timeout for longer generations
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
 
-// Built-in smart viral Indonesian story generator fallback
-function generateSmartAiStory(scenario: string, count: number, name: string) {
-  const s = scenario.toLowerCase();
+// ── Gemini model fallback chain (sama persis dengan project lama) ─────────────
+const MODEL_CHAIN = [
+  'gemini-2.5-flash-lite',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+];
 
-  let list: { direction: 'incoming' | 'outgoing'; text: string }[] = [];
+// ── Build system prompt (porting langsung dari worker.js project lama) ────────
+function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'normal'): string {
+  let lengthRule = `Buat TEPAT ${targetLength} bubble chat dari awal sampai tamat cerita (tidak boleh kurang, tidak boleh lebih).`;
 
-  if (s.includes('cinta') || s.includes('mantan') || s.includes('drama_cinta')) {
-    list = [
-      { direction: 'incoming', text: '[sighs] Kamu udah tidur belum? 🥺' },
-      { direction: 'outgoing', text: 'Belum. Ada apa malam-malam ngechat?' },
-      { direction: 'incoming', text: '[excited] Jujur aku kangen banget sama kamu yang dulu...' },
-      { direction: 'outgoing', text: 'Telat, foto profilku berdua sama pacar baru udah keliatan kan? 😌' },
-      { direction: 'incoming', text: '[laughing] Eh maaf banget!! Ini aku Siska temen kamu, hp cowokmu ditinggal di meja wkwk 😂' },
-      { direction: 'outgoing', text: '[gasp] HAH?! Siska?! Jangan nakut-nakutin jir!! 😭' },
-      { direction: 'incoming', text: 'Bercanda ding, ini beneran mantanmu... cuma pengen tes reaksi pacar barumu aja 😎' },
-      { direction: 'outgoing', text: 'Parah banget kamu, untung aku ga emosi 🙈' },
-      { direction: 'incoming', text: 'Tapi beneran, pacar barumu ganteng juga ya 🫣' },
-      { direction: 'outgoing', text: 'Jangan macam-macam ya kak! 😤' },
-      { direction: 'incoming', text: 'Wkwk becanda. Yaudah met tidur ya!' },
-      { direction: 'outgoing', text: 'Met tidur juga!' },
-    ];
-  } else if (s.includes('uang') || s.includes('bokap') || s.includes('transfer')) {
-    list = [
-      { direction: 'outgoing', text: 'Pah/Mah, kado digital 40 ribu worth it ga sih?' },
-      { direction: 'incoming', text: '[happy] Kado apa itu nak? Kok murah amat?' },
-      { direction: 'outgoing', text: 'Website ucapan anniversary/ultah gitu Pah, ada lagu & foto-fotonya.' },
-      { direction: 'incoming', text: 'Oh bagus dong! Beliin buat Mamah sekalian ya.' },
-      { direction: 'outgoing', text: 'Siap Pah, tapi transferin dulu 100rb ya buat jajan juga wkwk 🤭' },
-      { direction: 'incoming', text: '[laughing] Halah ujung-ujungnya minta uang juga kamu 😂' },
-      { direction: 'outgoing', text: 'Hehe makasih Pah! Terbaik emang 🫶' },
-      { direction: 'incoming', text: 'Sudah Papah transfer 200rb ya, cek M-Banking.' },
-    ];
-  } else if (s.includes('twist') || s.includes('plot')) {
-    list = [
-      { direction: 'incoming', text: 'Bro, tadi aku liat pacarmu di cafe jalan sama cowok lain 😱' },
-      { direction: 'outgoing', text: 'Hah?! Ciri-cirinya gimana bro?!' },
-      { direction: 'incoming', text: 'Pake baju item, kacamata, bawa mobil Honda Jazz merah.' },
-      { direction: 'outgoing', text: 'Lah... itu mah abang kandungnya jir!! 😂' },
-      { direction: 'incoming', text: '[gasp] Wkwk anjir suer?! Maaf bro salah sangka 😭' },
-      { direction: 'outgoing', text: 'Hampir aja aku emosi wkwk 🤣' },
-    ];
-  } else if (s.includes('teman') || s.includes('drama_teman')) {
-    list = [
-      { direction: 'incoming', text: '[sighs] Bro, denger-denger kamu ngomongin aku di belakang ya?' },
-      { direction: 'outgoing', text: 'Hah? Ngomongin apa? Siapa yang bilang?' },
-      { direction: 'incoming', text: 'Katanya kamu bilang aku anaknya pelit bgt...' },
-      { direction: 'outgoing', text: 'Ya emang pelit sih wkwk, tiap nongkrong pesen teh tawar anget doang 🤣' },
-      { direction: 'incoming', text: '[laughing] Sialan kamu wkwk! Kan nemenin kamu doang bro 😂' },
-      { direction: 'outgoing', text: 'Bercanda elah, aman ga pernah ngomongin aneh-aneh kok 🤝' },
-    ];
-  } else if (s.includes('rahasia')) {
-    list = [
-      { direction: 'incoming', text: 'Min, aku tau rahasia terbesarmu 🤫' },
-      { direction: 'outgoing', text: '[gasp] Rahasia apa wkwk? Aku ga punya rahasia.' },
-      { direction: 'incoming', text: 'Kamu waktu SD pernah ngompol di kelas kan?' },
-      { direction: 'outgoing', text: 'ANJIRR KOK KAMU TAU?! Siapa yang cerita?! 😱' },
-      { direction: 'incoming', text: '[laughing] Temen sekelasmu SD dulu wkwk, ngakak banget 😂' },
-      { direction: 'outgoing', text: 'Plis jgn disebar wkwk, malu bgt 😭' },
-    ];
-  } else if (s.includes('titip')) {
-    list = [
-      { direction: 'incoming', text: 'Lagi di mana kak? Nitip seblak dong 🥺' },
-      { direction: 'outgoing', text: 'Lagi di kedai seblak nih. Level berapa?' },
-      { direction: 'incoming', text: 'Level 5 pake kerupuk, dumpling keju, siomay, plus es teh 😋' },
-      { direction: 'outgoing', text: 'Banyak bgt buset, perut kenyang hati senang ya wkwk 🤣' },
-      { direction: 'incoming', text: '[happy] Makasih kak! Nanti tak ganti uangnya 🫶' },
-      { direction: 'outgoing', text: 'Awas kalo lupa ganti wkwk!' },
-    ];
-  } else {
-    // Komedi / default
-    list = [
-      { direction: 'incoming', text: '[sighs] Min kado digital 40 ribu itu worth it nggak sih?' },
-      { direction: 'outgoing', text: '[excited] Halo Kak! Pastinya dong, udah banyak yang order dan pada sukses bikin pacarnya nangis terharu 🥺✨' },
-      { direction: 'incoming', text: '[laughing] Mendang mending buat beli seblak porsi kuli min, 40 ribu mah perut kenyang, hati senang.' },
-      { direction: 'outgoing', text: '[gasp] Seblak porsi kuli habis dimakan besoknya mules Kak, lewat gitu aja jadi kenangan di WC 🪠' },
-      { direction: 'incoming', text: '[happy] Kalau website memori ini kan abadi Kak. Udah dapet animasi, timer jadian, lagu, galeri foto!' },
-      { direction: 'outgoing', text: '[happy] Harganya juga sama persis kayak semangkuk seblak tadi kok.' },
-      { direction: 'incoming', text: '[sighs] Tapi pacar saya cowok min...' },
-      { direction: 'outgoing', text: 'Cowok juga seneng Kak kalo dikasih perhatian spesial! 🎁' },
-    ];
-  }
+  const dramaticRuleInstruction = voiceStyle === 'normal'
+    ? `3. GAYA NORMAL (TANPA TAG EMOSI & TANPA FORMAT EKSTREM):
+   - DILARANG menyisipkan tag emosi kurung siku seperti [scared], [whispers], [laughing], dll.
+   - DILARANG menggunakan format dramatis berlebihan seperti titik-titik berturut-turut banyak atau HURUF KAPITAL TERIAKAN.
+   - Tulis teks percakapan biasa yang santai, alami, bercanda/serius sesuai tema, dan manusiawi.`
+    : `3. ELEVENLABS AUDIO EMOTION TAGS & INTENSIFIKASI FORMATTING (SANGAT WAJIB & INTENS):
+   - AI ElevenLabs v3 SANGAT PEKA terhadap simbol tanda baca, kapitalisasi, dan Audio Tag.
+   - WAJIB SISIPKAN AUDIO TAG EMOSI DI SETIAP BUBBLE CHAT (terutama untuk Horor, Suspense, & Drama):
+     * KALO HOROR / SUSPENSE / MISTERI (WAJIB EKSTREM & MENCEKAM):
+       - WAJIB pasang Kombo Tag di AWAL setiap bubble: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly], [angry][shouting].
+       - WAJIB gunakan Jeda Napas Ketakutan (... / ......), Gagap (B-bu..., K-kamu...), Teriakan ALL CAPS (JANGAN BUKA!), & Cutoff (—).
+       - Contoh: { "type": "text", "direction": "outgoing", "time": "02:15", "text": "[scared][whispers] B-bu...... di luar kamar...... ada yang ketuk pintu......" }
+     * KALO KOMEDI / LUCU / PRANK:
+       - Gunakan tag: [laughing], [excited], [gasp], [angry], [sighs], [quietly]. Contoh: [laughing] Wkwkwk bjir... lu seriusan?!
+     * KALO ROMANTIS / BUCIN:
+       - Gunakan tag: [whispers], [shy], [happy], [sighs], [quietly], [crying]. Contoh: [whispers] Aku... aku kangen banget sama kamu...`;
 
-  // Slice to desired count
-  return list.slice(0, count);
+  return `Kamu adalah penulis naskah cerita pendek percakapan WhatsApp viral profesional (spesialis konten Komedi, Romantis/Bucin, Drama, Horor, dan Olshop/Daily TikTok/Reels/Shorts).
+
+Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
+{
+  "chatType": "personal",
+  "name": "Nama Kontak yang Pas untuk Cerita (cth: Sayang 💕, Mantan 💔, Bokap 👨, dll)",
+  "messages": [
+    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Sayang" },
+    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Kamu udah tidur belom?" },
+    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Belom nih, baru kelar cuci muka. Kenapa?" }
+  ]
+}
+
+Aturan Penulisan Gaya Chat WhatsApp (SANGAT PENTING):
+1. GAYA KETIKAN TEXT HP REALISTIS & MANUSIAWI (BUKAN BOT / BAKU OPERA):
+   - Pesan buatanmu HARUS terasa seperti teks asli orang Indonesia yang diketik pakai jempol di HP (singkat, 1-8 kata per bubble, spontan, pakai bahasa gaul/santai sehari-hari seperti: wkwk, njir, banget, gak, lu, gua, aku, kamu, dll. sesuai konteks).
+   - DILARANG BIKIN KALIMAT NARRATIVE TEATER PANJANG BAKU BOHONGAN.
+   - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
+
+2. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
+   - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA:
+     * Kalo ide HOROR/SUSPENSE: Buat suasana seram mencekam, rasa takut luar biasa, intonasi emosi melimpah di setiap bubble, atau plot twist impostor.
+     * Kalo ide KOMEDI/LUCU/PRANK: Buat cerita humor yang lucu, ada kebodohan konyol, salah paham kocak, atau ending yang bikin ngakak/tepok jidat. Bahasa santai & gaul!
+     * Kalo ide ROMANTIS/BUCIN: Buat obrolan manis, cemburu lucu, kangen, atau momen romantis yang bikin senyum-senyum sendiri.
+     * Kalo ide DAILY/OLSHOP/NAGIH UTANG: Buat obrolan realistis sehari-hari yang menghibur & relatable.
+
+${dramaticRuleInstruction}
+
+4. ATURAN FITUR:
+   - DILARANG MENGGUNAKAN type "voice" (Voice Note).
+   - Gunakan type "notification" HANYA jika cerita butuh notifikasi sistem (misalnya chat dibuka dari nomor lain).
+   - Selain kasus khusus, pakai type "text" saja.
+5. JUMLAH PESAN: ${lengthRule} Wajib penuhi target jumlah pesan TEPAT, jangan kurang.
+6. Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const { prompt, scenario = 'drama_cinta', count = 6, name = 'Sayang ❤️' } = await req.json();
+    const {
+      prompt,
+      count = 8,
+      voiceStyle = 'dramatic',
+    } = await req.json();
 
     if (!prompt?.trim()) {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
     }
 
-    // Try Gemini API if key is set
-    if (GEMINI_KEY && !GEMINI_KEY.startsWith('AQ.')) {
+    if (!GEMINI_KEY) {
+      return NextResponse.json({ error: 'GEMINI_API_KEY tidak dikonfigurasi di server.' }, { status: 500 });
+    }
+
+    const systemInstruction = buildSystemPrompt(Number(count), voiceStyle);
+    const userPrompt = `${systemInstruction}\n\nIde Cerita & Spesifikasi User:\n${prompt.trim()}`;
+
+    let geminiRes: Response | null = null;
+    let lastError = '';
+
+    // ── Try each model in chain ─────────────────────────────────────────────
+    for (const model of MODEL_CHAIN) {
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
       try {
-        const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.9,
-                maxOutputTokens: 2048,
-              },
-            }),
-          }
-        );
+        const res = await fetch(geminiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              { role: 'user', parts: [{ text: userPrompt }] },
+            ],
+            generationConfig: {
+              temperature: 0.85,
+              maxOutputTokens: 8192,
+            },
+          }),
+        });
 
         if (res.ok) {
-          const data = await res.json();
-          const text = data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-          if (text) {
-            return NextResponse.json({ text });
-          }
+          geminiRes = res;
+          break;
+        } else {
+          const errText = await res.text();
+          lastError = `Model ${model} HTTP ${res.status}: ${errText.slice(0, 200)}`;
+          console.warn(`[AI Generator] ${lastError}`);
         }
-      } catch (err) {
-        console.warn('[AI Generator] Gemini API call failed, using smart fallback:', err);
+      } catch (e: any) {
+        lastError = `Model ${model} exception: ${e.message}`;
+        console.warn(`[AI Generator] ${lastError}`);
       }
     }
 
-    // Smart fallback: generate viral Indonesian conversation
-    const fallbackList = generateSmartAiStory(scenario, count, name);
-    const jsonText = JSON.stringify(fallbackList);
+    if (!geminiRes) {
+      return NextResponse.json(
+        { error: `Semua Gemini model gagal. Error terakhir: ${lastError}` },
+        { status: 500 }
+      );
+    }
 
-    return NextResponse.json({ text: jsonText });
-  } catch (e) {
+    const geminiJson = await geminiRes.json();
+    let rawText: string = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+
+    // ── Clean markdown wrappers ──────────────────────────────────────────────
+    rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
+
+    // ── Extract JSON object ──────────────────────────────────────────────────
+    const firstBrace = rawText.indexOf('{');
+    const lastBrace = rawText.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      rawText = rawText.substring(firstBrace, lastBrace + 1);
+    }
+
+    // ── Parse & return ───────────────────────────────────────────────────────
+    try {
+      const parsed = JSON.parse(rawText);
+      return NextResponse.json(parsed);
+    } catch (parseErr) {
+      console.error('[AI Generator] JSON parse failed. Raw:', rawText.slice(0, 500));
+      return NextResponse.json({ error: 'AI menghasilkan format yang tidak valid — coba generate ulang.' }, { status: 500 });
+    }
+  } catch (e: any) {
     console.error('[POST /api/ai-generator] Error:', e);
     return NextResponse.json(
-      { error: 'Internal server error saat generate AI' },
+      { error: `Internal server error: ${e.message}` },
       { status: 500 }
     );
   }

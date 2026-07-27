@@ -1,18 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Loader2, Wand2, RefreshCw, CheckCircle } from 'lucide-react';
+import { Loader2, Wand2, RefreshCw, CheckCircle, Mic, MicOff } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { Message } from '@/types';
 import { newId } from '@/lib/utils';
 
-const MSG_COUNTS = [4, 6, 8, 10, 12];
+const MSG_COUNTS = [4, 6, 8, 10, 12, 16, 20];
 
 export default function AiGeneratorSection() {
-  const { name, setName, reorderMessages } = useEditorStore();
+  const { setName, reorderMessages } = useEditorStore();
 
   const [promptText, setPromptText] = useState('');
-  const [msgCount, setMsgCount] = useState(6);
+  const [msgCount, setMsgCount] = useState(8);
+  const [voiceStyle, setVoiceStyle] = useState<'dramatic' | 'normal'>('dramatic');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
@@ -25,36 +26,13 @@ export default function AiGeneratorSection() {
     try {
       const topic = promptText.trim() || 'Drama percintaan antara pacar yang lucu dan viral';
 
-      const fullPrompt = `Kamu adalah generator konten viral WhatsApp Indonesia.
-
-Buat percakapan WhatsApp yang natural, autentik, dan menarik dalam Bahasa Indonesia (gaul/sehari-hari).
-Jumlah pesan: ${msgCount} pesan.
-Topik/Cerita: ${topic}
-
-WAJIB output JSON object dengan format (tanpa markdown code block, langsung raw JSON):
-{
-  "contactName": "Nama Kontak Lawan Bicara yang Sangat Cocok untuk Cerita Ini (e.g. Sayang ❤️, Mantan 💔, Bokap 👨, Siska, Rian Utang, dll)",
-  "messages": [
-    { "direction": "incoming" | "outgoing", "text": "isi pesan" },
-    ...
-  ]
-}
-
-Aturan:
-- Gunakan bahasa gaul Indonesia yang natural (dong, sih, wkwk, asli, bro, kak, dll)
-- Arah "incoming" = pesan dari lawan bicara
-- Arah "outgoing" = pesan dari pengguna (kamu)
-- Gunakan tag suara ElevenLabs seperti [sighs], [excited], [laughing], [gasp], [happy] jika cocok
-- Hanya tampilkan JSON object, tidak ada penjelasan lain`;
-
       const res = await fetch('/api/ai-generator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: fullPrompt,
-          scenario: topic,
+          prompt: topic,
           count: msgCount,
-          name,
+          voiceStyle,
         }),
       });
 
@@ -63,58 +41,72 @@ Aturan:
         throw new Error(errData.error || `HTTP ${res.status}`);
       }
 
+      // Route sekarang langsung return parsed JSON object
       const data = await res.json();
-      const responseText = data.text ?? '';
 
-      // Parse JSON from response (support both object format with contactName or direct array)
-      let parsedObject: any = null;
-      let raw: { direction: string; text: string }[] = [];
+      // ── Ambil contactName dari response ────────────────────────────────────
+      const contactName: string =
+        data.name || data.contactName || '';
+      if (contactName) {
+        setName(contactName.trim());
+      }
 
-      const objMatch = responseText.match(/\{[\s\S]*\}/);
-      const arrMatch = responseText.match(/\[[\s\S]*\]/);
+      // ── Ambil messages array ───────────────────────────────────────────────
+      let raw: { type?: string; direction: string; text: string; time?: string }[] = [];
 
-      if (objMatch) {
-        try {
-          parsedObject = JSON.parse(objMatch[0]);
-          if (parsedObject.contactName && typeof parsedObject.contactName === 'string') {
-            setName(parsedObject.contactName.trim());
-          }
-          if (Array.isArray(parsedObject.messages)) {
-            raw = parsedObject.messages;
-          }
-        } catch (e) {
-          // Fallback to array match
+      if (Array.isArray(data.messages) && data.messages.length > 0) {
+        raw = data.messages;
+      } else if (Array.isArray(data)) {
+        raw = data;
+      } else {
+        // Last resort: try to extract from text field (old format)
+        const textField = data.text ?? '';
+        const objMatch = textField.match(/\{[\s\S]*\}/);
+        const arrMatch = textField.match(/\[[\s\S]*\]/);
+        if (objMatch) {
+          try {
+            const parsed = JSON.parse(objMatch[0]);
+            raw = parsed.messages ?? [];
+            if (parsed.name || parsed.contactName) {
+              setName((parsed.name || parsed.contactName).trim());
+            }
+          } catch {}
+        }
+        if (raw.length === 0 && arrMatch) {
+          try { raw = JSON.parse(arrMatch[0]); } catch {}
         }
       }
 
-      if (raw.length === 0 && arrMatch) {
-        try {
-          raw = JSON.parse(arrMatch[0]);
-        } catch (e) {}
-      }
-
       if (!Array.isArray(raw) || raw.length === 0) {
-        throw new Error('AI tidak menghasilkan naskah percakapan — coba generate ulang');
+        throw new Error('AI tidak menghasilkan naskah percakapan. Coba generate ulang atau ubah prompt.');
       }
 
-      // Populate store with generated messages
+      // ── Build Message objects with sequential timestamps ──────────────────
       const now = new Date();
       let currentHour = now.getHours();
       let currentMin = now.getMinutes();
 
       const newMessages: Message[] = raw.map((item) => {
-        currentMin += Math.floor(Math.random() * 2) + 1;
-        if (currentMin >= 60) {
-          currentMin -= 60;
-          currentHour = (currentHour + 1) % 24;
+        // Use provided time if valid, else auto-increment
+        if (item.time && /^\d{2}:\d{2}$/.test(item.time)) {
+          return {
+            id: newId('msg'),
+            type: 'text' as const,
+            direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
+            text: item.text ?? '',
+            time: item.time,
+          };
         }
+
+        currentMin += Math.floor(Math.random() * 2) + 1;
+        if (currentMin >= 60) { currentMin -= 60; currentHour = (currentHour + 1) % 24; }
         const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
 
         return {
           id: newId('msg'),
           type: 'text' as const,
           direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
-          text: item.text,
+          text: item.text ?? '',
           time: timeStr,
         };
       });
@@ -122,7 +114,7 @@ Aturan:
       reorderMessages(newMessages);
       setGenerated(true);
     } catch (e: any) {
-      setError(e.message || 'Gagal generate naskah');
+      setError(e.message || 'Gagal generate naskah. Cek koneksi dan API key.');
     } finally {
       setLoading(false);
     }
@@ -136,7 +128,7 @@ Aturan:
         style={{ background: 'rgba(37,211,102,0.06)', borderColor: 'rgba(37,211,102,0.2)' }}
       >
         <p className="text-[12px]" style={{ color: 'var(--wa-text-muted)' }}>
-          🤖 AI akan membuatkan script percakapan WA otomatis berdasarkan topik yang kamu ketik di bawah!
+          🤖 AI akan membuatkan script percakapan WA viral otomatis berdasarkan topik yang kamu ketik di bawah!
         </p>
       </div>
 
@@ -148,8 +140,48 @@ Aturan:
           rows={4}
           value={promptText}
           onChange={(e) => setPromptText(e.target.value)}
-          placeholder="Ketik topik cerita di sini (cth: Chat mantan ngajak balikan, temen nunggak utang, kado digital anniversary 40 ribu, dll)..."
+          placeholder="Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, prank teman soal utang, dll)..."
+          onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) generate(); }}
         />
+        <p className="text-[10px] mt-0.5" style={{ color: 'var(--wa-text-muted)' }}>
+          Ctrl+Enter untuk generate cepat
+        </p>
+      </div>
+
+      {/* Voice Style Toggle */}
+      <div>
+        <label className="section-label">Gaya Suara / Emosi</label>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setVoiceStyle('dramatic')}
+            className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
+            style={{
+              background: voiceStyle === 'dramatic' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
+              borderColor: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--ui-border)',
+              color: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+            }}
+          >
+            <Mic size={11} />
+            Dramatis (ElevenLabs)
+          </button>
+          <button
+            onClick={() => setVoiceStyle('normal')}
+            className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
+            style={{
+              background: voiceStyle === 'normal' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
+              borderColor: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--ui-border)',
+              color: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+            }}
+          >
+            <MicOff size={11} />
+            Normal (Tanpa Tag)
+          </button>
+        </div>
+        <p className="text-[10px] mt-1" style={{ color: 'var(--wa-text-muted)' }}>
+          {voiceStyle === 'dramatic'
+            ? '🎭 Akan ditambahkan tag emosi [scared], [laughing], dll. — bagus untuk TTS ElevenLabs'
+            : '💬 Tanpa tag emosi — cocok untuk pesan biasa tanpa voice over'}
+        </p>
       </div>
 
       {/* Message count */}
@@ -167,9 +199,10 @@ Aturan:
                 color: msgCount === n ? 'var(--wa-green)' : 'var(--wa-text-muted)',
               }}
             >
-              {n} Pesan
+              {n}
             </button>
           ))}
+          {/* Custom input */}
           <div className="flex items-center gap-1 bg-[var(--ui-card)] border border-[var(--ui-border)] rounded-lg px-2 py-0.5 ml-auto">
             <span className="text-[11px]" style={{ color: 'var(--wa-text-muted)' }}>Kustom:</span>
             <input
@@ -213,12 +246,12 @@ Aturan:
         {loading ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            AI sedang menulis…
+            AI sedang menulis {msgCount} pesan…
           </>
         ) : (
           <>
             <Wand2 size={14} />
-            Generate Script AI
+            ✨ Generate Script AI ({msgCount} pesan)
           </>
         )}
       </button>
