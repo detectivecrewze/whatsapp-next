@@ -82,6 +82,7 @@ export interface EditorState {
   // Header / UI
   headerStatus: HeaderStatus;
   headerStatusText: string;
+  activeHeaderStatusOverride?: HeaderStatus | null; // Smart status override during animation
   pinnedMessage: string;
   unreadCount: number;
 }

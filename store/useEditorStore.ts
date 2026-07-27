@@ -54,6 +54,7 @@ interface EditorStore extends EditorState {
   // Header
   setHeaderStatus: (status: 'online' | 'typing' | 'custom') => void;
   setHeaderStatusText: (text: string) => void;
+  setActiveHeaderStatusOverride: (status: 'online' | 'typing' | 'custom' | null) => void;
   setPinnedMessage: (msg: string) => void;
   setUnreadCount: (n: number) => void;
 
@@ -127,6 +128,7 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   // Header
   setHeaderStatus: (headerStatus) => set({ headerStatus }),
   setHeaderStatusText: (headerStatusText) => set({ headerStatusText }),
+  setActiveHeaderStatusOverride: (activeHeaderStatusOverride) => set({ activeHeaderStatusOverride }),
   setPinnedMessage: (pinnedMessage) => set({ pinnedMessage }),
   setUnreadCount: (unreadCount) => set({ unreadCount }),
 

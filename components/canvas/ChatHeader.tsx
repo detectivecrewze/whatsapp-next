@@ -6,12 +6,14 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { getInitials } from '@/lib/utils';
 
 export default function ChatHeader() {
-  const { name, pfp, chatType, groupSubtitle, headerStatus, headerStatusText } = useEditorStore();
+  const { name, pfp, chatType, groupSubtitle, headerStatus, headerStatusText, activeHeaderStatusOverride } = useEditorStore();
+
+  const currentStatus = activeHeaderStatusOverride ?? headerStatus;
 
   const statusText =
-    headerStatus === 'online'
+    currentStatus === 'online'
       ? 'Online'
-      : headerStatus === 'typing'
+      : currentStatus === 'typing'
       ? 'mengetik...'
       : headerStatusText || 'Online';
 
@@ -57,7 +59,7 @@ export default function ChatHeader() {
           className="text-[12px] leading-tight truncate"
           style={{
             color:
-              headerStatus === 'typing'
+              currentStatus === 'typing'
                 ? 'var(--wa-green)'
                 : 'var(--wa-text-muted)',
           }}
