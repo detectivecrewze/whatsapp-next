@@ -10,7 +10,7 @@ import TypingBubble from './TypingBubble';
 const WA_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23111b21'/%3E%3Cg opacity='0.04' fill='%2325d366'%3E%3Cpath d='M25 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM75 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM50 35c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function ChatArea() {
-  const { bgType, bgColor, bgImage, messages, pinnedMessage, autoZoom, zoomScale, zoomSpeed } =
+  const { bgType, bgColor, bgImage, messages, pinnedMessage, autoZoom, zoomScale, zoomSpeed, dateBadge } =
     useEditorStore();
   const { isPlaying, visibleCount, isTyping, activeMsgId } = usePlayerStore();
 
@@ -73,6 +73,26 @@ export default function ChatArea() {
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]"
       >
+        {/* WhatsApp Date Pill Badge (Today / Date) */}
+        {dateBadge && (
+          <div className="flex justify-center my-1.5 shrink-0">
+            <div
+              className="px-3 py-1 rounded-md text-center shadow-sm"
+              style={{
+                background: 'rgba(18, 27, 33, 0.88)',
+                border: '1px solid rgba(255, 255, 255, 0.05)',
+                backdropFilter: 'blur(8px)',
+                fontSize: '11px',
+                fontWeight: 500,
+                color: 'rgba(241, 245, 249, 0.7)',
+                letterSpacing: '0.2px',
+              }}
+            >
+              {dateBadge}
+            </div>
+          </div>
+        )}
+
         {displayedMessages.map((msg) => (
           <MessageBubble
             key={msg.id}

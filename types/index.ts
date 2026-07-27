@@ -85,6 +85,7 @@ export interface EditorState {
   activeHeaderStatusOverride?: HeaderStatus | null; // Smart status override during animation
   pinnedMessage: string;
   unreadCount: number;
+  dateBadge: string;
 }
 
 export interface CloudPreset {
@@ -185,4 +186,5 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   headerStatusText: '',
   pinnedMessage: '',
   unreadCount: 0,
+  dateBadge: 'Today',
 };

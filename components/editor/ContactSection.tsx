@@ -9,10 +9,10 @@ export default function ContactSection() {
   const {
     name, pfp, phoneOs, chatType, groupSubtitle,
     batteryLevel, customTime, useCustomTime,
-    headerStatus, headerStatusText, pinnedMessage, unreadCount,
+    headerStatus, headerStatusText, pinnedMessage, unreadCount, dateBadge,
     setName, setPfp, setPhoneOs, setChatType, setGroupSubtitle,
     setBatteryLevel, setCustomTime, setUseCustomTime,
-    setHeaderStatus, setHeaderStatusText, setPinnedMessage, setUnreadCount,
+    setHeaderStatus, setHeaderStatusText, setPinnedMessage, setUnreadCount, setDateBadge,
   } = useEditorStore();
 
   const pfpInputRef = useRef<HTMLInputElement>(null);
@@ -185,6 +185,17 @@ export default function ContactSection() {
           value={unreadCount}
           onChange={(e) => setUnreadCount(Number(e.target.value))}
           placeholder="0 = sembunyikan"
+        />
+      </div>
+
+      {/* Date badge */}
+      <div>
+        <label className="section-label">Label Tanggal Chat</label>
+        <input
+          className="input"
+          value={dateBadge}
+          onChange={(e) => setDateBadge(e.target.value)}
+          placeholder="cth: Today / HARI INI / Kemarin (kosong = sembunyikan)"
         />
       </div>
     </div>

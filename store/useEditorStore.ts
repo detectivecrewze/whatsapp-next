@@ -57,6 +57,7 @@ interface EditorStore extends EditorState {
   setActiveHeaderStatusOverride: (status: 'online' | 'typing' | 'custom' | null) => void;
   setPinnedMessage: (msg: string) => void;
   setUnreadCount: (n: number) => void;
+  setDateBadge: (text: string) => void;
 
   // Bulk
   applyPayload: (payload: Partial<EditorState>) => void;
@@ -131,6 +132,7 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setActiveHeaderStatusOverride: (activeHeaderStatusOverride) => set({ activeHeaderStatusOverride }),
   setPinnedMessage: (pinnedMessage) => set({ pinnedMessage }),
   setUnreadCount: (unreadCount) => set({ unreadCount }),
+  setDateBadge: (dateBadge) => set({ dateBadge }),
 
   // Bulk
   applyPayload: (payload) => set((state) => ({ ...state, ...payload })),
