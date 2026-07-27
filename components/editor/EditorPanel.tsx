@@ -1,12 +1,19 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, User, MessageSquare, Image, Settings, Volume2, Zap, Cloud } from 'lucide-react';
+import {
+  ChevronDown, ChevronUp,
+  User, MessageSquare, Image as ImageIcon,
+  Settings, Volume2, Zap, Cloud, ZoomIn,
+} from 'lucide-react';
 import ContactSection from './ContactSection';
 import ChatSequenceSection from './ChatSequenceSection';
+import WallpaperSection from './WallpaperSection';
+import VideoOptionsSection from './VideoOptionsSection';
+import ZoomSection from './ZoomSection';
 import ShareLinkButton from '@/components/cloud/ShareLinkButton';
 
-// Accordion section wrapper
+// ─── Accordion section wrapper ────────────────────────────────────────────────
 function Section({
   icon,
   title,
@@ -46,12 +53,13 @@ function Section({
   );
 }
 
+// ─── Main Panel ───────────────────────────────────────────────────────────────
 export default function EditorPanel() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div
-        className="flex items-center gap-2 px-4 py-3.5 border-b"
+        className="flex items-center gap-2 px-4 py-3.5 border-b shrink-0"
         style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
       >
         <div
@@ -70,22 +78,26 @@ export default function EditorPanel() {
         </div>
       </div>
 
-      {/* Scrollable sections */}
+      {/* Scrollable accordion sections */}
       <div className="flex-1 panel-scroll">
-        <Section icon={<User size={15} />} title="Profil & Kontak" defaultOpen={true}>
+        <Section icon={<User size={15} />} title="Profil & Kontak" defaultOpen>
           <ContactSection />
         </Section>
 
-        <Section icon={<MessageSquare size={15} />} title="Urutan Pesan" defaultOpen={true}>
+        <Section icon={<MessageSquare size={15} />} title="Urutan Pesan" defaultOpen>
           <ChatSequenceSection />
         </Section>
 
-        <Section icon={<Image size={15} />} title="Wallpaper & Tampilan">
-          <WallpaperPlaceholder />
+        <Section icon={<ImageIcon size={15} />} title="Wallpaper & Tampilan">
+          <WallpaperSection />
         </Section>
 
         <Section icon={<Settings size={15} />} title="Opsi Video & Animasi">
-          <VideoOptionsPlaceholder />
+          <VideoOptionsSection />
+        </Section>
+
+        <Section icon={<ZoomIn size={15} />} title="Auto Zoom">
+          <ZoomSection />
         </Section>
 
         <Section icon={<Volume2 size={15} />} title="Voice Over AI (TTS)">
@@ -101,9 +113,9 @@ export default function EditorPanel() {
         </Section>
       </div>
 
-      {/* Bottom actions */}
+      {/* Bottom: preview button */}
       <div
-        className="px-3 py-3 border-t"
+        className="px-3 py-3 border-t shrink-0"
         style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
       >
         <ShareLinkButton />
@@ -112,24 +124,7 @@ export default function EditorPanel() {
   );
 }
 
-// ── Placeholder sections (to be replaced in subsequent phases) ──
-
-function WallpaperPlaceholder() {
-  return (
-    <div className="text-center py-4" style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>
-      🖼 Pengaturan wallpaper — Fase 3
-    </div>
-  );
-}
-
-function VideoOptionsPlaceholder() {
-  return (
-    <div className="text-center py-4" style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>
-      ⚙️ Opsi video & animasi — Fase 3
-    </div>
-  );
-}
-
+// ── Placeholder sections (Phase 5, 4, 6) ──────────────────────────────────────
 function TtsPlaceholder() {
   return (
     <div className="text-center py-4" style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>

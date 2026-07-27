@@ -170,7 +170,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   useSoundOut: true,
   autoZoom: true,
   zoomScale: 1.08,
-  zoomSpeed: 0.4,
+  zoomSpeed: 400,
   enableTts: false,
   ttsProvider: 'elevenlabs',
   elevenKey: 'sk_dd3ed95fa937222315a2a3d3aaa40b40caabe67f2fafc50f',
