@@ -2,11 +2,9 @@
 
 import React from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { getSenderColor } from '@/lib/utils';
+import { getSenderColor, stripAudioTags } from '@/lib/utils';
 import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2 } from 'lucide-react';
 import { Message } from '@/types';
-
-
 
 // Time + tick row
 function TimeRow({ time, direction }: { time?: string; direction: 'incoming' | 'outgoing' }) {
@@ -25,11 +23,12 @@ function TimeRow({ time, direction }: { time?: string; direction: 'incoming' | '
 // Text Bubble
 function TextBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
+  const visualText = stripAudioTags(message.text || '');
   return (
     <div className={`bubble-base ${isOut ? 'bubble-out' : 'bubble-in'}`}>
-      {message.text && (
+      {visualText && (
         <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
-          {message.text}
+          {visualText}
         </p>
       )}
       <TimeRow time={message.time} direction={message.direction} />
@@ -76,7 +75,9 @@ function ImageBubble({ message }: { message: Message }) {
           className="px-2 py-1"
           style={{ background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
         >
-          <p style={{ fontSize: '13px', color: 'var(--wa-text)' }}>{message.caption}</p>
+          <p style={{ fontSize: '13px', color: 'var(--wa-text)' }}>
+            {stripAudioTags(message.caption)}
+          </p>
         </div>
       )}
       <div

@@ -22,12 +22,13 @@ export function escHtml(str: string): string {
     .replace(/'/g, '&#039;');
 }
 
-/** Strip audio/SSML tags from text for TTS */
+/** Strip audio/emotion tags (e.g. [sighs], [excited], [gasp]) from text for visual chat display */
 export function stripAudioTags(text: string): string {
+  if (!text) return '';
   return text
     .replace(/<[^>]*>/g, '')
-    .replace(/\[.*?\]/g, '')
-    .replace(/\(.*?\)/g, '')
+    .replace(/\[[^\]]{1,40}\]/g, '')
+    .replace(/^\s+/, '')
     .trim();
 }
 
