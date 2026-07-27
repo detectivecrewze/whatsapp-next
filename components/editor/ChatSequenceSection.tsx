@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, ArrowUpDown, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { newId, getCurrentTime } from '@/lib/utils';
+import { newId, getCurrentTime, compressImageFile } from '@/lib/utils';
 import { Message, MessageType } from '@/types';
 
 const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
@@ -170,17 +170,20 @@ function MessageRow({
             <div className="flex flex-col gap-2">
               <label className="section-label">Gambar / GIF</label>
               
-              {/* File upload picker */}
+              {/* File upload picker (PNG, JPG, WEBP, GIF supported with auto-compression) */}
               <input
                 type="file"
-                accept="image/*,image/gif"
+                accept="image/*,image/png,image/jpeg,image/gif,image/webp"
                 className="input text-[11px] p-1"
-                onChange={(e) => {
+                onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (ev) => onUpdate({ imageData: ev.target?.result as string });
-                  reader.readAsDataURL(file);
+                  try {
+                    const compressedDataUrl = await compressImageFile(file);
+                    onUpdate({ imageData: compressedDataUrl });
+                  } catch (err) {
+                    console.error('[ImageUpload] Error compressing image:', err);
+                  }
                 }}
               />
 
