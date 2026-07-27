@@ -42,6 +42,7 @@ interface EditorStore extends EditorState {
   setEnableTts: (v: boolean) => void;
   setTtsProvider: (provider: TtsProvider) => void;
   setElevenKey: (key: string) => void;
+  setQwenKey: (key: string) => void;
   setElevenModel: (model: string) => void;
   setTtsVoiceIn: (id: string) => void;
   setTtsVoiceOut: (id: string) => void;
@@ -116,6 +117,7 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setEnableTts: (enableTts) => set({ enableTts }),
   setTtsProvider: (ttsProvider) => set({ ttsProvider }),
   setElevenKey: (elevenKey) => set({ elevenKey }),
+  setQwenKey: (qwenKey) => set({ qwenKey }),
   setElevenModel: (elevenModel) => set({ elevenModel }),
   setTtsVoiceIn: (ttsVoiceIn) => set({ ttsVoiceIn }),
   setTtsVoiceOut: (ttsVoiceOut) => set({ ttsVoiceOut }),

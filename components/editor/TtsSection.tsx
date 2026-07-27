@@ -7,10 +7,10 @@ import { ELEVENLABS_VOICES, ELEVENLABS_MODELS } from '@/types';
 
 export default function TtsSection() {
   const {
-    enableTts, ttsProvider, elevenKey, elevenModel,
+    enableTts, ttsProvider, elevenKey, qwenKey, elevenModel,
     ttsVoiceIn, ttsVoiceOut, ttsStability, ttsStyle, ttsSpeed,
     messages, ttsAudioMap,
-    setEnableTts, setTtsProvider, setElevenKey, setElevenModel,
+    setEnableTts, setTtsProvider, setElevenKey, setQwenKey, setElevenModel,
     setTtsVoiceIn, setTtsVoiceOut, setTtsStability, setTtsStyle, setTtsSpeed,
     setAudioMapEntry, clearAudioMap,
   } = useEditorStore();
@@ -21,15 +21,16 @@ export default function TtsSection() {
   const [done, setDone] = useState(false);
   const [showKey, setShowKey] = useState(false);
 
-  // Load ElevenLabs API key from LocalStorage on mount
+  // Load API keys from LocalStorage on mount
   useEffect(() => {
     try {
-      const savedKey = localStorage.getItem('wa_elevenlabs_api_key');
-      if (savedKey) {
-        setElevenKey(savedKey);
-      }
+      const savedElevenKey = localStorage.getItem('wa_elevenlabs_api_key');
+      if (savedElevenKey) setElevenKey(savedElevenKey);
+
+      const savedQwenKey = localStorage.getItem('wa_qwen_api_key');
+      if (savedQwenKey) setQwenKey(savedQwenKey);
     } catch {}
-  }, [setElevenKey]);
+  }, [setElevenKey, setQwenKey]);
 
   const textMessages = messages.filter((m) => m.type === 'text' && m.text?.trim());
 
@@ -39,6 +40,8 @@ export default function TtsSection() {
     setError(null);
     setDone(false);
     clearAudioMap();
+
+    const activeApiKey = ttsProvider === 'qwen_cosyvoice' ? qwenKey : elevenKey;
 
     try {
       for (let i = 0; i < messages.length; i++) {
@@ -55,7 +58,7 @@ export default function TtsSection() {
             text: msg.text,
             provider: ttsProvider,
             voiceId,
-            apiKey: elevenKey,
+            apiKey: activeApiKey,
             model: elevenModel,
             stability: ttsStability,
             style: ttsStyle,
@@ -117,7 +120,7 @@ export default function TtsSection() {
         text: sampleText,
         provider: ttsProvider,
         voiceId,
-        apiKey: elevenKey,
+        apiKey: ttsProvider === 'qwen_cosyvoice' ? qwenKey : elevenKey,
         model: elevenModel,
         stability: ttsStability,
         style: ttsStyle,
@@ -243,14 +246,47 @@ export default function TtsSection() {
 
           {/* Qwen CosyVoice settings */}
           {ttsProvider === 'qwen_cosyvoice' && (
-            <div className="p-2.5 rounded-lg border border-purple-800/40 bg-purple-950/30 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5 text-purple-300 text-xs font-semibold">
-                <ShieldCheck size={14} className="text-purple-400" />
-                <span>Qwen Speech Engine (Aliyun CosyVoice)</span>
+            <div className="p-2.5 rounded-lg border border-purple-800/40 bg-purple-950/30 flex flex-col gap-2.5">
+              <div>
+                <label className="section-label flex items-center gap-1.5 text-purple-300">
+                  <Key size={13} />
+                  Qwen / DashScope API Key
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type={showKey ? 'text' : 'password'}
+                    className="input pr-9 font-mono text-xs border-purple-800/50 bg-purple-950/50 focus:border-purple-500"
+                    placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+                    value={qwenKey}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setQwenKey(val);
+                      try { localStorage.setItem('wa_qwen_api_key', val); } catch {}
+                    }}
+                    autoComplete="off"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="absolute right-2 text-purple-400 hover:text-purple-200 transition-colors"
+                    onClick={() => setShowKey((v) => !v)}
+                    title={showKey ? 'Sembunyikan key' : 'Tampilkan key'}
+                  >
+                    {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-purple-200/80 leading-relaxed">
-                Menggunakan QWEN_API_KEY terkonfigurasi. Mendukung sintesis suara ekspresif Aliyun CosyVoice / Sambert.
-              </p>
+
+              {/* Status info box */}
+              <div className="flex items-start gap-1.5 rounded-lg border border-purple-700/40 bg-purple-950/60 px-2.5 py-2 text-[11px] text-purple-200 leading-relaxed">
+                <ShieldCheck size={14} className="mt-0.5 shrink-0 text-purple-400" />
+                <div>
+                  <p className="font-semibold text-purple-300 mb-0.5">ℹ️ Petunjuk Akses Aliyun Console:</p>
+                  <span>
+                    Pada menu <strong>Token Plan &gt; Audio</strong> di Aliyun Console (seperti di screenshot kamu), ubah toggle switch status model <strong className="text-purple-300">qwen-audio-3.0-tts-flash</strong> dari <span className="text-red-400 font-medium">Not Enabled</span> menjadi <span className="text-green-400 font-semibold">Enabled (ON)</span> agar API Key diizinkan men-generate suara.
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 

@@ -112,65 +112,79 @@ export async function POST(req: NextRequest) {
     if (provider === 'qwen_cosyvoice') {
       const activeKey = apiKey?.trim() || process.env.QWEN_API_KEY || '';
       if (!activeKey) {
-        return NextResponse.json({ error: 'API Key Qwen/DashScope tidak dikonfigurasi' }, { status: 400 });
+        return NextResponse.json({ error: 'API Key Qwen/DashScope tidak dikonfigurasi. Silakan masukan di input field.' }, { status: 400 });
       }
 
-      const qwenTtsUrl = 'https://dashscope-intl.aliyuncs.com/api/v1/services/audio/tts/generation';
-      const res = await fetch(qwenTtsUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${activeKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: model || 'cosyvoice-v1',
-          input: {
-            text,
-          },
-          parameters: {
-            voice: voiceId || 'longxiaochun',
-            sample_rate: 22050,
-            format: 'mp3',
-          },
-        }),
-      });
+      // Try DashScope Audio Synthesis endpoints (qwen-audio-3.0-tts-flash / cosyvoice-v1)
+      const targetModel = model || 'qwen-audio-3.0-tts-flash';
+      const endpoints = [
+        'https://dashscope-intl.aliyuncs.com/api/v1/services/audio/audio-synthesis/synthesis',
+        'https://dashscope-intl.aliyuncs.com/api/v1/services/audio/tts/generation',
+      ];
 
-      if (!res.ok) {
-        const errText = await res.text();
-        console.error('[TTS/Qwen] Error:', errText);
-        return NextResponse.json(
-          { error: `Qwen CosyVoice TTS error (${res.status}): ${errText.slice(0, 200)}` },
-          { status: res.status }
-        );
-      }
-
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        const json = await res.json();
-        const audioUrl = json.output?.audio_url || json.output?.url;
-        if (audioUrl) {
-          const fetchAudio = await fetch(audioUrl);
-          const buf = await fetchAudio.arrayBuffer();
-          return new NextResponse(buf, {
-            status: 200,
+      let lastError = '';
+      for (const qwenTtsUrl of endpoints) {
+        try {
+          const res = await fetch(qwenTtsUrl, {
+            method: 'POST',
             headers: {
-              'Content-Type': 'audio/mpeg',
-              'Content-Length': String(buf.byteLength),
-              'Cache-Control': 'no-store',
+              Authorization: `Bearer ${activeKey}`,
+              'Content-Type': 'application/json',
             },
+            body: JSON.stringify({
+              model: targetModel,
+              input: {
+                text,
+              },
+              parameters: {
+                voice: voiceId || 'cherry',
+                sample_rate: 22050,
+                format: 'mp3',
+              },
+            }),
           });
+
+          if (res.ok) {
+            const contentType = res.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+              const json = await res.json();
+              const audioUrl = json.output?.audio_url || json.output?.url;
+              if (audioUrl) {
+                const fetchAudio = await fetch(audioUrl);
+                const buf = await fetchAudio.arrayBuffer();
+                return new NextResponse(buf, {
+                  status: 200,
+                  headers: {
+                    'Content-Type': 'audio/mpeg',
+                    'Content-Length': String(buf.byteLength),
+                    'Cache-Control': 'no-store',
+                  },
+                });
+              }
+            }
+
+            const audioBuffer = await res.arrayBuffer();
+            return new NextResponse(audioBuffer, {
+              status: 200,
+              headers: {
+                'Content-Type': 'audio/mpeg',
+                'Content-Length': String(audioBuffer.byteLength),
+                'Cache-Control': 'no-store',
+              },
+            });
+          }
+
+          lastError = await res.text();
+        } catch (err: any) {
+          lastError = err.message || String(err);
         }
       }
 
-      const audioBuffer = await res.arrayBuffer();
-      return new NextResponse(audioBuffer, {
-        status: 200,
-        headers: {
-          'Content-Type': 'audio/mpeg',
-          'Content-Length': String(audioBuffer.byteLength),
-          'Cache-Control': 'no-store',
-        },
-      });
+      console.error('[TTS/Qwen] Error:', lastError);
+      return NextResponse.json(
+        { error: `Qwen TTS Error: ${lastError.slice(0, 220)}` },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ error: 'Provider tidak valid' }, { status: 400 });

@@ -76,6 +76,7 @@ export interface EditorState {
   enableTts: boolean;
   ttsProvider: TtsProvider;
   elevenKey: string;
+  qwenKey: string;
   elevenModel: string;
   ttsVoiceIn: string;
   ttsVoiceOut: string;
@@ -180,6 +181,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   enableTts: false,
   ttsProvider: 'elevenlabs',
   elevenKey: 'sk_a0156fb3be716832cafb958b953d7a09d641be1ae3acbaa5',
+  qwenKey: '',
   elevenModel: 'eleven_v3',
   ttsVoiceIn: 'EXAVITQu4vr4xnSDxMaL',
   ttsVoiceOut: 'pNInz6obpgDQGcFmaJgB',
