@@ -55,8 +55,9 @@ const PRESET_THEMES: PresetTheme[] = [
 ];
 
 export default function AiGeneratorSection() {
-  const { setName, reorderMessages } = useEditorStore();
+  const { setName, reorderMessages, messages } = useEditorStore();
 
+  const [generatorMode, setGeneratorMode] = useState<'create' | 'improvise'>('create');
   const [promptText, setPromptText] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [msgCount, setMsgCount] = useState(8);
@@ -72,7 +73,9 @@ export default function AiGeneratorSection() {
     setGenerated(false);
 
     try {
-      const topic = promptText.trim() || 'Drama percintaan antara pacar yang lucu dan viral';
+      const topic = promptText.trim() || (generatorMode === 'improvise' ? 'Lanjutkan percakapan sebelumnya agar lebih seru' : 'Drama percintaan antara pacar yang lucu dan viral');
+
+      const currentMessages = messages;
 
       const res = await fetch('/api/ai-generator', {
         method: 'POST',
@@ -83,6 +86,8 @@ export default function AiGeneratorSection() {
           count: msgCount,
           voiceStyle,
           provider: aiProvider,
+          mode: generatorMode,
+          existingMessages: generatorMode === 'improvise' ? currentMessages : [],
         }),
       });
 
@@ -182,7 +187,11 @@ export default function AiGeneratorSection() {
         };
       });
 
-      reorderMessages(newMessages);
+      if (generatorMode === 'improvise' && currentMessages.length > 0) {
+        reorderMessages([...currentMessages, ...newMessages]);
+      } else {
+        reorderMessages(newMessages);
+      }
       setGenerated(true);
     } catch (e: any) {
       setError(e.message || 'Gagal generate naskah. Cek koneksi dan API key.');
@@ -193,13 +202,53 @@ export default function AiGeneratorSection() {
 
   return (
     <div className="flex flex-col gap-3">
-      {/* Intro */}
+      {/* Generator Mode Switcher */}
+      <div>
+        <label className="section-label">🎯 Mode Generator</label>
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg border bg-[var(--ui-card)] border-[var(--ui-border)]">
+          <button
+            type="button"
+            onClick={() => setGeneratorMode('create')}
+            className={`py-2 px-2 rounded-md text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              generatorMode === 'create'
+                ? 'bg-[#00a884] text-white shadow-sm font-bold'
+                : 'text-[var(--wa-text-muted)] hover:text-gray-200'
+            }`}
+          >
+            <span>📝 Buat Cerita Baru</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setGeneratorMode('improvise')}
+            className={`py-2 px-2 rounded-md text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all ${
+              generatorMode === 'improvise'
+                ? 'bg-purple-600 text-white shadow-sm font-bold'
+                : 'text-[var(--wa-text-muted)] hover:text-gray-200'
+            }`}
+          >
+            <span>🪄 Improvisasi &amp; Lanjutkan</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Mode Banner Info */}
       <div
-        className="p-2.5 rounded-lg border"
-        style={{ background: 'rgba(37,211,102,0.06)', borderColor: 'rgba(37,211,102,0.2)' }}
+        className="p-2.5 rounded-lg border transition-all"
+        style={{
+          background: generatorMode === 'improvise' ? 'rgba(168,85,247,0.1)' : 'rgba(37,211,102,0.06)',
+          borderColor: generatorMode === 'improvise' ? 'rgba(168,85,247,0.3)' : 'rgba(37,211,102,0.2)',
+        }}
       >
-        <p className="text-[12px]" style={{ color: 'var(--wa-text-muted)' }}>
-          🤖 AI akan membuatkan script percakapan WA viral otomatis berdasarkan topik yang kamu ketik di bawah!
+        <p className="text-[11.5px] leading-relaxed" style={{ color: generatorMode === 'improvise' ? '#e9d5ff' : 'var(--wa-text-muted)' }}>
+          {generatorMode === 'improvise' ? (
+            <>
+              🪄 <strong>Mode Improvisasi:</strong> AI akan membaca <strong>{messages.length} chat saat ini</strong> di Editor dan menambahkan <strong>{msgCount} bubble chat baru</strong> yang menyambung secara alami!
+            </>
+          ) : (
+            <>
+              🤖 <strong>Mode Buat Baru:</strong> AI akan membuatkan script percakapan WA dari awal berdasarkan topik di bawah (menggantikan chat saat ini).
+            </>
+          )}
         </p>
       </div>
 
@@ -274,16 +323,24 @@ export default function AiGeneratorSection() {
 
       {/* Prompt Input Textarea */}
       <div>
-        <label className="section-label">Prompt / Cerita yang Ingin Dibuat</label>
+        <label className="section-label">
+          {generatorMode === 'improvise'
+            ? 'Arahan Improvisasi / Lanjutan Cerita (Opsional)'
+            : 'Prompt / Cerita yang Ingin Dibuat'}
+        </label>
         <textarea
           className="input resize-none text-[12.5px] leading-relaxed"
-          rows={4}
+          rows={3}
           value={promptText}
           onChange={(e) => {
             setPromptText(e.target.value);
             setSelectedPreset(null);
           }}
-          placeholder="Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, prank teman soal utang, dll)..."
+          placeholder={
+            generatorMode === 'improvise'
+              ? 'Ketik arahan lanjutan (cth: "Tiba-tiba ada yang ketuk jendela dan mama kirim notif transfer 500rb"), atau kosongkan untuk improvisasi otomatis AI...'
+              : 'Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, dll)...'
+          }
           onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) generate(); }}
         />
         <p className="text-[10px] mt-0.5" style={{ color: 'var(--wa-text-muted)' }}>
@@ -382,19 +439,25 @@ export default function AiGeneratorSection() {
         disabled={loading}
         className="btn btn-primary w-full py-2.5 text-[13px] font-bold gap-2"
         style={{
-          background: loading ? 'var(--ui-card)' : 'linear-gradient(135deg, var(--wa-green) 0%, #1a9e50 100%)',
-          color: loading ? 'var(--wa-text-muted)' : '#000',
+          background: loading
+            ? 'var(--ui-card)'
+            : generatorMode === 'improvise'
+              ? 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)'
+              : 'linear-gradient(135deg, var(--wa-green) 0%, #1a9e50 100%)',
+          color: loading ? 'var(--wa-text-muted)' : '#fff',
         }}
       >
         {loading ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            AI sedang menulis {msgCount} pesan…
+            {generatorMode === 'improvise' ? `AI sedang mengimprovisasi +${msgCount} pesan…` : `AI sedang menulis ${msgCount} pesan…`}
           </>
         ) : (
           <>
             <Wand2 size={14} />
-            ✨ Generate Script AI ({msgCount} pesan)
+            {generatorMode === 'improvise'
+              ? `🪄 Improvisasi & Lanjutkan (+${msgCount} Chat)`
+              : `✨ Generate Script AI (${msgCount} Pesan)`}
           </>
         )}
       </button>
@@ -406,7 +469,7 @@ export default function AiGeneratorSection() {
           className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-[12px] border transition-all hover:opacity-70"
           style={{ borderColor: 'var(--ui-border)', color: 'var(--wa-text-muted)' }}
         >
-          <RefreshCw size={12} /> Generate Ulang
+          <RefreshCw size={12} /> {generatorMode === 'improvise' ? 'Improvisasi Ulang' : 'Generate Ulang'}
         </button>
       )}
     </div>

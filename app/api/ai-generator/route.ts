@@ -94,6 +94,44 @@ ${dramaticRuleInstruction}
 7. Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }
 
+// ── Build improvise system prompt ─────────────────────────────────────────────
+function buildImproviseSystemPrompt(
+  targetLength: number,
+  voiceStyle: 'dramatic' | 'normal',
+  existingMessagesText: string
+): string {
+  let lengthRule = `Buat TEPAT ${targetLength} bubble chat BARU (tidak kurang, tidak lebih).`;
+
+  const dramaticRuleInstruction = voiceStyle === 'normal'
+    ? `- GAYA NORMAL: Tulis teks percakapan biasa yang santai, alami, dan manusiawi tanpa tag emosi.`
+    : `- AUDIO EMOTION TAGS: Sisipkan tag emosi kurung siku seperti [scared][whispers], [laughing], [excited], [gasp], [crying], [shouting], dll. di awal/tengah bubble teks.`;
+
+  return `Kamu adalah penulis naskah cerita pendek percakapan WhatsApp viral profesional.
+Tugas kamu adalah **MELANJUTKAN & MENGIMPROVISASI PERCAKAPAN WHATSAPP YANG SUDAH ADA**.
+
+Diberikan percakapan WhatsApp yang SUDAH ADA di layar Editor saat ini:
+=== PERCAKAPAN SEBELUMNYA ===
+${existingMessagesText}
+=============================
+
+Instruksi Tambahan / Arahan Improvisasi dari User:
+- Pahami konteks obrolan sebelumnya di atas.
+- Lanjutkan percakapan tersebut dengan menambahkan TEPAT ${targetLength} bubble chat BARU.
+- Setiap bubble chat baru HARUS MENYAMBUNG 100% SECARA LOGIS dengan pesan terakhir di atas!
+- Kelola alur ${targetLength} chat baru ini agar berkembang, memuncak (klimaks), dan diakhiri dengan ENDING PUNCHLINE / PLOT TWIST MEMATIKAN pada pesan terakhir!
+- Variasikan tipe pesan: 'text', 'image' (kirim pap/bukti), 'notification' (notif transfer/pesan dari orang lain), 'view_once', 'transfer', 'location', 'deleted'. DILARANG PAKAI 'voice_note'!
+${dramaticRuleInstruction}
+
+Format Output WAJIB JSON Murni:
+{
+  "name": "Nama Kontak (bisa pakai nama sebelumnya atau ubah jika relevan)",
+  "messages": [
+    { "type": "text", "direction": "outgoing", "time": "21:35", "text": "Pesan baru yang menyambung..." }
+  ]
+}
+Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
+}
+
 export async function POST(req: NextRequest) {
   const t0 = Date.now();
   console.log(`[AI] ─── NEW REQUEST ───────────────────────────`);
@@ -104,14 +142,35 @@ export async function POST(req: NextRequest) {
       voiceStyle = 'dramatic',
       provider = 'qwen', // Default to Qwen or Google
       qwenKeyCustom = '',
+      mode = 'create', // 'create' | 'improvise'
+      existingMessages = [],
     } = await req.json();
 
-    if (!prompt?.trim()) {
+    if (!prompt?.trim() && mode !== 'improvise') {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
     }
 
-    const systemInstruction = buildSystemPrompt(Number(count), voiceStyle);
-    const userPrompt = `Ide Cerita & Spesifikasi User:\n${prompt.trim()}`;
+    let systemInstruction = '';
+    let userPrompt = '';
+
+    if (mode === 'improvise' && Array.isArray(existingMessages) && existingMessages.length > 0) {
+      const formattedHistory = existingMessages
+        .map((m: any, idx: number) => {
+          const dir = m.direction === 'incoming' ? '[Masuk]' : '[Keluar]';
+          const sender = m.senderName ? `(${m.senderName})` : '';
+          const content = m.text || m.caption || `[Tipe: ${m.type}]`;
+          return `${idx + 1}. ${dir}${sender}: ${content}`;
+        })
+        .join('\n');
+
+      systemInstruction = buildImproviseSystemPrompt(Number(count), voiceStyle, formattedHistory);
+      userPrompt = prompt?.trim()
+        ? `Arahan Khusus Improvisasi:\n${prompt.trim()}`
+        : `Tolong lanjutkan obrolan di atas menjadi lebih seru, ada plot twist dan ending punchline menarik!`;
+    } else {
+      systemInstruction = buildSystemPrompt(Number(count), voiceStyle);
+      userPrompt = `Ide Cerita & Spesifikasi User:\n${prompt?.trim() || 'Drama percakapan WhatsApp viral'}`;
+    }
 
     let rawText = '';
 
