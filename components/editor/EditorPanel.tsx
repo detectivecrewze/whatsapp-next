@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, User, MessageSquare, Image, Settings, Volume2, Zap, Cloud, Share2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, User, MessageSquare, Image, Settings, Volume2, Zap, Cloud } from 'lucide-react';
 import ContactSection from './ContactSection';
 import ChatSequenceSection from './ChatSequenceSection';
+import ShareLinkButton from '@/components/cloud/ShareLinkButton';
 
 // Accordion section wrapper
 function Section({
@@ -102,13 +103,10 @@ export default function EditorPanel() {
 
       {/* Bottom actions */}
       <div
-        className="flex items-center gap-2 px-3 py-3 border-t"
-        style={{ borderColor: 'var(--ui-border)' }}
+        className="px-3 py-3 border-t"
+        style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
       >
-        <button className="btn btn-primary flex-1 text-[13px] gap-1.5">
-          <Share2 size={14} />
-          Share Link Preview
-        </button>
+        <ShareLinkButton />
       </div>
     </div>
   );
