@@ -10,10 +10,19 @@ const DEFAULT_KEY_PART2 = 'pwzgNe1z-uVYoqwQ';
 const GEMINI_KEY =
   process.env.GEMINI_API_KEY || (DEFAULT_KEY_PART1 + DEFAULT_KEY_PART2);
 
-// ── Gemini model (gemini-3.6-flash = ~6s, terbukti paling cepat untuk key ini) ──
-const MODEL_CHAIN = [
+const QWEN_KEY = process.env.QWEN_API_KEY || '';
+
+// ── Gemini model chain ────────────────────────────────────────────────────────
+const GEMINI_MODEL_CHAIN = [
   'gemini-3.6-flash',
 ];
+
+// ── Qwen endpoints & model ───────────────────────────────────────────────────
+const QWEN_ENDPOINTS = [
+  'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
+  'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
+];
+const QWEN_MODEL = 'qwen-plus';
 
 // ── Build system prompt ───────────────────────────────────────────────────────
 function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'normal'): string {
@@ -24,11 +33,11 @@ function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'norma
    - DILARANG menyisipkan tag emosi kurung siku seperti [scared], [whispers], [laughing], dll.
    - DILARANG menggunakan format dramatis berlebihan seperti titik-titik berturut-turut banyak atau HURUF KAPITAL TERIAKAN.
    - Tulis teks percakapan biasa yang santai, alami, bercanda/serius sesuai tema, dan manusiawi.`
-    : `3. ELEVENLABS AUDIO EMOTION TAGS & INTENSIFIKASI FORMATTING (SANGAT WAJIB & INTENS PADA BUBBLE TEKS & VOICE NOTE):
+    : `3. ELEVENLABS AUDIO EMOTION TAGS & INTENSIFIKASI FORMATTING (SANGAT WAJIB & INTENS PADA BUBBLE TEKS):
    - AI ElevenLabs v3 SANGAT PEKA terhadap simbol tanda baca, kapitalisasi, dan Audio Tag.
-   - SISIPKAN AUDIO TAG EMOSI DI BUBBLE TEKS ATAU VOICE NOTE (terutama untuk Horor, Suspense, Drama, & Komedi):
+   - SISIPKAN AUDIO TAG EMOSI DI BUBBLE TEKS (terutama untuk Horor, Suspense, Drama, & Komedi):
      * KALO HOROR / SUSPENSE / MISTERI:
-       - Pasang Kombo Tag di AWAL bubble teks/VN: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly], [angry][shouting].
+       - Pasang Kombo Tag di AWAL bubble teks: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly], [angry][shouting].
        - Gunakan Jeda Napas Ketakutan (... / ......), Gagap (B-bu..., K-kamu...), Teriakan ALL CAPS (JANGAN BUKA!), & Cutoff (—).
        - Contoh: { "type": "text", "direction": "outgoing", "time": "02:15", "text": "[scared][whispers] B-bu...... di luar kamar...... ada yang ketuk pintu......" }
      * KALO KOMEDI / LUCU / PRANK:
@@ -82,74 +91,130 @@ export async function POST(req: NextRequest) {
       prompt,
       count = 8,
       voiceStyle = 'dramatic',
+      provider = 'qwen', // Default to Qwen or Google
+      qwenKeyCustom = '',
     } = await req.json();
 
     if (!prompt?.trim()) {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
     }
 
-    if (!GEMINI_KEY) {
-      return NextResponse.json({ error: 'GEMINI_API_KEY tidak dikonfigurasi di server.' }, { status: 500 });
-    }
-
     const systemInstruction = buildSystemPrompt(Number(count), voiceStyle);
-    const userPrompt = `${systemInstruction}\n\nIde Cerita & Spesifikasi User:\n${prompt.trim()}`;
+    const userPrompt = `Ide Cerita & Spesifikasi User:\n${prompt.trim()}`;
 
-    console.log(`[AI] Prompt built. Chars: ${userPrompt.length}, Count: ${count}, VoiceStyle: ${voiceStyle}`);
+    let rawText = '';
 
-    let geminiRes: Response | null = null;
-    let lastError = '';
-
-    // ── Try each model in chain ─────────────────────────────────────────────
-    for (const model of MODEL_CHAIN) {
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
-      const tModel = Date.now();
-      console.log(`[AI] → Trying model: ${model}...`);
-      try {
-        const res = await fetch(geminiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              { role: 'user', parts: [{ text: userPrompt }] },
-            ],
-            generationConfig: {
-              temperature: 0.85,
-              maxOutputTokens: 8192,
-            },
-          }),
-        });
-
-        const elapsed = Date.now() - tModel;
-        console.log(`[AI] ← Model ${model} responded: HTTP ${res.status} in ${elapsed}ms`);
-
-        if (res.ok) {
-          geminiRes = res;
-          break;
-        } else {
-          const errText = await res.text();
-          lastError = `Model ${model} HTTP ${res.status}: ${errText.slice(0, 300)}`;
-          console.warn(`[AI] FAIL: ${lastError}`);
-        }
-      } catch (e: any) {
-        const elapsed = Date.now() - tModel;
-        lastError = `Model ${model} exception after ${elapsed}ms: ${e.message}`;
-        console.warn(`[AI] FAIL: ${lastError}`);
+    // ── QWEN PROVIDER ───────────────────────────────────────────────────────
+    if (provider === 'qwen') {
+      const activeQwenKey = qwenKeyCustom.trim() || QWEN_KEY;
+      if (!activeQwenKey) {
+        return NextResponse.json(
+          { error: 'API Key Qwen tidak dikonfigurasi. Masukkan API Key Qwen di setting atau pastikan QWEN_API_KEY diset.' },
+          { status: 400 }
+        );
       }
-    }
 
-    if (!geminiRes) {
-      console.error(`[AI] All models failed after ${Date.now() - t0}ms. Last: ${lastError}`);
-      return NextResponse.json(
-        { error: `Semua Gemini model gagal. Error terakhir: ${lastError}` },
-        { status: 500 }
-      );
-    }
+      console.log(`[AI/Qwen] Requesting Qwen model ${QWEN_MODEL}...`);
+      let qwenRes: Response | null = null;
+      let lastQwenErr = '';
 
-    const tParse = Date.now();
-    const geminiJson = await geminiRes.json();
-    let rawText: string = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
-    console.log(`[AI] Response parsed in ${Date.now() - tParse}ms. Raw length: ${rawText.length} chars`);
+      for (const endpoint of QWEN_ENDPOINTS) {
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${activeQwenKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: QWEN_MODEL,
+              messages: [
+                { role: 'system', content: systemInstruction },
+                { role: 'user', content: userPrompt },
+              ],
+              response_format: { type: 'json_object' },
+              temperature: 0.8,
+            }),
+          });
+
+          if (res.ok) {
+            qwenRes = res;
+            break;
+          } else {
+            const errBody = await res.text();
+            lastQwenErr = `Endpoint ${endpoint} HTTP ${res.status}: ${errBody.slice(0, 300)}`;
+            console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
+          }
+        } catch (e: any) {
+          lastQwenErr = `Endpoint ${endpoint} exception: ${e.message}`;
+          console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
+        }
+      }
+
+      if (!qwenRes) {
+        return NextResponse.json(
+          { error: `Gagal memanggil API Qwen. ${lastQwenErr}` },
+          { status: 500 }
+        );
+      }
+
+      const qwenJson = await qwenRes.json();
+      rawText = qwenJson?.choices?.[0]?.message?.content ?? '';
+    }
+    // ── GOOGLE GEMINI PROVIDER ──────────────────────────────────────────────
+    else {
+      if (!GEMINI_KEY) {
+        return NextResponse.json({ error: 'GEMINI_API_KEY tidak dikonfigurasi di server.' }, { status: 500 });
+      }
+
+      const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
+      let geminiRes: Response | null = null;
+      let lastError = '';
+
+      for (const model of GEMINI_MODEL_CHAIN) {
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+        const tModel = Date.now();
+        console.log(`[AI/Gemini] → Trying model: ${model}...`);
+        try {
+          const res = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [
+                { role: 'user', parts: [{ text: fullPrompt }] },
+              ],
+              generationConfig: {
+                temperature: 0.85,
+                maxOutputTokens: 8192,
+              },
+            }),
+          });
+
+          const elapsed = Date.now() - tModel;
+          console.log(`[AI/Gemini] ← Model ${model} responded: HTTP ${res.status} in ${elapsed}ms`);
+
+          if (res.ok) {
+            geminiRes = res;
+            break;
+          } else {
+            const errText = await res.text();
+            lastError = `Model ${model} HTTP ${res.status}: ${errText.slice(0, 300)}`;
+          }
+        } catch (e: any) {
+          lastError = `Model ${model} exception: ${e.message}`;
+        }
+      }
+
+      if (!geminiRes) {
+        return NextResponse.json(
+          { error: `Semua Gemini model gagal. Error terakhir: ${lastError}` },
+          { status: 500 }
+        );
+      }
+
+      const geminiJson = await geminiRes.json();
+      rawText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    }
 
     // ── Clean markdown wrappers ──────────────────────────────────────────────
     rawText = rawText.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -164,7 +229,7 @@ export async function POST(req: NextRequest) {
     // ── Parse & return ───────────────────────────────────────────────────────
     try {
       const parsed = JSON.parse(rawText);
-      console.log(`[AI] ✅ DONE in ${Date.now() - t0}ms. Messages: ${parsed.messages?.length ?? 0}, Name: ${parsed.name}`);
+      console.log(`[AI] ✅ DONE in ${Date.now() - t0}ms via ${provider}. Messages: ${parsed.messages?.length ?? 0}, Name: ${parsed.name}`);
       return NextResponse.json(parsed);
     } catch (parseErr) {
       console.error('[AI] JSON parse failed. Raw:', rawText.slice(0, 500));

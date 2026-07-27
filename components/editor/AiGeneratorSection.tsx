@@ -61,6 +61,7 @@ export default function AiGeneratorSection() {
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [msgCount, setMsgCount] = useState(8);
   const [voiceStyle, setVoiceStyle] = useState<'dramatic' | 'normal'>('dramatic');
+  const [aiProvider, setAiProvider] = useState<'qwen' | 'google'>('qwen');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
@@ -81,6 +82,7 @@ export default function AiGeneratorSection() {
           prompt: topic,
           count: msgCount,
           voiceStyle,
+          provider: aiProvider,
         }),
       });
 
@@ -242,6 +244,36 @@ export default function AiGeneratorSection() {
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* AI Provider Engine Choice */}
+      <div>
+        <label className="section-label">⚡ AI Engine Provider</label>
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => setAiProvider('qwen')}
+            className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+              aiProvider === 'qwen'
+                ? 'bg-purple-950/60 border-purple-500 text-purple-300 shadow-sm shadow-purple-500/20'
+                : 'bg-[var(--ui-card)] border-[var(--ui-border)] text-[var(--wa-text-muted)] hover:text-gray-200'
+            }`}
+          >
+            <span>🌐 Qwen (Aliyun)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setAiProvider('google')}
+            className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
+              aiProvider === 'google'
+                ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-sm shadow-blue-500/20'
+                : 'bg-[var(--ui-card)] border-[var(--ui-border)] text-[var(--wa-text-muted)] hover:text-gray-200'
+            }`}
+          >
+            <span>✨ Google Gemini</span>
+          </button>
         </div>
       </div>
 
