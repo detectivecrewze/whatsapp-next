@@ -132,6 +132,35 @@ Format Output WAJIB JSON Murni:
 Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }
 
+// ── Build enhance emotion system prompt ───────────────────────────────────────
+function buildEnhanceEmotionPrompt(existingMessagesText: string): string {
+  return `Kamu adalah produser pengisi suara ElevenLabs v3 profesional.
+Tugas kamu: **SISIPKAN ELEVENLABS AUDIO EMOTION TAGS TERBAIK PADA TEKS SETIAP PESAN SAAT INI**.
+
+Berikut adalah percakapan WhatsApp yang ada di layar Editor saat ini:
+=== PERCAKAPAN SAAT INI ===
+${existingMessagesText}
+===========================
+
+Instruksi Penambahan Tag Emosi ElevenLabs v3 (SANGAT EKSPRESIF):
+1. Pahami suasana cerita (Horor, Komedi, Tegang, Marah, Bucin, Olshop, dll.).
+2. Untuk setiap bubble teks/caption, sisipkan Tag Emosi ElevenLabs v3 di AWAL atau TENGAH kalimat:
+   - HOROR / TEGANG: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly]. Gunakan titik napas (...) / gagap (B-bu...).
+   - KOMEDI / LUCU: [laughing], [excited], [gasp], [sighs], [quietly].
+   - DRAMA / MARAH: [angry][shouting], [crying][desperate], [disappointed][sighs].
+   - BUCIN / ROMANTIS: [whispers], [shy], [happy], [sighs], [quietly].
+3. DILARANG MENGURANGI ATAU MENGHAPUS PESAN! Kembalikan JSON murni berisi array 'messages' dengan jumlah item SAMA PERSIS (${existingMessagesText.split('\n').length} chat) dan urutan index yang sama (1, 2, 3...).
+
+Format Output WAJIB JSON Murni:
+{
+  "messages": [
+    { "index": 1, "text": "[scared][whispers] B-bu...... di luar kamar ada suara langkah kaki..." },
+    { "index": 2, "text": "[panicked][shouting] JANGAN BUKA PINTUNYA!" }
+  ]
+}
+Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
+}
+
 export async function POST(req: NextRequest) {
   const t0 = Date.now();
   console.log(`[AI] ─── NEW REQUEST ───────────────────────────`);
@@ -142,18 +171,30 @@ export async function POST(req: NextRequest) {
       voiceStyle = 'dramatic',
       provider = 'qwen', // Default to Qwen or Google
       qwenKeyCustom = '',
-      mode = 'create', // 'create' | 'improvise'
+      mode = 'create', // 'create' | 'improvise' | 'enhance_emotion'
       existingMessages = [],
     } = await req.json();
 
-    if (!prompt?.trim() && mode !== 'improvise') {
+    if (!prompt?.trim() && mode === 'create') {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
     }
 
     let systemInstruction = '';
     let userPrompt = '';
 
-    if (mode === 'improvise' && Array.isArray(existingMessages) && existingMessages.length > 0) {
+    if (mode === 'enhance_emotion' && Array.isArray(existingMessages) && existingMessages.length > 0) {
+      const formattedHistory = existingMessages
+        .map((m: any, idx: number) => {
+          const dir = m.direction === 'incoming' ? '[Masuk]' : '[Keluar]';
+          const sender = m.senderName ? `(${m.senderName})` : '';
+          const content = m.text || m.caption || `[Tipe: ${m.type}]`;
+          return `${idx + 1}. ${dir}${sender}: ${content}`;
+        })
+        .join('\n');
+
+      systemInstruction = buildEnhanceEmotionPrompt(formattedHistory);
+      userPrompt = `Tolong pertajam dan sisipkan ElevenLabs Audio Emotion Tags (seperti [scared][whispers], [laughing], [shouting], dll.) ke teks setiap pesan di atas!`;
+    } else if (mode === 'improvise' && Array.isArray(existingMessages) && existingMessages.length > 0) {
       const formattedHistory = existingMessages
         .map((m: any, idx: number) => {
           const dir = m.direction === 'incoming' ? '[Masuk]' : '[Keluar]';

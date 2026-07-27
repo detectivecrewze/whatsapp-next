@@ -57,7 +57,7 @@ const PRESET_THEMES: PresetTheme[] = [
 export default function AiGeneratorSection() {
   const { setName, reorderMessages, messages } = useEditorStore();
 
-  const [generatorMode, setGeneratorMode] = useState<'create' | 'improvise'>('create');
+  const [generatorMode, setGeneratorMode] = useState<'create' | 'improvise' | 'enhance_emotion'>('create');
   const [promptText, setPromptText] = useState('');
   const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [msgCount, setMsgCount] = useState(8);
@@ -73,7 +73,13 @@ export default function AiGeneratorSection() {
     setGenerated(false);
 
     try {
-      const topic = promptText.trim() || (generatorMode === 'improvise' ? 'Lanjutkan percakapan sebelumnya agar lebih seru' : 'Drama percintaan antara pacar yang lucu dan viral');
+      const topic = promptText.trim() || (
+        generatorMode === 'enhance_emotion'
+          ? 'Pertajam tag emosi ElevenLabs di percakapan ini'
+          : generatorMode === 'improvise'
+            ? 'Lanjutkan percakapan sebelumnya agar lebih seru'
+            : 'Drama percintaan antara pacar yang lucu dan viral'
+      );
 
       const currentMessages = messages;
 
@@ -87,7 +93,7 @@ export default function AiGeneratorSection() {
           voiceStyle,
           provider: aiProvider,
           mode: generatorMode,
-          existingMessages: generatorMode === 'improvise' ? currentMessages : [],
+          existingMessages: (generatorMode === 'improvise' || generatorMode === 'enhance_emotion') ? currentMessages : [],
         }),
       });
 
@@ -100,21 +106,19 @@ export default function AiGeneratorSection() {
       const data = await res.json();
 
       // ── Ambil contactName dari response ────────────────────────────────────
-      const contactName: string =
-        data.name || data.contactName || '';
-      if (contactName) {
+      const contactName: string = data.name || data.contactName || '';
+      if (contactName && generatorMode === 'create') {
         setName(contactName.trim());
       }
 
       // ── Ambil messages array ───────────────────────────────────────────────
-      let raw: { type?: string; direction: string; text: string; time?: string }[] = [];
+      let raw: { type?: string; direction: string; text: string; time?: string; index?: number }[] = [];
 
       if (Array.isArray(data.messages) && data.messages.length > 0) {
         raw = data.messages;
       } else if (Array.isArray(data)) {
         raw = data;
       } else {
-        // Last resort: try to extract from text field (old format)
         const textField = data.text ?? '';
         const objMatch = textField.match(/\{[\s\S]*\}/);
         const arrMatch = textField.match(/\[[\s\S]*\]/);
@@ -122,9 +126,6 @@ export default function AiGeneratorSection() {
           try {
             const parsed = JSON.parse(objMatch[0]);
             raw = parsed.messages ?? [];
-            if (parsed.name || parsed.contactName) {
-              setName((parsed.name || parsed.contactName).trim());
-            }
           } catch {}
         }
         if (raw.length === 0 && arrMatch) {
@@ -133,7 +134,29 @@ export default function AiGeneratorSection() {
       }
 
       if (!Array.isArray(raw) || raw.length === 0) {
-        throw new Error('AI tidak menghasilkan naskah percakapan. Coba generate ulang atau ubah prompt.');
+        throw new Error('AI tidak menghasilkan respon. Coba generate ulang atau ubah prompt.');
+      }
+
+      if (generatorMode === 'enhance_emotion') {
+        if (currentMessages.length === 0) {
+          throw new Error('Editor masih kosong. Tambahkan atau generate percakapan terlebih dahulu.');
+        }
+
+        // Map enhanced texts back onto existing messages in-place
+        const updatedMessages = currentMessages.map((msg, idx) => {
+          const item = raw[idx] || raw.find((r: any) => r.index === idx + 1);
+          if (item && item.text) {
+            if (msg.type === 'image' || msg.caption) {
+              return { ...msg, caption: item.text };
+            }
+            return { ...msg, text: item.text };
+          }
+          return msg;
+        });
+
+        reorderMessages(updatedMessages);
+        setGenerated(true);
+        return;
       }
 
       // ── Build Message objects with sequential timestamps & rich types ─────────
@@ -144,12 +167,10 @@ export default function AiGeneratorSection() {
       const validTypes = ['text', 'image', 'view_once', 'notification', 'transfer', 'contact', 'location', 'deleted'];
 
       const newMessages: Message[] = raw.map((item) => {
-        // Validate message type (convert voice_note to text)
         let rawType = (item.type || 'text').toLowerCase();
         if (rawType === 'voice_note') rawType = 'text';
         const type = (validTypes.includes(rawType) ? rawType : 'text') as Message['type'];
 
-        // Determine timestamp
         let timeStr = item.time;
         if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) {
           currentMin += Math.floor(Math.random() * 2) + 1;
@@ -157,8 +178,6 @@ export default function AiGeneratorSection() {
           timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
         }
 
-        // For image type, keep imageData undefined so it defaults to built-in app placeholder card
-        // This allows user to manually pick/upload their image in the editor.
         let imageData: string | undefined = undefined;
         let caption: string | undefined = undefined;
         if (type === 'image') {
@@ -167,7 +186,6 @@ export default function AiGeneratorSection() {
           }
         }
 
-        // Voice note waveform generation
         const waveform = type === 'voice_note'
           ? Array.from({ length: 24 }, (_, i) => Math.floor(Math.sin(i * 0.45 + Math.random()) * 35) + 30)
           : undefined;
@@ -194,7 +212,7 @@ export default function AiGeneratorSection() {
       }
       setGenerated(true);
     } catch (e: any) {
-      setError(e.message || 'Gagal generate naskah. Cek koneksi dan API key.');
+      setError(e.message || 'Gagal memproses AI. Cek koneksi dan API key.');
     } finally {
       setLoading(false);
     }
@@ -204,29 +222,40 @@ export default function AiGeneratorSection() {
     <div className="flex flex-col gap-3">
       {/* Generator Mode Switcher */}
       <div>
-        <label className="section-label">🎯 Mode Generator</label>
-        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-lg border bg-[var(--ui-card)] border-[var(--ui-border)]">
+        <label className="section-label">🎯 Mode AI Generator</label>
+        <div className="grid grid-cols-3 gap-1 p-1 rounded-lg border bg-[var(--ui-card)] border-[var(--ui-border)]">
           <button
             type="button"
             onClick={() => setGeneratorMode('create')}
-            className={`py-2 px-2 rounded-md text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all ${
+            className={`py-1.5 px-1.5 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all ${
               generatorMode === 'create'
                 ? 'bg-[#00a884] text-white shadow-sm font-bold'
                 : 'text-[var(--wa-text-muted)] hover:text-gray-200'
             }`}
           >
-            <span>📝 Buat Cerita Baru</span>
+            <span>📝 Cerita Baru</span>
           </button>
           <button
             type="button"
             onClick={() => setGeneratorMode('improvise')}
-            className={`py-2 px-2 rounded-md text-[11.5px] font-semibold flex items-center justify-center gap-1.5 transition-all ${
+            className={`py-1.5 px-1.5 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all ${
               generatorMode === 'improvise'
                 ? 'bg-purple-600 text-white shadow-sm font-bold'
                 : 'text-[var(--wa-text-muted)] hover:text-gray-200'
             }`}
           >
-            <span>🪄 Improvisasi &amp; Lanjutkan</span>
+            <span>🪄 Lanjutkan</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setGeneratorMode('enhance_emotion')}
+            className={`py-1.5 px-1.5 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all ${
+              generatorMode === 'enhance_emotion'
+                ? 'bg-pink-600 text-white shadow-sm font-bold'
+                : 'text-[var(--wa-text-muted)] hover:text-gray-200'
+            }`}
+          >
+            <span>🎭 Tag Emosi</span>
           </button>
         </div>
       </div>
@@ -235,12 +264,16 @@ export default function AiGeneratorSection() {
       <div
         className="p-2.5 rounded-lg border transition-all"
         style={{
-          background: generatorMode === 'improvise' ? 'rgba(168,85,247,0.1)' : 'rgba(37,211,102,0.06)',
-          borderColor: generatorMode === 'improvise' ? 'rgba(168,85,247,0.3)' : 'rgba(37,211,102,0.2)',
+          background: generatorMode === 'enhance_emotion' ? 'rgba(236,72,153,0.1)' : generatorMode === 'improvise' ? 'rgba(168,85,247,0.1)' : 'rgba(37,211,102,0.06)',
+          borderColor: generatorMode === 'enhance_emotion' ? 'rgba(236,72,153,0.3)' : generatorMode === 'improvise' ? 'rgba(168,85,247,0.3)' : 'rgba(37,211,102,0.2)',
         }}
       >
-        <p className="text-[11.5px] leading-relaxed" style={{ color: generatorMode === 'improvise' ? '#e9d5ff' : 'var(--wa-text-muted)' }}>
-          {generatorMode === 'improvise' ? (
+        <p className="text-[11.5px] leading-relaxed" style={{ color: generatorMode === 'enhance_emotion' ? '#fbcfe8' : generatorMode === 'improvise' ? '#e9d5ff' : 'var(--wa-text-muted)' }}>
+          {generatorMode === 'enhance_emotion' ? (
+            <>
+              🎭 <strong>Mode Tag Emosi ElevenLabs:</strong> AI akan membaca <strong>{messages.length} pesan di Editor</strong> dan secara otomatis menyisipkan Audio Emotion Tags ElevenLabs ([scared][whispers], [laughing], [shouting], dll.) langsung ke setiap pesan!
+            </>
+          ) : generatorMode === 'improvise' ? (
             <>
               🪄 <strong>Mode Improvisasi:</strong> AI akan membaca <strong>{messages.length} chat saat ini</strong> di Editor dan menambahkan <strong>{msgCount} bubble chat baru</strong> yang menyambung secara alami!
             </>
@@ -429,7 +462,11 @@ export default function AiGeneratorSection() {
       {generated && !loading && (
         <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.3)' }}>
           <CheckCircle size={14} style={{ color: 'var(--wa-green)' }} />
-          <span className="text-[11.5px]" style={{ color: 'var(--wa-green)' }}>Script berhasil digenerate! Lihat di canvas ➡️</span>
+          <span className="text-[11.5px]" style={{ color: 'var(--wa-green)' }}>
+            {generatorMode === 'enhance_emotion'
+              ? '🎭 Tag Emosi ElevenLabs berhasil disisipkan ke percakapan!'
+              : 'Script berhasil digenerate! Lihat di canvas ➡️'}
+          </span>
         </div>
       )}
 
@@ -437,27 +474,35 @@ export default function AiGeneratorSection() {
       <button
         onClick={generate}
         disabled={loading}
-        className="btn btn-primary w-full py-2.5 text-[13px] font-bold gap-2"
+        className="btn btn-primary w-full py-2.5 text-[13px] font-bold gap-2 shadow-lg"
         style={{
           background: loading
             ? 'var(--ui-card)'
-            : generatorMode === 'improvise'
-              ? 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)'
-              : 'linear-gradient(135deg, var(--wa-green) 0%, #1a9e50 100%)',
+            : generatorMode === 'enhance_emotion'
+              ? 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)'
+              : generatorMode === 'improvise'
+                ? 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)'
+                : 'linear-gradient(135deg, var(--wa-green) 0%, #1a9e50 100%)',
           color: loading ? 'var(--wa-text-muted)' : '#fff',
         }}
       >
         {loading ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            {generatorMode === 'improvise' ? `AI sedang mengimprovisasi +${msgCount} pesan…` : `AI sedang menulis ${msgCount} pesan…`}
+            {generatorMode === 'enhance_emotion'
+              ? `AI sedang menyisipkan tag emosi…`
+              : generatorMode === 'improvise'
+                ? `AI sedang mengimprovisasi +${msgCount} pesan…`
+                : `AI sedang menulis ${msgCount} pesan…`}
           </>
         ) : (
           <>
             <Wand2 size={14} />
-            {generatorMode === 'improvise'
-              ? `🪄 Improvisasi & Lanjutkan (+${msgCount} Chat)`
-              : `✨ Generate Script AI (${msgCount} Pesan)`}
+            {generatorMode === 'enhance_emotion'
+              ? `🎭 Auto-Inject Tag Emosi ElevenLabs`
+              : generatorMode === 'improvise'
+                ? `🪄 Improvisasi & Lanjutkan (+${msgCount} Chat)`
+                : `✨ Generate Script AI (${msgCount} Pesan)`}
           </>
         )}
       </button>
@@ -469,7 +514,7 @@ export default function AiGeneratorSection() {
           className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-[12px] border transition-all hover:opacity-70"
           style={{ borderColor: 'var(--ui-border)', color: 'var(--wa-text-muted)' }}
         >
-          <RefreshCw size={12} /> {generatorMode === 'improvise' ? 'Improvisasi Ulang' : 'Generate Ulang'}
+          <RefreshCw size={12} /> {generatorMode === 'enhance_emotion' ? 'Pertajam Tag Emosi Lagi' : generatorMode === 'improvise' ? 'Improvisasi Ulang' : 'Generate Ulang'}
         </button>
       )}
     </div>
