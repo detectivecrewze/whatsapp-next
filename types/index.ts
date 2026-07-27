@@ -123,15 +123,15 @@ export interface PresetsResponse {
 
 // Default voices for ElevenLabs
 export const ELEVENLABS_VOICES = [
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella (Incoming - Wanita)' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni (Incoming - Pria)' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold (Incoming - Pria)' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (Outgoing - Pria)' },
-  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam (Outgoing - Pria)' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi (Outgoing - Wanita)' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli (Outgoing - Wanita)' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh (Neutral - Pria)' },
-  { id: 'ThT5KcBeYPX3keUQqHPh', name: 'Dorothy (Neutral - Wanita)' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella (Wanita - Lembut)' },
+  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi (Wanita - Ekspresif)' },
+  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli (Wanita - Ceria)' },
+  { id: 'ThT5KcBeYPX3keUQqHPh', name: 'Dorothy (Wanita - Narasi)' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (Pria - Deep Narration)' },
+  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni (Pria - Enerjik)' },
+  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold (Pria - Berat)' },
+  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam (Pria - Santai)' },
+  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh (Pria - Natural)' },
   { id: 'custom', name: '🔧 Custom Voice ID...' },
 ] as const;
 

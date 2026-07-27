@@ -49,8 +49,13 @@ export default function TtsSection() {
         if (msg.type !== 'text' || !msg.text?.trim()) continue;
 
         let voiceId = msg.direction === 'incoming' ? ttsVoiceIn : ttsVoiceOut;
-        if (ttsProvider === 'elevenlabs' && ['longxiaochun', 'longwan', 'alex', 'anna', 'id'].includes(voiceId)) {
-          voiceId = msg.direction === 'incoming' ? 'EXAVITQu4vr4xnSDxMaL' : 'pNInz6obpgDQGcFmaJgB';
+
+        // Sanitize voiceId if it holds a non-ElevenLabs ID (like 'id', 'longxiaochun', etc.)
+        if (ttsProvider === 'elevenlabs') {
+          const isKnownElevenId = ELEVENLABS_VOICES.some((v) => v.id === voiceId) || (voiceId && voiceId.length > 15);
+          if (!isKnownElevenId) {
+            voiceId = msg.direction === 'incoming' ? 'EXAVITQu4vr4xnSDxMaL' : 'AZnzlk1XvdvUeBnXmlld';
+          }
         }
 
         setProgress(`Generating TTS pesan ${i + 1}/${messages.length}…`);
