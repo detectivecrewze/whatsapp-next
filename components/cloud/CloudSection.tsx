@@ -2,9 +2,11 @@
 
 import React, { useEffect, useState } from 'react';
 import {
-  Cloud, RefreshCw, Save, Trash2, Download,
+  Cloud, RefreshCw, Save, Trash2, Download, Eye,
   Loader2, CheckCircle, AlertCircle, Plus, FolderOpen,
 } from 'lucide-react';
+
+const LOCAL_PREVIEW_KEY = 'wa_local_preview';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useCloudStore } from '@/store/useCloudStore';
 import { CloudPreset } from '@/types';
@@ -197,11 +199,29 @@ export default function CloudSection() {
 
                 {/* Actions */}
                 <div className="flex items-center gap-1 shrink-0">
+                  {/* Eye: Preview langsung tanpa load ke editor */}
+                  <button
+                    onClick={() => {
+                      try {
+                        sessionStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify(preset.data));
+                        window.open(`${window.location.origin}/preview/local`, '_blank');
+                      } catch {
+                        showToast('❌ Gagal membuka preview', 'err');
+                      }
+                    }}
+                    className="p-1.5 rounded-lg border transition-all hover:opacity-80"
+                    style={{ borderColor: 'rgba(37,211,102,0.5)', color: 'var(--wa-green)', background: 'rgba(37,211,102,0.08)' }}
+                    title="Preview preset ini (tanpa load ke editor)"
+                  >
+                    <Eye size={12} />
+                  </button>
+
+                  {/* Download: Load preset ke editor */}
                   <button
                     onClick={() => handleLoad(preset)}
                     className="p-1.5 rounded-lg border transition-all hover:opacity-80"
                     style={{ borderColor: 'var(--wa-green)', color: 'var(--wa-green)' }}
-                    title="Muat preset ini"
+                    title="Muat preset ini ke editor"
                   >
                     <Download size={12} />
                   </button>

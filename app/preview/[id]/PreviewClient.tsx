@@ -17,6 +17,8 @@ interface Props {
 
 type Status = 'loading' | 'countdown' | 'playing' | 'done' | 'error';
 
+const LOCAL_PREVIEW_KEY = 'wa_local_preview';
+
 export default function PreviewClient({ presetId }: Props) {
   const [status, setStatus] = useState<Status>('loading');
   const [errorMsg, setErrorMsg] = useState('');
@@ -26,25 +28,33 @@ export default function PreviewClient({ presetId }: Props) {
   const { applyPayload } = useEditorStore();
   const { play, stop, isPlaying, isPaused, pause } = usePlayerStore();
 
-  // ── Load preset from cloud / API ──────────────────────────────────────────
+  // ── Load preset from cloud / sessionStorage ────────────────────────────────
   useEffect(() => {
     async function load() {
       try {
-        const res = await fetch(`/api/presets?id=${encodeURIComponent(presetId)}`, {
-          cache: 'no-store',
-        });
-        
         let presetData = null;
 
-        if (res.ok) {
-          const json = await res.json();
-          presetData = json?.preset?.data ?? json?.templates?.[presetId]?.data;
+        // ── Local preview (no cloud) ──────────────────────────────────────────
+        if (presetId === 'local') {
+          const raw = sessionStorage.getItem(LOCAL_PREVIEW_KEY);
+          if (!raw) throw new Error('Data preview lokal tidak ditemukan. Silakan coba lagi dari editor.');
+          presetData = JSON.parse(raw);
         } else {
-          // Fallback: fetch all templates
-          const resAll = await fetch('/api/presets', { cache: 'no-store' });
-          if (resAll.ok) {
-            const dataAll = await resAll.json();
-            presetData = dataAll?.templates?.[presetId]?.data;
+          // ── Cloud preset ────────────────────────────────────────────────────
+          const res = await fetch(`/api/presets?id=${encodeURIComponent(presetId)}`, {
+            cache: 'no-store',
+          });
+
+          if (res.ok) {
+            const json = await res.json();
+            presetData = json?.preset?.data ?? json?.templates?.[presetId]?.data;
+          } else {
+            // Fallback: fetch all templates
+            const resAll = await fetch('/api/presets', { cache: 'no-store' });
+            if (resAll.ok) {
+              const dataAll = await resAll.json();
+              presetData = dataAll?.templates?.[presetId]?.data;
+            }
           }
         }
 
@@ -64,6 +74,7 @@ export default function PreviewClient({ presetId }: Props) {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [presetId]);
+
 
   // ── Countdown → play ──────────────────────────────────────────────────────
   function startCountdown() {
