@@ -40,50 +40,54 @@ function TextBubble({ message }: { message: Message }) {
 function ImageBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
   const isViewOnce = message.type === 'view_once';
+  const isGif = message.imageData?.includes('.gif') || message.imageData?.startsWith('data:image/gif');
 
   return (
     <div
-      className={`relative rounded-[7.5px] overflow-hidden ${isOut ? 'ml-auto' : ''}`}
-      style={{ maxWidth: '220px' }}
+      className={`relative rounded-[8px] overflow-hidden p-[3px] ${isOut ? 'ml-auto bubble-out' : 'bubble-in'}`}
+      style={{ maxWidth: '240px' }}
     >
       {isViewOnce ? (
         <div
-          className="w-[200px] h-[200px] flex flex-col items-center justify-center gap-2"
-          style={{ background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
+          className="w-[200px] h-[160px] flex flex-col items-center justify-center gap-2 rounded-[6px]"
+          style={{ background: 'rgba(0,0,0,0.2)' }}
         >
-          <Eye size={32} style={{ color: 'var(--wa-green)' }} />
-          <span className="text-[12px]" style={{ color: 'var(--wa-text-muted)' }}>
-            Lihat Sekali
+          <div className="w-10 h-10 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'var(--wa-green)' }}>
+            <Eye size={20} style={{ color: 'var(--wa-green)' }} />
+          </div>
+          <span className="text-[12px] font-semibold" style={{ color: 'var(--wa-green)' }}>
+            Foto Sekali Lihat
           </span>
         </div>
       ) : message.imageData ? (
-        <img
-          src={message.imageData}
-          alt="foto"
-          className="w-full max-h-[280px] object-cover"
-        />
+        <div className="relative rounded-[6px] overflow-hidden">
+          <img
+            src={message.imageData}
+            alt="media"
+            className="w-full max-h-[280px] object-cover block"
+          />
+          {isGif && (
+            <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-bold text-white tracking-wider">
+              GIF
+            </span>
+          )}
+        </div>
       ) : (
         <div
-          className="w-[200px] h-[150px] flex items-center justify-center"
-          style={{ background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
+          className="w-[200px] h-[150px] flex items-center justify-center rounded-[6px]"
+          style={{ background: 'rgba(0,0,0,0.2)' }}
         >
-          <span style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>🖼 Gambar</span>
+          <span style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>🖼 Gambar / GIF</span>
         </div>
       )}
       {message.caption && (
-        <div
-          className="px-2 py-1"
-          style={{ background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
-        >
-          <p style={{ fontSize: '13px', color: 'var(--wa-text)' }}>
+        <div className="px-1.5 pt-1.5 pb-0.5">
+          <p style={{ fontSize: '13.5px', color: 'var(--wa-text)', lineHeight: '1.35' }}>
             {stripAudioTags(message.caption)}
           </p>
         </div>
       )}
-      <div
-        className="px-2 pb-1"
-        style={{ background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
-      >
+      <div className="px-1 pb-0.5">
         <TimeRow time={message.time} direction={message.direction} />
       </div>
     </div>

@@ -132,14 +132,16 @@ function MessageRow({
             </div>
           )}
 
-          {/* Image upload */}
+          {/* Image / GIF upload & URL */}
           {['image', 'view_once'].includes(message.type) && (
-            <div>
-              <label className="section-label">Upload Gambar</label>
+            <div className="flex flex-col gap-2">
+              <label className="section-label">Gambar / GIF</label>
+              
+              {/* File upload picker */}
               <input
                 type="file"
                 accept="image/*,image/gif"
-                className="input text-[12px] p-1.5"
+                className="input text-[11px] p-1"
                 onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
@@ -148,6 +150,28 @@ function MessageRow({
                   reader.readAsDataURL(file);
                 }}
               />
+
+              {/* Or paste Image/GIF URL */}
+              <input
+                className="input text-[11.5px]"
+                value={message.imageData?.startsWith('data:') ? '' : message.imageData ?? ''}
+                onChange={(e) => onUpdate({ imageData: e.target.value })}
+                placeholder="Atau paste URL Gambar/GIF (http...)"
+              />
+
+              {/* Thumbnail preview if present */}
+              {message.imageData && (
+                <div className="relative w-20 h-20 rounded-lg overflow-hidden border mt-1" style={{ borderColor: 'var(--ui-border)' }}>
+                  <img src={message.imageData} alt="preview" className="w-full h-full object-cover" />
+                  <button
+                    onClick={() => onUpdate({ imageData: undefined })}
+                    className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/80 text-white flex items-center justify-center text-[10px]"
+                    title="Hapus gambar"
+                  >
+                    ✕
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
