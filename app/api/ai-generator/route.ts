@@ -10,10 +10,10 @@ const DEFAULT_KEY_PART2 = 'pwzgNe1z-uVYoqwQ';
 const GEMINI_KEY =
   process.env.GEMINI_API_KEY || (DEFAULT_KEY_PART1 + DEFAULT_KEY_PART2);
 
-// ── Gemini model fallback chain (Gemini 3.6 Flash responds in ~6s, Gemini 3.5 Flash Lite fallback) ──
+// ── Gemini model fallback chain (verified working models) ──
 const MODEL_CHAIN = [
-  'gemini-3.6-flash',
   'gemini-3.5-flash-lite',
+  'gemini-3.6-flash',
 ];
 
 // ── Build system prompt (porting langsung dari worker.js project lama) ────────
@@ -104,14 +104,13 @@ export async function POST(req: NextRequest) {
         const res = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          signal: AbortSignal.timeout(15000), // Max 15s wait per model
           body: JSON.stringify({
             contents: [
               { role: 'user', parts: [{ text: userPrompt }] },
             ],
             generationConfig: {
               temperature: 0.85,
-              maxOutputTokens: 4096,
+              maxOutputTokens: 8192,
             },
           }),
         });
