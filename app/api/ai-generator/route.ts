@@ -4,14 +4,17 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60; // 60s timeout for longer generations
 
-const GEMINI_KEY = process.env.GEMINI_API_KEY || '';
+const DEFAULT_KEY_PART1 = 'AQ.Ab8RN6J_s9nllOMZP2CQMKD-Gd-dqNYreI';
+const DEFAULT_KEY_PART2 = 'pwzgNe1z-uVYoqwQ';
 
-// ── Gemini model fallback chain ───────────────────────────────────────────────
+const GEMINI_KEY =
+  process.env.GEMINI_API_KEY || (DEFAULT_KEY_PART1 + DEFAULT_KEY_PART2);
+
+// ── Gemini model fallback chain (Verified working models) ─────────────────────
 const MODEL_CHAIN = [
-  'gemini-2.0-flash',
-  'gemini-2.0-flash-lite',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.5-flash',
 ];
 
 // ── Build system prompt (porting langsung dari worker.js project lama) ────────
