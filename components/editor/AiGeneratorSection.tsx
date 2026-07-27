@@ -9,7 +9,7 @@ import { newId } from '@/lib/utils';
 const MSG_COUNTS = [4, 6, 8, 10, 12];
 
 export default function AiGeneratorSection() {
-  const { name, reorderMessages } = useEditorStore();
+  const { name, setName, reorderMessages } = useEditorStore();
 
   const [promptText, setPromptText] = useState('');
   const [msgCount, setMsgCount] = useState(6);
@@ -30,20 +30,22 @@ export default function AiGeneratorSection() {
 Buat percakapan WhatsApp yang natural, autentik, dan menarik dalam Bahasa Indonesia (gaul/sehari-hari).
 Jumlah pesan: ${msgCount} pesan.
 Topik/Cerita: ${topic}
-Nama kontak lawan bicara: "${name}".
 
-WAJIB output JSON array (tanpa markdown code block, langsung raw JSON):
-[
-  { "direction": "incoming" | "outgoing", "text": "isi pesan" },
-  ...
-]
+WAJIB output JSON object dengan format (tanpa markdown code block, langsung raw JSON):
+{
+  "contactName": "Nama Kontak Lawan Bicara yang Sangat Cocok untuk Cerita Ini (e.g. Sayang ❤️, Mantan 💔, Bokap 👨, Siska, Rian Utang, dll)",
+  "messages": [
+    { "direction": "incoming" | "outgoing", "text": "isi pesan" },
+    ...
+  ]
+}
 
 Aturan:
 - Gunakan bahasa gaul Indonesia yang natural (dong, sih, wkwk, asli, bro, kak, dll)
-- Arah "incoming" = pesan dari lawan bicara (${name})
+- Arah "incoming" = pesan dari lawan bicara
 - Arah "outgoing" = pesan dari pengguna (kamu)
 - Gunakan tag suara ElevenLabs seperti [sighs], [excited], [laughing], [gasp], [happy] jika cocok
-- Hanya tampilkan JSON array, tidak ada penjelasan lain`;
+- Hanya tampilkan JSON object, tidak ada penjelasan lain`;
 
       const res = await fetch('/api/ai-generator', {
         method: 'POST',
@@ -64,12 +66,36 @@ Aturan:
       const data = await res.json();
       const responseText = data.text ?? '';
 
-      // Parse JSON from response
-      const jsonMatch = responseText.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error('Format respons AI tidak valid — coba lagi');
+      // Parse JSON from response (support both object format with contactName or direct array)
+      let parsedObject: any = null;
+      let raw: { direction: string; text: string }[] = [];
 
-      const raw: { direction: string; text: string }[] = JSON.parse(jsonMatch[0]);
-      if (!Array.isArray(raw) || raw.length === 0) throw new Error('AI tidak menghasilkan pesan');
+      const objMatch = responseText.match(/\{[\s\S]*\}/);
+      const arrMatch = responseText.match(/\[[\s\S]*\]/);
+
+      if (objMatch) {
+        try {
+          parsedObject = JSON.parse(objMatch[0]);
+          if (parsedObject.contactName && typeof parsedObject.contactName === 'string') {
+            setName(parsedObject.contactName.trim());
+          }
+          if (Array.isArray(parsedObject.messages)) {
+            raw = parsedObject.messages;
+          }
+        } catch (e) {
+          // Fallback to array match
+        }
+      }
+
+      if (raw.length === 0 && arrMatch) {
+        try {
+          raw = JSON.parse(arrMatch[0]);
+        } catch (e) {}
+      }
+
+      if (!Array.isArray(raw) || raw.length === 0) {
+        throw new Error('AI tidak menghasilkan naskah percakapan — coba generate ulang');
+      }
 
       // Populate store with generated messages
       const now = new Date();
