@@ -31,7 +31,14 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'API Key ElevenLabs tidak dikonfigurasi' }, { status: 400 });
       }
 
-      const res = await fetch(`${ELEVEN_BASE}/text-to-speech/${voiceId}`, {
+      // Sanitize voiceId if it holds a Qwen voice name (e.g. longxiaochun) or invalid string
+      const invalidElevenVoices = ['longxiaochun', 'longwan', 'alex', 'anna', 'id'];
+      let targetVoiceId = voiceId;
+      if (!targetVoiceId || invalidElevenVoices.includes(targetVoiceId)) {
+        targetVoiceId = 'EXAVITQu4vr4xnSDxMaL'; // Default ElevenLabs voice (Bella)
+      }
+
+      const res = await fetch(`${ELEVEN_BASE}/text-to-speech/${targetVoiceId}`, {
         method: 'POST',
         headers: {
           'xi-api-key': activeKey,

@@ -48,7 +48,11 @@ export default function TtsSection() {
         const msg = messages[i];
         if (msg.type !== 'text' || !msg.text?.trim()) continue;
 
-        const voiceId = msg.direction === 'incoming' ? ttsVoiceIn : ttsVoiceOut;
+        let voiceId = msg.direction === 'incoming' ? ttsVoiceIn : ttsVoiceOut;
+        if (ttsProvider === 'elevenlabs' && ['longxiaochun', 'longwan', 'alex', 'anna', 'id'].includes(voiceId)) {
+          voiceId = msg.direction === 'incoming' ? 'EXAVITQu4vr4xnSDxMaL' : 'pNInz6obpgDQGcFmaJgB';
+        }
+
         setProgress(`Generating TTS pesan ${i + 1}/${messages.length}…`);
 
         const res = await fetch('/api/tts', {
@@ -172,7 +176,25 @@ export default function TtsSection() {
               ].map(({ value, label, sub }) => (
                 <button
                   key={value}
-                  onClick={() => setTtsProvider(value as any)}
+                  onClick={() => {
+                    const newProv = value as any;
+                    setTtsProvider(newProv);
+                    if (newProv === 'elevenlabs') {
+                      if (['longxiaochun', 'longwan', 'alex', 'anna', 'id'].includes(ttsVoiceIn)) {
+                        setTtsVoiceIn('EXAVITQu4vr4xnSDxMaL');
+                      }
+                      if (['longxiaochun', 'longwan', 'alex', 'anna', 'id'].includes(ttsVoiceOut)) {
+                        setTtsVoiceOut('pNInz6obpgDQGcFmaJgB');
+                      }
+                    } else if (newProv === 'qwen_cosyvoice') {
+                      if (!['longxiaochun', 'longwan', 'alex', 'anna'].includes(ttsVoiceIn)) {
+                        setTtsVoiceIn('longxiaochun');
+                      }
+                      if (!['longxiaochun', 'longwan', 'alex', 'anna'].includes(ttsVoiceOut)) {
+                        setTtsVoiceOut('longwan');
+                      }
+                    }
+                  }}
                   className="py-2 px-1.5 rounded-lg text-left border transition-all"
                   style={{
                     background: ttsProvider === value ? 'rgba(37,211,102,0.12)' : 'var(--ui-card)',
