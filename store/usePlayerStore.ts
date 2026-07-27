@@ -27,6 +27,41 @@ function clearTimer() {
   }
 }
 
+// ── Sound Effects Playback ──────────────────────────────────────────────────
+function playSfx(direction: 'incoming' | 'outgoing') {
+  const state = useEditorStore.getState();
+
+  if (direction === 'incoming' && state.useSoundIn === false) return;
+  if (direction === 'outgoing' && state.useSoundOut === false) return;
+
+  try {
+    const src = direction === 'incoming' ? '/sounds/notification.mp3' : '/sounds/sfx-out.mp3';
+    const audio = new Audio(src);
+    audio.volume = 0.85;
+    audio.play().catch(() => {});
+  } catch (e) {
+    console.warn('[SFX] Audio play error:', e);
+  }
+}
+
+// ── TTS Voiceover Playback ──────────────────────────────────────────────────
+function playTtsAudio(msgId: string) {
+  const state = useEditorStore.getState();
+  if (!state.enableTts) return;
+
+  const audioMap = state.ttsAudioMap as Record<string, string> | undefined;
+  const audioUrl = audioMap?.[msgId];
+  if (audioUrl) {
+    try {
+      const audio = new Audio(audioUrl);
+      audio.volume = 1.0;
+      audio.play().catch(() => {});
+    } catch (e) {
+      console.warn('[TTS] Audio play error:', e);
+    }
+  }
+}
+
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
   isPlaying: false,
   isPaused: false,
@@ -112,6 +147,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
           });
           state.setActiveHeaderStatusOverride(null);
 
+          // Play Sound Effect & TTS
+          playSfx(msg.direction);
+          playTtsAudio(msg.id);
+
           // Schedule next step after hold duration
           animationTimer = setTimeout(playNextStep, holdDuration);
         }, replyDelayDuration);
@@ -123,6 +162,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
           isTyping: false,
           activeMsgId: msg.id,
         });
+
+        // Play Sound Effect & TTS
+        playSfx(msg.direction);
+        playTtsAudio(msg.id);
 
         animationTimer = setTimeout(playNextStep, holdDuration);
       }
