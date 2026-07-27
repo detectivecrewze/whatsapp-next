@@ -6,83 +6,96 @@ export const dynamic = 'force-dynamic';
 const TEAM_PASSCODE = process.env.TEAM_PASSCODE ?? 'loves2026';
 const WORKER_URL = process.env.CLOUDFLARE_WORKER_URL ?? 'https://wa-templates-worker.aldoramadhan16.workers.dev';
 
-// In-memory fallback storage when worker is not reachable or not deployed yet
-const inMemoryTemplates: Record<string, any> = {};
+// In-memory local cache/fallback
+const localTemplatesCache: Record<string, any> = {};
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const requestedId = searchParams.get('id');
 
-  // Try fetching from Cloudflare Worker first
   try {
-    const res = await fetch(`${WORKER_URL}/templates`, {
-      headers: { 'X-Passcode': TEAM_PASSCODE },
+    // Call existing Cloudflare Worker with X-Team-Passcode header & passcode param
+    const workerRes = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
+      headers: {
+        'X-Team-Passcode': TEAM_PASSCODE,
+      },
       cache: 'no-store',
     });
 
-    if (res.ok) {
-      const data = await res.json();
-      const templates = data.templates ?? {};
+    if (workerRes.ok) {
+      const data = await workerRes.json();
+      // Worker returns { templates: { [id]: preset, ... } } or { [id]: preset }
+      const remoteTemplates = data.templates ?? data ?? {};
 
-      // Merge with in-memory templates
-      const merged = { ...inMemoryTemplates, ...templates };
+      // Sync into local cache
+      Object.assign(localTemplatesCache, remoteTemplates);
 
       if (requestedId) {
-        const single = merged[requestedId];
+        const single = localTemplatesCache[requestedId];
         if (!single) {
           return NextResponse.json({ error: 'Preset tidak ditemukan' }, { status: 404 });
         }
         return NextResponse.json({ preset: single });
       }
 
-      return NextResponse.json({ templates: merged });
+      return NextResponse.json({ templates: localTemplatesCache });
+    } else {
+      console.warn('[GET /api/presets] Worker returned HTTP status:', workerRes.status);
     }
   } catch (e) {
-    console.warn('[GET /api/presets] Worker fetch failed, using in-memory store:', e);
+    console.warn('[GET /api/presets] Cloudflare Worker fetch failed, using local cache:', e);
   }
 
-  // Fallback to in-memory templates
+  // Fallback to local cache
   if (requestedId) {
-    const single = inMemoryTemplates[requestedId];
+    const single = localTemplatesCache[requestedId];
     if (!single) {
       return NextResponse.json({ error: 'Preset tidak ditemukan' }, { status: 404 });
     }
     return NextResponse.json({ preset: single });
   }
 
-  return NextResponse.json({ templates: inMemoryTemplates });
+  return NextResponse.json({ templates: localTemplatesCache });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Body can be { templates: { ... } } or a single preset object
+    // Body can be { templates: { [id]: preset } } or { id, name, data }
+    let updatedTemplates = { ...localTemplatesCache };
+
     if (body.templates) {
-      Object.assign(inMemoryTemplates, body.templates);
+      updatedTemplates = { ...updatedTemplates, ...body.templates };
     } else if (body.id) {
-      inMemoryTemplates[body.id] = body;
+      updatedTemplates[body.id] = body;
     }
 
-    // Attempt to push to Cloudflare Worker if available
+    // Save to local cache
+    Object.assign(localTemplatesCache, updatedTemplates);
+
+    // Save to existing Cloudflare Worker KV using X-Team-Passcode header
     try {
-      const res = await fetch(`${WORKER_URL}/templates`, {
+      const workerRes = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-Passcode': TEAM_PASSCODE,
+          'X-Team-Passcode': TEAM_PASSCODE,
         },
-        body: JSON.stringify({ templates: inMemoryTemplates }),
+        body: JSON.stringify({ templates: updatedTemplates }),
       });
 
-      if (!res.ok) {
-        console.warn('[POST /api/presets] Worker update responded with status:', res.status);
+      if (!workerRes.ok) {
+        const errText = await workerRes.text();
+        console.warn('[POST /api/presets] Worker update failed:', workerRes.status, errText);
+      } else {
+        console.log('✅ Preset saved to Cloudflare Worker KV successfully!');
       }
-    } catch (e) {
-      console.warn('[POST /api/presets] Worker update failed, saved to server memory:', e);
+    } catch (err) {
+      console.warn('[POST /api/presets] Failed connecting to Worker, saved to local cache:', err);
     }
 
-    return NextResponse.json({ success: true, count: Object.keys(inMemoryTemplates).length });
+    return NextResponse.json({ success: true, templates: updatedTemplates });
   } catch (e) {
     console.error('[POST /api/presets] Error:', e);
     return NextResponse.json(

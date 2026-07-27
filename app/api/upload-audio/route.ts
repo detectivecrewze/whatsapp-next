@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const TEAM_PASSCODE = process.env.TEAM_PASSCODE ?? 'loves2026';
 const WORKER_URL = process.env.CLOUDFLARE_WORKER_URL ?? 'https://wa-templates-worker.aldoramadhan16.workers.dev';
 
 export async function POST(req: NextRequest) {
@@ -13,11 +14,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Audio data kosong' }, { status: 400 });
     }
 
-    // Upload to Cloudflare Worker (which proxies to R2)
-    const res = await fetch(`${WORKER_URL}/upload-audio`, {
+    // Upload to existing Cloudflare Worker
+    const res = await fetch(`${WORKER_URL}/upload-audio?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'audio/mpeg',
+        'X-Team-Passcode': TEAM_PASSCODE,
         'Content-Length': String(audioBuffer.byteLength),
       },
       body: audioBuffer,
