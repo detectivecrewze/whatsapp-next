@@ -12,9 +12,9 @@ export default function StatusBar() {
 
   if (phoneOs === 'ios') {
     return (
-      <div className="relative flex items-center justify-between px-5 pt-1 pb-0.5 h-[44px]" style={{ background: 'var(--wa-header)' }}>
+      <div className="relative flex items-center justify-between px-6 pt-3 pb-1 h-[52px] shrink-0" style={{ background: 'var(--wa-header)' }}>
         {/* Dynamic Island */}
-        <div className="absolute left-1/2 top-[6px] -translate-x-1/2 w-[120px] h-[34px] bg-black rounded-full z-10" />
+        <div className="absolute left-1/2 top-[10px] -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-full z-10" />
 
         {/* Time (left of island) */}
         <span className="text-[15px] font-semibold text-white z-20" style={{ fontFeatureSettings: '"tnum"' }}>
