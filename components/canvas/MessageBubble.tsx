@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import { getSenderColor, stripAudioTags } from '@/lib/utils';
 import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2 } from 'lucide-react';
 import { Message } from '@/types';
@@ -37,9 +38,9 @@ function TextBubble({ message }: { message: Message }) {
 }
 
 // Image Bubble
+// Image Bubble
 function ImageBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
-  const isViewOnce = message.type === 'view_once';
   const isGif = message.imageData?.includes('.gif') || message.imageData?.startsWith('data:image/gif');
 
   return (
@@ -47,19 +48,7 @@ function ImageBubble({ message }: { message: Message }) {
       className={`relative rounded-[8px] overflow-hidden p-[3px] ${isOut ? 'ml-auto bubble-out' : 'bubble-in'}`}
       style={{ maxWidth: '240px' }}
     >
-      {isViewOnce ? (
-        <div
-          className="w-[200px] h-[160px] flex flex-col items-center justify-center gap-2 rounded-[6px]"
-          style={{ background: 'rgba(0,0,0,0.2)' }}
-        >
-          <div className="w-10 h-10 rounded-full border-2 flex items-center justify-center" style={{ borderColor: 'var(--wa-green)' }}>
-            <Eye size={20} style={{ color: 'var(--wa-green)' }} />
-          </div>
-          <span className="text-[12px] font-semibold" style={{ color: 'var(--wa-green)' }}>
-            Foto Sekali Lihat
-          </span>
-        </div>
-      ) : message.imageData ? (
+      {message.imageData ? (
         <div className="relative rounded-[6px] overflow-hidden">
           <img
             src={message.imageData}
@@ -94,49 +83,90 @@ function ImageBubble({ message }: { message: Message }) {
   );
 }
 
-// Voice Note Bubble
+// View Once Bubble (Authentic WhatsApp Pill Badge)
+function ViewOnceBubble({ message }: { message: Message }) {
+  const isOut = message.direction === 'outgoing';
+  return (
+    <div
+      className={`bubble-base flex items-center gap-2.5 px-3 py-2 ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
+      style={{ minWidth: '150px' }}
+    >
+      <div className="w-6 h-6 rounded-full border-2 border-[#00a884] flex items-center justify-center shrink-0">
+        <span className="text-[11px] font-bold text-[#00a884]">1</span>
+      </div>
+      <span className="text-[14px] font-semibold text-white flex-1">Foto</span>
+      <TimeRow time={message.time} direction={message.direction} />
+    </div>
+  );
+}
+
+// Voice Note Bubble (Authentic WhatsApp Waveform & Mic Badge)
 function VoiceNoteBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
-  const waveform = message.waveform ?? Array.from({ length: 30 }, () => Math.floor(Math.random() * 70) + 10);
-  const { pfp, name } = useEditorStore();
+  const waveform = message.waveform ?? Array.from({ length: 24 }, (_, i) => Math.floor(Math.sin(i * 0.45) * 35) + 35);
+  const { pfp } = useEditorStore();
+  const activeMsgId = usePlayerStore((s) => s.activeMsgId);
+  const isPlayingVn = activeMsgId === message.id;
 
   return (
     <div
-      className={`bubble-base flex items-center gap-2.5 ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
-      style={{ minWidth: '180px' }}
+      className={`bubble-base flex items-center gap-2.5 px-3 py-2 ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
+      style={{ width: '235px' }}
     >
       {/* Avatar for incoming */}
       {!isOut && (
-        <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden flex items-center justify-center" style={{ background: 'var(--wa-green-teal)' }}>
-          {pfp ? <img src={pfp} className="w-full h-full object-cover" alt="" /> : <Mic size={14} className="text-white" />}
+        <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden bg-[#00a884] flex items-center justify-center">
+          {pfp ? (
+            <img src={pfp} className="w-full h-full object-cover" alt="" />
+          ) : (
+            <Mic size={15} className="text-white" />
+          )}
         </div>
       )}
-      {/* Play button */}
-      <button className="w-8 h-8 rounded-full flex items-center justify-center shrink-0" style={{ background: 'rgba(255,255,255,0.15)' }}>
-        <svg width="10" height="12" viewBox="0 0 10 12" fill="white">
-          <path d="M0 0l10 6-10 6V0z" />
-        </svg>
+
+      {/* Play/Pause Button */}
+      <button
+        className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all active:scale-95"
+        style={{ background: isOut ? 'rgba(255,255,255,0.2)' : '#00a884' }}
+      >
+        {isPlayingVn ? (
+          <div className="flex gap-[2.5px] items-center justify-center">
+            <div className="w-[3px] h-3 bg-white rounded-full animate-pulse" />
+            <div className="w-[3px] h-3 bg-white rounded-full animate-pulse" />
+          </div>
+        ) : (
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="white">
+            <path d="M0 0l10 6-10 6V0z" />
+          </svg>
+        )}
       </button>
-      {/* Waveform */}
-      <div className="flex items-center gap-[1.5px] flex-1" style={{ height: '28px' }}>
-        {waveform.map((h, i) => (
-          <div
-            key={i}
-            className="rounded-full"
-            style={{
-              width: '2px',
-              height: `${Math.max(4, (h / 100) * 22)}px`,
-              background: isOut ? 'rgba(255,255,255,0.7)' : 'var(--wa-green)',
-              flexShrink: 0,
-            }}
-          />
-        ))}
+
+      {/* Waveform & Duration */}
+      <div className="flex flex-col flex-1 gap-0.5 min-w-0">
+        <div className="flex items-center gap-[2px] w-full" style={{ height: '20px' }}>
+          {waveform.map((h, i) => (
+            <div
+              key={i}
+              className="rounded-full flex-1"
+              style={{
+                height: `${Math.max(4, (h / 100) * 18)}px`,
+                background: isOut
+                  ? (isPlayingVn ? '#53bdeb' : 'rgba(255,255,255,0.65)')
+                  : (isPlayingVn ? '#00a884' : 'rgba(255,255,255,0.45)'),
+              }}
+            />
+          ))}
+        </div>
+        <div className="flex items-center justify-between">
+          <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)' }}>
+            {message.duration || '0:12'}
+          </span>
+          <div className="flex items-center gap-1">
+            <Mic size={12} style={{ color: isOut ? '#53bdeb' : 'rgba(255,255,255,0.6)' }} />
+            <TimeRow time={message.time} direction={message.direction} />
+          </div>
+        </div>
       </div>
-      {/* Duration */}
-      <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.55)', flexShrink: 0 }}>
-        {message.duration || '0:12'}
-      </span>
-      <TimeRow time={message.time} direction={message.direction} />
     </div>
   );
 }
@@ -284,8 +314,8 @@ export default function MessageBubble({
   const renderBubble = () => {
     switch (message.type) {
       case 'text': return <TextBubble message={message} />;
-      case 'image':
-      case 'view_once': return <ImageBubble message={message} />;
+      case 'image': return <ImageBubble message={message} />;
+      case 'view_once': return <ViewOnceBubble message={message} />;
       case 'voice_note': return <VoiceNoteBubble message={message} />;
       case 'notification': return <NotificationBubble message={message} />;
       case 'transfer': return <TransferCard message={message} />;
