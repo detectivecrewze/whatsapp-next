@@ -77,7 +77,7 @@ export interface EditorState {
   ttsStability: number;
   ttsStyle: number;
   ttsSpeed: number;
-  ttsAudioMap: Record<number, string>; // CDN URLs per message index
+  ttsAudioMap: Record<string | number, string>; // Audio URLs mapped by message ID or index
 
   // Header / UI
   headerStatus: HeaderStatus;

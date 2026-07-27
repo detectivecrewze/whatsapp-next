@@ -45,19 +45,22 @@ function playSfx(direction: 'incoming' | 'outgoing') {
 }
 
 // ── TTS Voiceover Playback ──────────────────────────────────────────────────
-function playTtsAudio(msgId: string) {
+function playTtsAudio(msgId: string, msgIndex?: number) {
   const state = useEditorStore.getState();
   if (!state.enableTts) return;
 
   const audioMap = state.ttsAudioMap as Record<string, string> | undefined;
-  const audioUrl = audioMap?.[msgId];
+  const audioUrl =
+    audioMap?.[msgId] ??
+    (msgIndex !== undefined ? (audioMap?.[msgIndex] ?? audioMap?.[String(msgIndex)]) : undefined);
+
   if (audioUrl) {
     try {
       const audio = new Audio(audioUrl);
       audio.volume = 1.0;
-      audio.play().catch(() => {});
+      audio.play().catch((e) => console.warn('[TTS] Audio play error:', e));
     } catch (e) {
-      console.warn('[TTS] Audio play error:', e);
+      console.warn('[TTS] Audio init error:', e);
     }
   }
 }
@@ -149,7 +152,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
           // Play Sound Effect & TTS
           playSfx(msg.direction);
-          playTtsAudio(msg.id);
+          playTtsAudio(msg.id, currentIdx - 1);
 
           // Schedule next step after hold duration
           animationTimer = setTimeout(playNextStep, holdDuration);
@@ -165,7 +168,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
         // Play Sound Effect & TTS
         playSfx(msg.direction);
-        playTtsAudio(msg.id);
+        playTtsAudio(msg.id, currentIdx - 1);
 
         animationTimer = setTimeout(playNextStep, holdDuration);
       }

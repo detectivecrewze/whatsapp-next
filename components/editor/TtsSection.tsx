@@ -58,11 +58,31 @@ export default function TtsSection() {
         }
 
         const blob = await res.blob();
-        const url = URL.createObjectURL(blob);
-        setAudioMapEntry(i, url);
+        const localUrl = URL.createObjectURL(blob);
+
+        // Store local blob URL for instant studio playback
+        setAudioMapEntry(msg.id, localUrl);
+        setAudioMapEntry(i, localUrl);
+
+        // Upload to Cloudflare Worker (R2 / KV) for cloud sharing links
+        try {
+          const uploadRes = await fetch('/api/upload-audio', {
+            method: 'POST',
+            body: blob,
+          });
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            if (uploadData.url) {
+              setAudioMapEntry(msg.id, uploadData.url);
+              setAudioMapEntry(i, uploadData.url);
+            }
+          }
+        } catch (uploadErr) {
+          console.warn('Audio cloud upload fallback:', uploadErr);
+        }
 
         // Small pause between requests to avoid rate limiting
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, 150));
       }
 
       setProgress(null);

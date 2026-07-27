@@ -48,7 +48,7 @@ interface EditorStore extends EditorState {
   setTtsStability: (v: number) => void;
   setTtsStyle: (v: number) => void;
   setTtsSpeed: (v: number) => void;
-  setAudioMapEntry: (idx: number, url: string) => void;
+  setAudioMapEntry: (key: string | number, url: string) => void;
   clearAudioMap: () => void;
 
   // Header
@@ -122,8 +122,8 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setTtsStability: (ttsStability) => set({ ttsStability }),
   setTtsStyle: (ttsStyle) => set({ ttsStyle }),
   setTtsSpeed: (ttsSpeed) => set({ ttsSpeed }),
-  setAudioMapEntry: (idx, url) =>
-    set((state) => ({ ttsAudioMap: { ...state.ttsAudioMap, [idx]: url } })),
+  setAudioMapEntry: (key: string | number, url: string) =>
+    set((state) => ({ ttsAudioMap: { ...state.ttsAudioMap, [key]: url } })),
   clearAudioMap: () => set({ ttsAudioMap: {} }),
 
   // Header
