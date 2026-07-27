@@ -32,10 +32,21 @@ export default function TtsSection() {
     } catch {}
   }, [setElevenKey, setQwenKey]);
 
-  const textMessages = messages.filter((m) => m.type === 'text' && m.text?.trim());
+  // Helper to extract speakable text from any message type (text, image caption, notification, transfer, etc.)
+  function getMessageSpeakableText(msg: (typeof messages)[0]): string | undefined {
+    if (msg.type === 'text') return msg.text?.trim();
+    if (msg.type === 'image' || msg.type === 'view_once') return (msg.caption || msg.text)?.trim();
+    if (msg.type === 'notification') {
+      return msg.text?.trim() || msg.caption?.trim() || `${msg.notifSender || 'Notifikasi'}: ${msg.notifTitle || 'Pesan Baru'}`;
+    }
+    if (['transfer', 'location', 'contact'].includes(msg.type)) return (msg.text || msg.caption)?.trim();
+    return undefined;
+  }
+
+  const speakableMessages = messages.filter((m) => Boolean(getMessageSpeakableText(m)));
 
   async function generateAll() {
-    if (!textMessages.length) return;
+    if (!speakableMessages.length) return;
     setGenerating(true);
     setError(null);
     setDone(false);
@@ -46,7 +57,8 @@ export default function TtsSection() {
     try {
       for (let i = 0; i < messages.length; i++) {
         const msg = messages[i];
-        if (msg.type !== 'text' || !msg.text?.trim()) continue;
+        const speakableText = getMessageSpeakableText(msg);
+        if (!speakableText) continue;
 
         let voiceId = msg.direction === 'incoming' ? ttsVoiceIn : ttsVoiceOut;
 
@@ -64,7 +76,7 @@ export default function TtsSection() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            text: msg.text,
+            text: speakableText,
             provider: ttsProvider,
             voiceId,
             apiKey: activeApiKey,
@@ -430,7 +442,7 @@ export default function TtsSection() {
 
           <button
             onClick={generateAll}
-            disabled={generating || textMessages.length === 0}
+            disabled={generating || speakableMessages.length === 0}
             className="btn btn-primary w-full py-2 text-[13px] font-bold gap-2"
             style={{ background: generating ? 'var(--ui-card)' : 'var(--wa-green)', color: generating ? 'var(--wa-text-muted)' : '#000' }}
           >
@@ -442,7 +454,7 @@ export default function TtsSection() {
             ) : (
               <>
                 <Mic size={14} />
-                Generate {textMessages.length} Audio TTS
+                Generate {speakableMessages.length} Audio TTS
               </>
             )}
           </button>
