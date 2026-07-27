@@ -48,15 +48,22 @@ export const useCloudStore = create<CloudStore>()((set, get) => ({
     const newTemplates = { ...templates, [id]: preset };
     set({ isLoading: true, error: null });
     try {
+      // Send ONLY the target preset to keep payload lightweight (~10KB instead of 50MB)
       const res = await fetch('/api/presets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Team-Passcode': PASSCODE,
         },
-        body: JSON.stringify({ templates: newTemplates }),
+        body: JSON.stringify({ templates: { [id]: preset } }),
       });
       if (!res.ok) throw new Error('Gagal menyimpan preset ke cloud');
+
+      // Save locally in browser localStorage for offline & instant fallback
+      try {
+        localStorage.setItem('wa_cloud_presets', JSON.stringify(newTemplates));
+      } catch {}
+
       set({ templates: newTemplates, activeId: id });
     } catch (e) {
       set({ error: (e as Error).message });

@@ -76,13 +76,15 @@ export async function POST(req: NextRequest) {
 
     // Save to existing Cloudflare Worker KV using X-Team-Passcode header
     try {
+      // Send ONLY the newly added/updated templates to Worker to keep request payload lightweight (< 100KB)
+      const payloadToSend = body.templates || (body.id ? { [body.id]: body } : updatedTemplates);
       const workerRes = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Team-Passcode': TEAM_PASSCODE,
         },
-        body: JSON.stringify({ templates: updatedTemplates }),
+        body: JSON.stringify({ templates: payloadToSend }),
       });
 
       if (!workerRes.ok) {

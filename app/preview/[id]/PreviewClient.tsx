@@ -48,13 +48,39 @@ export default function PreviewClient({ presetId }: Props) {
           if (res.ok) {
             const json = await res.json();
             presetData = json?.preset?.data ?? json?.templates?.[presetId]?.data;
-          } else {
-            // Fallback: fetch all templates
+          }
+
+          if (!presetData) {
+            // Fallback 1: fetch all templates from Vercel API
             const resAll = await fetch('/api/presets', { cache: 'no-store' });
             if (resAll.ok) {
               const dataAll = await resAll.json();
               presetData = dataAll?.templates?.[presetId]?.data;
             }
+          }
+
+          if (!presetData) {
+            // Fallback 2: Direct fetch to Cloudflare Worker KV
+            try {
+              const workerUrl = 'https://wa-templates-worker.aldoramadhan16.workers.dev/templates?passcode=loves2026';
+              const workerRes = await fetch(workerUrl, { cache: 'no-store' });
+              if (workerRes.ok) {
+                const wData = await workerRes.json();
+                const wTemplates = wData?.templates ?? wData ?? {};
+                presetData = wTemplates?.[presetId]?.data;
+              }
+            } catch {}
+          }
+
+          if (!presetData) {
+            // Fallback 3: Check browser localStorage
+            try {
+              const localSaved = localStorage.getItem('wa_cloud_presets');
+              if (localSaved) {
+                const parsed = JSON.parse(localSaved);
+                presetData = parsed?.[presetId]?.data;
+              }
+            } catch {}
           }
         }
 
