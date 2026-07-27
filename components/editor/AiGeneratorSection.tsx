@@ -8,10 +8,57 @@ import { newId } from '@/lib/utils';
 
 const MSG_COUNTS = [4, 6, 8, 10, 12, 16, 20];
 
+interface PresetTheme {
+  id: string;
+  name: string;
+  emoji: string;
+  badgeColor: string;
+  prompt: string;
+}
+
+const PRESET_THEMES: PresetTheme[] = [
+  {
+    id: 'horror',
+    name: 'Horor Mencekam',
+    emoji: '👻',
+    badgeColor: '#ef4444',
+    prompt: 'Cerita horor plot twist malam hari di kosan, pacar ketakutan dengar suara di luar kamar, ternyata orang yang ngechat adalah setan itu sendiri.',
+  },
+  {
+    id: 'comedy',
+    name: 'Komedi & Prank',
+    emoji: '🤣',
+    badgeColor: '#f59e0b',
+    prompt: 'Obrolan komedi konyol prank teman tagih utang seblak yang lupa dibayar 2 minggu, saling bales meme dan stiker lucu.',
+  },
+  {
+    id: 'romance',
+    name: 'Romantis & Bucin',
+    emoji: '💕',
+    badgeColor: '#ec4899',
+    prompt: 'Obrolan romantis bucin malam hari antara sepasang kekasih, ceweknya ngambek minta dibelikan boba lalu cowoknya kejutan kirim notifikasi transfer.',
+  },
+  {
+    id: 'drama',
+    name: 'Drama & Perselingkuhan',
+    emoji: '🎭',
+    badgeColor: '#a855f7',
+    prompt: 'Drama perselisihan mantan pacar yang tiba-tiba ngechat ngajak balikan pas malam minggu, tapi ketahuan sudah punya gebetan baru.',
+  },
+  {
+    id: 'olshop',
+    name: 'Olshop & Transfer',
+    emoji: '💸',
+    badgeColor: '#10b981',
+    prompt: 'Chat penjual olshop dengan pembeli yang nawar harga sadis tapi langsung dikirimkan bukti transfer uang M-Banking.',
+  },
+];
+
 export default function AiGeneratorSection() {
   const { setName, reorderMessages } = useEditorStore();
 
   const [promptText, setPromptText] = useState('');
+  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
   const [msgCount, setMsgCount] = useState(8);
   const [voiceStyle, setVoiceStyle] = useState<'dramatic' | 'normal'>('dramatic');
   const [loading, setLoading] = useState(false);
@@ -157,6 +204,45 @@ export default function AiGeneratorSection() {
         </p>
       </div>
 
+      {/* Preset Tone & Tema Cerita Viral */}
+      <div>
+        <label className="section-label flex items-center justify-between">
+          <span>🎯 Preset Tone & Tema Cerita</span>
+          {selectedPreset && (
+            <button
+              onClick={() => { setSelectedPreset(null); setPromptText(''); }}
+              className="text-[10px] text-red-400 hover:underline"
+            >
+              Reset Preset
+            </button>
+          )}
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {PRESET_THEMES.map((theme) => {
+            const isSelected = selectedPreset === theme.id;
+            return (
+              <button
+                key={theme.id}
+                onClick={() => {
+                  setSelectedPreset(theme.id);
+                  setPromptText(theme.prompt);
+                }}
+                className="px-2.5 py-1 rounded-lg text-[11.5px] font-medium border transition-all flex items-center gap-1.5"
+                style={{
+                  background: isSelected ? `${theme.badgeColor}22` : 'var(--ui-card)',
+                  borderColor: isSelected ? theme.badgeColor : 'var(--ui-border)',
+                  color: isSelected ? theme.badgeColor : 'var(--wa-text-muted)',
+                  boxShadow: isSelected ? `0 0 10px ${theme.badgeColor}33` : 'none',
+                }}
+              >
+                <span>{theme.emoji}</span>
+                <span>{theme.name}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Prompt Input Textarea */}
       <div>
         <label className="section-label">Prompt / Cerita yang Ingin Dibuat</label>
@@ -164,7 +250,10 @@ export default function AiGeneratorSection() {
           className="input resize-none text-[12.5px] leading-relaxed"
           rows={4}
           value={promptText}
-          onChange={(e) => setPromptText(e.target.value)}
+          onChange={(e) => {
+            setPromptText(e.target.value);
+            setSelectedPreset(null);
+          }}
           placeholder="Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, prank teman soal utang, dll)..."
           onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) generate(); }}
         />
