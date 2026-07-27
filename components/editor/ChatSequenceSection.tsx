@@ -258,23 +258,24 @@ function MessageRow({
               />
             </div>
             <div>
-              <label className="section-label">Hold Tampil (ms)</label>
+              <label className="section-label">Hold Tampil (Detik)</label>
               <input
                 className="input"
                 type="number"
-                min={500}
-                max={15000}
-                step={500}
-                value={message.customHoldMs ?? ''}
-                onChange={(e) =>
-                  onUpdate({ customHoldMs: e.target.value ? Number(e.target.value) : undefined })
-                }
-                placeholder={message.type === 'notification' ? 'Default 4500ms' : 'Default 2500ms'}
+                min={0.5}
+                max={30}
+                step={0.1}
+                value={message.customHoldMs ? message.customHoldMs / 1000 : ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onUpdate({ customHoldMs: val ? Math.round(Number(val) * 1000) : undefined });
+                }}
+                placeholder={message.type === 'notification' ? 'Default 4.5s' : 'Default 2.5s'}
               />
             </div>
           </div>
 
-          {/* Zoom Kamera Custom (Sama persis Project Lama) */}
+          {/* Zoom Kamera Custom */}
           <div className="flex flex-col gap-1.5 p-2 rounded border border-amber-500/20 bg-amber-500/5">
             <div className="flex items-center justify-between">
               <label className="section-label text-amber-400 font-semibold mb-0">🔍 Zoom Kamera Khusus Pesan Ini</label>
@@ -298,10 +299,10 @@ function MessageRow({
             >
               <option value="off">OFF (Ikuti Auto Zoom Global)</option>
               <option value="1.15">1.15x (Soft Zoom)</option>
-              <option value="1.30">1.30x (Standard Focus)</option>
-              <option value="1.50">1.50x (Drama Focus)</option>
-              <option value="1.80">1.80x (Close-Up)</option>
-              <option value="2.20">2.20x (Extreme Focus)</option>
+              <option value="1.3">1.30x (Standard Focus)</option>
+              <option value="1.5">1.50x (Drama Focus)</option>
+              <option value="1.8">1.80x (Close-Up)</option>
+              <option value="2.2">2.20x (Extreme Focus)</option>
             </select>
           </div>
 
