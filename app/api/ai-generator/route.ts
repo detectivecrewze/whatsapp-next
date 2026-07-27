@@ -58,11 +58,22 @@ Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
   ]
 }
 
-Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT):
-1. ADAPTIF & PINTAR MEMILIH TIPE PESAN (VARIASKAN SESUAI CERITA — DILARANG VOICE NOTE!):
+Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT & MANDATORI):
+1. ALUR CHAT BERKESINAMBUNGAN & NYAMBUNG 100% (SETIAP PESAN MERESPON PESAN SEBELUMNYA):
+   - Setiap bubble chat HARUS BERHUBUNGAN LANGSUNG & LOGIS dengan pesan sebelumnya! Dilarang keras menghasilkan kalimat yang ngablu / tiba-tiba ganti topik tanpa konteks.
+   - Jika suatu pihak mengirim GAMBAR ('image'), FOTO ('view_once'), atau NOTIFIKASI ('notification') dengan teks/caption (misal: "Nih aku udah berdiri di depan pintu kamu"), maka bubble chat SETELAHNYA HARUS LANGSUNG MERESPON secara spesifik (misal: "Tapi kok gak ada suara langkah kaki ya...").
+
+2. ALOKASI BABAK CERITA DENGAN TARGET ${targetLength} CHAT (PAHAMI KAPAN ENDING):
+   - Kamu harus mengelola alur cerita agar pas dalam TEPAT ${targetLength} bubble chat:
+     * BABAK 1 (Awal ~25% chat): Pancingan & Pembuka Obrolan (Hook yang menarik).
+     * BABAK 2 (Tengah ~50% chat): Perkembangan Cerita, Bukti Foto/Notif/Transfer, Konflik Makin Panas/Seram.
+     * BABAK 3 (Klimaks ~20% chat): Puncak Kejutan / Plot Twist Utama.
+     * BABAK 4 (PESAN TERAKHIR ke-${targetLength}): ENDING PUNCHLINE MEMATIKAN (Penutup cerita yang jelas: bikin kaget/merinding/tertawa). DILARANG MENUTUP CERITA DENGAN GAMBAR TANPA CAPTION ATAU CHAT GANTUNG NGABLU!
+
+3. ADAPTIF & PINTAR MEMILIH TIPE PESAN (VARIASKAN SESUAI CERITA — DILARANG VOICE NOTE!):
    - Jangan kaku berpaku pada pesan teks 100%! Pilih tipe pesan yang paling cocok dan natural untuk mendukung cerita (terutama GAMBAR/PAP FOTO, NOTIFIKASI, TRANSFER, DLL.):
    - DILARANG PAKAI type 'voice_note' (Jangan pernah gunakan Voice Note / VN).
-   - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." } (JANGAN isi imageData, biarkan user upload gambar manual!).
+   - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." } (Isi teks di atribut 'text' sebagai caption foto!).
    - Type 'view_once': Gunakan saat kirim foto rahasia / sekali lihat (view once).
    - Type 'notification': Gunakan saat ada notifikasi HP yang memotong obrolan (cth: Notifikasi m-Banking, WhatsApp pesan dari Mama/Mantan, Notifikasi IG, dll.). Contoh: { "type": "notification", "direction": "incoming", "time": "21:33", "notifSender": "m-Banking", "notifTitle": "Transfer Masuk", "text": "Rp 500.000 masuk dari Budi" }
    - Type 'transfer': Gunakan saat ada momen bayar utang / transfer saldo.
@@ -70,17 +81,17 @@ Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT):
    - Type 'deleted': Gunakan saat ada momen salah kirim lalu ditarik (Pesan ini telah dihapus).
    - Type 'text': Gunakan untuk obrolan teks biasa.
 
-2. CHAT ALAMI BUBBLE PENDEK KETIKAN JEMPOL INDONESIA:
+4. CHAT ALAMI BUBBLE PENDEK KETIKAN JEMPOL INDONESIA:
    - Teks pesan HARUS terasa seperti ketikan orang Indonesia asli di HP (singkat, 1-8 kata per bubble, spontan, pakai bahasa gaul/santai sehari-hari seperti: wkwk, njir, banget, gak, lu, gua, aku, kamu, dll. sesuai konteks).
    - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
 
-3. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
+5. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
    - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA (Horor, Komedi, Romantis, Olshop, dll.).
 
 ${dramaticRuleInstruction}
 
-5. JUMLAH PESAN: ${lengthRule} Wajib penuhi target jumlah pesan TEPAT, jangan kurang.
-6. Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
+6. JUMLAH PESAN: ${lengthRule} Wajib penuhi target jumlah pesan TEPAT, jangan kurang.
+7. Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }
 
 export async function POST(req: NextRequest) {

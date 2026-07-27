@@ -171,7 +171,7 @@ export default function AiGeneratorSection() {
           id: newId('msg'),
           type,
           direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
-          text: type === 'image' ? undefined : (item.text ?? (type === 'text' ? '' : undefined)),
+          text: item.text ?? (type === 'text' ? '' : undefined),
           caption: caption || (item as any).caption,
           notifSender: (item as any).notifSender,
           notifTitle: (item as any).notifTitle,

@@ -47,6 +47,7 @@ function ImageBubble({ message }: { message: Message }) {
   const br = isOut ? '12px 0 12px 12px' : '0 12px 12px 12px';
 
   const hasValidImage = Boolean(message.imageData && !imgErr);
+  const captionText = message.caption || (message.text && message.type === 'image' ? message.text : undefined);
 
   return (
     <div
@@ -57,11 +58,11 @@ function ImageBubble({ message }: { message: Message }) {
         maxWidth: '260px',
         width: '100%',
         boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-        padding: message.caption ? '3px 3px 0 3px' : '0',
+        padding: captionText ? '3px 3px 0 3px' : '0',
       }}
     >
       {hasValidImage ? (
-        <div className="relative w-full overflow-hidden" style={{ borderRadius: message.caption ? '8px' : br }}>
+        <div className="relative w-full overflow-hidden" style={{ borderRadius: captionText ? '8px' : br }}>
           <img
             src={message.imageData}
             alt=""
@@ -78,11 +79,11 @@ function ImageBubble({ message }: { message: Message }) {
       ) : (
         /* Built-in App Default Placeholder Card */
         <div
-          className="w-full h-[140px] flex flex-col items-center justify-center gap-1.5 p-3 text-center"
-          style={{ background: 'rgba(0,0,0,0.22)', borderRadius: message.caption ? '8px' : br }}
+          className="w-full h-[130px] flex flex-col items-center justify-center gap-1.5 p-3 text-center"
+          style={{ background: 'rgba(0,0,0,0.22)', borderRadius: captionText ? '8px' : br }}
         >
-          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-300 mb-0.5">
-            <ImageIcon size={20} />
+          <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-300 mb-0.5">
+            <ImageIcon size={18} />
           </div>
           <span style={{ color: 'var(--wa-text-muted)', fontSize: 11, fontWeight: 600 }}>
             📷 Gambar (Klik di Editor untuk Upload)
@@ -90,10 +91,10 @@ function ImageBubble({ message }: { message: Message }) {
         </div>
       )}
 
-      {message.caption && (
+      {captionText && (
         <div className="px-2.5 pt-1.5 pb-0.5">
           <p style={{ fontSize: '13.5px', color: 'var(--wa-text)', lineHeight: '1.35' }}>
-            {stripAudioTags(message.caption)}
+            {stripAudioTags(captionText)}
           </p>
         </div>
       )}
