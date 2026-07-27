@@ -17,12 +17,12 @@ const GEMINI_MODEL_CHAIN = [
   'gemini-3.6-flash',
 ];
 
-// ── Qwen endpoints & model ───────────────────────────────────────────────────
+// ── Qwen endpoints & model chain ─────────────────────────────────────────────
 const QWEN_ENDPOINTS = [
   'https://dashscope-intl.aliyuncs.com/compatible-mode/v1/chat/completions',
   'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',
 ];
-const QWEN_MODEL = 'qwen-plus';
+const QWEN_MODEL_CHAIN = ['qwen-max', 'qwen-plus', 'qwen-turbo'];
 
 // ── Build system prompt ───────────────────────────────────────────────────────
 function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'normal'): string {
@@ -125,41 +125,46 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log(`[AI/Qwen] Requesting Qwen model ${QWEN_MODEL}...`);
+      console.log(`[AI/Qwen] Requesting Qwen model chain...`);
       let qwenRes: Response | null = null;
       let lastQwenErr = '';
 
-      for (const endpoint of QWEN_ENDPOINTS) {
-        try {
-          const res = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${activeQwenKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              model: QWEN_MODEL,
-              messages: [
-                { role: 'system', content: systemInstruction },
-                { role: 'user', content: userPrompt },
-              ],
-              response_format: { type: 'json_object' },
-              temperature: 0.8,
-            }),
-          });
+      for (const qwenModel of QWEN_MODEL_CHAIN) {
+        for (const endpoint of QWEN_ENDPOINTS) {
+          try {
+            console.log(`[AI/Qwen] → Trying model: ${qwenModel} at ${endpoint}...`);
+            const res = await fetch(endpoint, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${activeQwenKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                model: qwenModel,
+                messages: [
+                  { role: 'system', content: systemInstruction },
+                  { role: 'user', content: userPrompt },
+                ],
+                response_format: { type: 'json_object' },
+                temperature: 0.8,
+              }),
+            });
 
-          if (res.ok) {
-            qwenRes = res;
-            break;
-          } else {
-            const errBody = await res.text();
-            lastQwenErr = `Endpoint ${endpoint} HTTP ${res.status}: ${errBody.slice(0, 300)}`;
+            if (res.ok) {
+              console.log(`[AI/Qwen] ✅ SUCCESS with model ${qwenModel}`);
+              qwenRes = res;
+              break;
+            } else {
+              const errBody = await res.text();
+              lastQwenErr = `Model ${qwenModel} HTTP ${res.status}: ${errBody.slice(0, 300)}`;
+              console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
+            }
+          } catch (e: any) {
+            lastQwenErr = `Model ${qwenModel} exception: ${e.message}`;
             console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
           }
-        } catch (e: any) {
-          lastQwenErr = `Endpoint ${endpoint} exception: ${e.message}`;
-          console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
         }
+        if (qwenRes) break;
       }
 
       if (!qwenRes) {
