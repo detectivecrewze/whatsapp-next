@@ -19,8 +19,8 @@ export default function WhatsAppCanvas() {
       if (containerRef.current) {
         const parent = containerRef.current.parentElement;
         if (!parent) return;
-        const availH = parent.clientHeight - 40;
-        const availW = parent.clientWidth - 40;
+        const availH = parent.clientHeight - 24;
+        const availW = parent.clientWidth - 24;
         const scaleH = availH / CANVAS_HEIGHT;
         const scaleW = availW / CANVAS_WIDTH;
         const computedScale = Math.min(scaleH, scaleW, 1);

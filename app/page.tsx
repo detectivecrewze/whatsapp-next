@@ -20,16 +20,16 @@ export default function EditorPage() {
 
       {/* Right panel — live canvas preview + studio player controller */}
       <div
-        className="flex-1 flex flex-col items-center justify-center p-4 relative overflow-hidden"
+        className="flex-1 flex flex-col items-center justify-between p-4 relative overflow-hidden"
         style={{ background: 'var(--ui-bg)' }}
       >
-        {/* Phone canvas preview */}
-        <div className="flex-1 w-full flex items-center justify-center">
+        {/* Phone canvas preview area */}
+        <div className="flex-1 w-full flex items-center justify-center min-h-0 relative">
           <WhatsAppCanvas />
         </div>
 
-        {/* Floating Studio Player Control Bar */}
-        <div className="absolute bottom-6 z-30">
+        {/* Floating Studio Player Control Bar at bottom */}
+        <div className="pt-2 shrink-0 z-30">
           <StudioPlayerControl />
         </div>
       </div>
