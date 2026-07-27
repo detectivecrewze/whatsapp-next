@@ -37,46 +37,58 @@ function TextBubble({ message }: { message: Message }) {
   );
 }
 
-// Image Bubble
-// Image Bubble
+// Image & GIF Bubble (Full Width Alignment)
 function ImageBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
   const isGif = message.imageData?.includes('.gif') || message.imageData?.startsWith('data:image/gif');
 
+  const bg = isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)';
+  const br = isOut ? '12px 0 12px 12px' : '0 12px 12px 12px';
+
   return (
     <div
-      className={`relative rounded-[8px] overflow-hidden p-[3px] ${isOut ? 'ml-auto bubble-out' : 'bubble-in'}`}
-      style={{ maxWidth: '240px' }}
+      className={`relative overflow-hidden ${isOut ? 'ml-auto' : ''}`}
+      style={{
+        background: bg,
+        borderRadius: br,
+        maxWidth: '260px',
+        width: '100%',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        padding: message.caption ? '3px 3px 0 3px' : '0',
+      }}
     >
       {message.imageData ? (
-        <div className="relative rounded-[6px] overflow-hidden">
+        <div className="relative w-full overflow-hidden" style={{ borderRadius: message.caption ? '8px' : br }}>
           <img
             src={message.imageData}
             alt="media"
-            className="w-full max-h-[280px] object-cover block"
+            className="w-full max-h-[300px] object-cover block"
+            style={{ width: '100%' }}
           />
           {isGif && (
-            <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-bold text-white tracking-wider">
+            <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-bold text-[#00a884] tracking-wider">
               GIF
             </span>
           )}
         </div>
       ) : (
         <div
-          className="w-[200px] h-[150px] flex items-center justify-center rounded-[6px]"
-          style={{ background: 'rgba(0,0,0,0.2)' }}
+          className="w-full h-[150px] flex items-center justify-center opacity-60"
+          style={{ background: 'rgba(0,0,0,0.15)', borderRadius: message.caption ? '8px' : br }}
         >
           <span style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>🖼 Gambar / GIF</span>
         </div>
       )}
+
       {message.caption && (
-        <div className="px-1.5 pt-1.5 pb-0.5">
+        <div className="px-2.5 pt-1.5 pb-0.5">
           <p style={{ fontSize: '13.5px', color: 'var(--wa-text)', lineHeight: '1.35' }}>
             {stripAudioTags(message.caption)}
           </p>
         </div>
       )}
-      <div className="px-1 pb-0.5">
+
+      <div className="flex items-center justify-end gap-1 px-2 pb-1.5 pt-0.5">
         <TimeRow time={message.time} direction={message.direction} />
       </div>
     </div>
