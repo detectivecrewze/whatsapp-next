@@ -53,7 +53,7 @@ Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
   "name": "Nama Kontak yang Pas untuk Cerita (cth: Sayang 💕, Mantan 💔, Bokap 👨, dll)",
   "messages": [
     { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Sayang" },
-    { "type": "image", "direction": "incoming", "time": "21:31", "text": "Lihat nih foto yang tadi di tangga depan kamar...", "imageData": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80" },
+    { "type": "image", "direction": "incoming", "time": "21:31", "text": "Lihat nih foto yang tadi di tangga depan kamar..." },
     { "type": "notification", "direction": "incoming", "time": "21:31", "notifSender": "Mama", "notifTitle": "Pesan Baru", "text": "Pulang sekarang nak, udah malam!" }
   ]
 }
@@ -62,7 +62,7 @@ Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT):
 1. ADAPTIF & PINTAR MEMILIH TIPE PESAN (VARIASKAN SESUAI CERITA — DILARANG VOICE NOTE!):
    - Jangan kaku berpaku pada pesan teks 100%! Pilih tipe pesan yang paling cocok dan natural untuk mendukung cerita (terutama GAMBAR/PAP FOTO, NOTIFIKASI, TRANSFER, DLL.):
    - DILARANG PAKAI type 'voice_note' (Jangan pernah gunakan Voice Note / VN).
-   - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." }
+   - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." } (JANGAN isi imageData, biarkan user upload gambar manual!).
    - Type 'view_once': Gunakan saat kirim foto rahasia / sekali lihat (view once).
    - Type 'notification': Gunakan saat ada notifikasi HP yang memotong obrolan (cth: Notifikasi m-Banking, WhatsApp pesan dari Mama/Mantan, Notifikasi IG, dll.). Contoh: { "type": "notification", "direction": "incoming", "time": "21:33", "notifSender": "m-Banking", "notifTitle": "Transfer Masuk", "text": "Rp 500.000 masuk dari Budi" }
    - Type 'transfer': Gunakan saat ada momen bayar utang / transfer saldo.

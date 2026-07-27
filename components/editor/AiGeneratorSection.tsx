@@ -152,18 +152,13 @@ export default function AiGeneratorSection() {
           timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
         }
 
-        // Image fallback handling
-        let imageData = (item as any).imageData || (item as any).imageUrl;
-        if ((type === 'image' || type === 'view_once') && !imageData) {
-          const lowerPrompt = topic.toLowerCase();
-          if (lowerPrompt.includes('horor') || lowerPrompt.includes('hantu') || lowerPrompt.includes('seram')) {
-            imageData = 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80';
-          } else if (lowerPrompt.includes('makan') || lowerPrompt.includes('seblak') || lowerPrompt.includes('kafe') || lowerPrompt.includes('kopi')) {
-            imageData = 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80';
-          } else if (lowerPrompt.includes('transfer') || lowerPrompt.includes('uang') || lowerPrompt.includes('gaji')) {
-            imageData = 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=400&q=80';
-          } else {
-            imageData = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400&q=80';
+        // For image type, keep imageData undefined so it defaults to built-in app placeholder card
+        // This allows user to manually pick/upload their image in the editor.
+        let imageData: string | undefined = undefined;
+        let caption: string | undefined = undefined;
+        if (type === 'image') {
+          if (item.text && item.text.trim()) {
+            caption = item.text.trim();
           }
         }
 
@@ -176,8 +171,8 @@ export default function AiGeneratorSection() {
           id: newId('msg'),
           type,
           direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
-          text: item.text ?? (type === 'text' ? '' : undefined),
-          caption: (item as any).caption,
+          text: type === 'image' ? undefined : (item.text ?? (type === 'text' ? '' : undefined)),
+          caption: caption || (item as any).caption,
           notifSender: (item as any).notifSender,
           notifTitle: (item as any).notifTitle,
           imageData,

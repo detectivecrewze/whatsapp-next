@@ -4,7 +4,7 @@ import React from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { getSenderColor, stripAudioTags } from '@/lib/utils';
-import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2 } from 'lucide-react';
+import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2, Image as ImageIcon } from 'lucide-react';
 import { Message } from '@/types';
 
 // Time + tick row
@@ -37,13 +37,16 @@ function TextBubble({ message }: { message: Message }) {
   );
 }
 
-// Image & GIF Bubble (Full Width Alignment)
+// Image & GIF Bubble (Full Width Alignment & Default App Placeholder Card)
 function ImageBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
   const isGif = message.imageData?.includes('.gif') || message.imageData?.startsWith('data:image/gif');
+  const [imgErr, setImgErr] = React.useState(false);
 
   const bg = isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)';
   const br = isOut ? '12px 0 12px 12px' : '0 12px 12px 12px';
+
+  const hasValidImage = Boolean(message.imageData && !imgErr);
 
   return (
     <div
@@ -57,13 +60,14 @@ function ImageBubble({ message }: { message: Message }) {
         padding: message.caption ? '3px 3px 0 3px' : '0',
       }}
     >
-      {message.imageData ? (
+      {hasValidImage ? (
         <div className="relative w-full overflow-hidden" style={{ borderRadius: message.caption ? '8px' : br }}>
           <img
             src={message.imageData}
-            alt="media"
+            alt=""
             className="w-full max-h-[300px] object-cover block"
             style={{ width: '100%' }}
+            onError={() => setImgErr(true)}
           />
           {isGif && (
             <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded bg-black/70 text-[10px] font-bold text-[#00a884] tracking-wider">
@@ -72,11 +76,17 @@ function ImageBubble({ message }: { message: Message }) {
           )}
         </div>
       ) : (
+        /* Built-in App Default Placeholder Card */
         <div
-          className="w-full h-[150px] flex items-center justify-center opacity-60"
-          style={{ background: 'rgba(0,0,0,0.15)', borderRadius: message.caption ? '8px' : br }}
+          className="w-full h-[140px] flex flex-col items-center justify-center gap-1.5 p-3 text-center"
+          style={{ background: 'rgba(0,0,0,0.22)', borderRadius: message.caption ? '8px' : br }}
         >
-          <span style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>🖼 Gambar / GIF</span>
+          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-gray-300 mb-0.5">
+            <ImageIcon size={20} />
+          </div>
+          <span style={{ color: 'var(--wa-text-muted)', fontSize: 11, fontWeight: 600 }}>
+            📷 Gambar (Klik di Editor untuk Upload)
+          </span>
         </div>
       )}
 
