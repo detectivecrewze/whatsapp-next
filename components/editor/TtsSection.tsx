@@ -161,24 +161,25 @@ export default function TtsSection() {
           {/* Provider selector */}
           <div>
             <label className="section-label">Provider TTS</label>
-            <div className="grid grid-cols-2 gap-1.5">
+            <div className="grid grid-cols-3 gap-1">
               {[
-                { value: 'elevenlabs', label: '⭐ ElevenLabs', sub: 'Premium, Realistis' },
-                { value: 'free_neural', label: '🆓 Google TTS', sub: 'Gratis, Cepat' },
+                { value: 'elevenlabs', label: '⭐ ElevenLabs', sub: 'Premium' },
+                { value: 'qwen_cosyvoice', label: '🌐 Qwen AI', sub: 'CosyVoice' },
+                { value: 'free_neural', label: '🆓 Google', sub: 'Gratis' },
               ].map(({ value, label, sub }) => (
                 <button
                   key={value}
-                  onClick={() => setTtsProvider(value as 'elevenlabs' | 'free_neural')}
-                  className="py-2 px-2 rounded-lg text-left border transition-all"
+                  onClick={() => setTtsProvider(value as any)}
+                  className="py-2 px-1.5 rounded-lg text-left border transition-all"
                   style={{
                     background: ttsProvider === value ? 'rgba(37,211,102,0.12)' : 'var(--ui-card)',
                     borderColor: ttsProvider === value ? 'var(--wa-green)' : 'var(--ui-border)',
                   }}
                 >
-                  <p className="text-[12px] font-semibold" style={{ color: ttsProvider === value ? 'var(--wa-green)' : 'var(--wa-text)' }}>
+                  <p className="text-[11.5px] font-semibold truncate" style={{ color: ttsProvider === value ? 'var(--wa-green)' : 'var(--wa-text)' }}>
                     {label}
                   </p>
-                  <p className="text-[10px]" style={{ color: 'var(--wa-text-muted)' }}>{sub}</p>
+                  <p className="text-[9.5px] truncate" style={{ color: 'var(--wa-text-muted)' }}>{sub}</p>
                 </button>
               ))}
             </div>
@@ -240,6 +241,19 @@ export default function TtsSection() {
             </>
           )}
 
+          {/* Qwen CosyVoice settings */}
+          {ttsProvider === 'qwen_cosyvoice' && (
+            <div className="p-2.5 rounded-lg border border-purple-800/40 bg-purple-950/30 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5 text-purple-300 text-xs font-semibold">
+                <ShieldCheck size={14} className="text-purple-400" />
+                <span>Qwen Speech Engine (Aliyun CosyVoice)</span>
+              </div>
+              <p className="text-[11px] text-purple-200/80 leading-relaxed">
+                Menggunakan QWEN_API_KEY terkonfigurasi. Mendukung sintesis suara ekspresif Aliyun CosyVoice / Sambert.
+              </p>
+            </div>
+          )}
+
           {/* Voice selectors */}
           <div className="grid grid-cols-1 gap-2">
             {/* Incoming voice */}
@@ -252,12 +266,20 @@ export default function TtsSection() {
                   onChange={(e) => setTtsVoiceIn(e.target.value)}
                   disabled={ttsProvider === 'free_neural'}
                 >
-                  {ttsProvider === 'elevenlabs'
-                    ? ELEVENLABS_VOICES.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))
-                    : <option value="id">🇮🇩 Bahasa Indonesia</option>
-                  }
+                  {ttsProvider === 'elevenlabs' ? (
+                    ELEVENLABS_VOICES.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))
+                  ) : ttsProvider === 'qwen_cosyvoice' ? (
+                    <>
+                      <option value="longxiaochun">Longxiaochun (CosyVoice Wanita - Lembut)</option>
+                      <option value="longwan">Longwan (CosyVoice Pria - Narasi)</option>
+                      <option value="alex">Alex (CosyVoice English/Multi)</option>
+                      <option value="anna">Anna (CosyVoice English/Multi)</option>
+                    </>
+                  ) : (
+                    <option value="id">🇮🇩 Bahasa Indonesia</option>
+                  )}
                 </select>
                 {ttsProvider === 'elevenlabs' && (
                   <button
@@ -282,12 +304,20 @@ export default function TtsSection() {
                   onChange={(e) => setTtsVoiceOut(e.target.value)}
                   disabled={ttsProvider === 'free_neural'}
                 >
-                  {ttsProvider === 'elevenlabs'
-                    ? ELEVENLABS_VOICES.map((v) => (
-                        <option key={v.id} value={v.id}>{v.name}</option>
-                      ))
-                    : <option value="id">🇮🇩 Bahasa Indonesia</option>
-                  }
+                  {ttsProvider === 'elevenlabs' ? (
+                    ELEVENLABS_VOICES.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))
+                  ) : ttsProvider === 'qwen_cosyvoice' ? (
+                    <>
+                      <option value="longwan">Longwan (CosyVoice Pria - Narasi)</option>
+                      <option value="longxiaochun">Longxiaochun (CosyVoice Wanita - Lembut)</option>
+                      <option value="alex">Alex (CosyVoice English/Multi)</option>
+                      <option value="anna">Anna (CosyVoice English/Multi)</option>
+                    </>
+                  ) : (
+                    <option value="id">🇮🇩 Bahasa Indonesia</option>
+                  )}
                 </select>
                 {ttsProvider === 'elevenlabs' && (
                   <button

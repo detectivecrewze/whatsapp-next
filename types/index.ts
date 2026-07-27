@@ -17,7 +17,7 @@ export type MessageDirection = 'incoming' | 'outgoing';
 export type PhoneOs = 'ios' | 'android';
 export type ChatType = 'personal' | 'group';
 export type BgType = 'default' | 'color' | 'image';
-export type TtsProvider = 'elevenlabs' | 'free_neural';
+export type TtsProvider = 'elevenlabs' | 'free_neural' | 'qwen_cosyvoice';
 export type HeaderStatus = 'online' | 'typing' | 'custom';
 
 export interface Message {
