@@ -199,59 +199,36 @@ export default function PreviewClient({ presetId }: Props) {
             <WhatsAppCanvas />
           </div>
 
-          {/* Bottom HUD */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 64,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-              background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)',
-              zIndex: 40,
-            }}
-          >
-            {status === 'playing' && (
+          {/* Bottom HUD - Only shown when done to replay, hidden during playback for clean screen recording */}
+          {status === 'done' && (
+            <div
+              style={{
+                position: 'absolute',
+                bottom: 24,
+                left: 0,
+                right: 0,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 40,
+              }}
+            >
               <button
-                onClick={() => (isPaused ? play() : pause())}
+                onClick={handleReplay}
                 style={{
                   display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '10px 24px', borderRadius: 50,
-                  background: 'rgba(37,211,102,0.15)',
-                  border: '1px solid rgba(37,211,102,0.4)',
-                  color: '#25d366', fontWeight: 600, fontSize: 13,
-                  cursor: 'pointer', backdropFilter: 'blur(8px)',
+                  padding: '11px 28px', borderRadius: 50,
+                  background: '#25d366', color: '#000',
+                  fontWeight: 700, fontSize: 14,
+                  border: 'none', cursor: 'pointer',
+                  boxShadow: '0 4px 24px rgba(37,211,102,0.4)',
+                  transition: 'transform 0.2s',
                 }}
               >
-                {isPaused
-                  ? <><Play size={14} /> Lanjutkan</>
-                  : <><Pause size={14} /> Pause</>
-                }
+                <RotateCcw size={15} /> Putar Ulang
               </button>
-            )}
-
-            {status === 'done' && (
-              <>
-                <button
-                  onClick={handleReplay}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '11px 28px', borderRadius: 50,
-                    background: '#25d366', color: '#000',
-                    fontWeight: 700, fontSize: 14,
-                    border: 'none', cursor: 'pointer',
-                    boxShadow: '0 4px 24px rgba(37,211,102,0.35)',
-                  }}
-                >
-                  <RotateCcw size={15} /> Putar Ulang
-                </button>
-              </>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>
