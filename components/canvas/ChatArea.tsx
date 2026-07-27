@@ -1,14 +1,33 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import MessageBubble from './MessageBubble';
+import TypingBubble from './TypingBubble';
 
 // WhatsApp default wallpaper SVG pattern
 const WA_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23111b21'/%3E%3Cg opacity='0.04' fill='%2325d366'%3E%3Cpath d='M25 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM75 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM50 35c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function ChatArea() {
-  const { bgType, bgColor, bgImage, messages, pinnedMessage } = useEditorStore();
+  const { bgType, bgColor, bgImage, messages, pinnedMessage, autoZoom, zoomScale, zoomSpeed } =
+    useEditorStore();
+  const { isPlaying, visibleCount, isTyping, activeMsgId } = usePlayerStore();
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Filter visible messages based on playback state
+  const displayedMessages =
+    visibleCount === -1
+      ? messages
+      : messages.slice(0, visibleCount);
+
+  // Auto scroll to bottom as messages appear
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [displayedMessages.length, isTyping]);
 
   const backgroundStyle: React.CSSProperties =
     bgType === 'default'
@@ -19,8 +38,19 @@ export default function ChatArea() {
       ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
       : { backgroundColor: '#111b21' };
 
+  // Calculate dynamic auto-zoom scale during playback
+  const currentZoomScale = isPlaying && autoZoom && activeMsgId ? zoomScale : 1;
+
   return (
-    <div className="relative flex-1 flex flex-col overflow-hidden" style={backgroundStyle}>
+    <div
+      className="relative flex-1 flex flex-col overflow-hidden transition-transform duration-300"
+      style={{
+        ...backgroundStyle,
+        transform: `scale(${currentZoomScale})`,
+        transformOrigin: 'bottom center',
+        transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+      }}
+    >
       {/* Pinned message banner */}
       {pinnedMessage && (
         <div
@@ -43,12 +73,14 @@ export default function ChatArea() {
         </div>
       )}
 
-
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]">
-        {messages.map((msg) => (
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]">
+        {displayedMessages.map((msg) => (
           <MessageBubble key={msg.id} message={msg} isVisible={true} />
         ))}
+
+        {/* Typing indicator bubble */}
+        {isTyping && <TypingBubble />}
       </div>
 
       {/* Bottom input bar (decorative) */}
