@@ -10,11 +10,10 @@ const DEFAULT_KEY_PART2 = 'pwzgNe1z-uVYoqwQ';
 const GEMINI_KEY =
   process.env.GEMINI_API_KEY || (DEFAULT_KEY_PART1 + DEFAULT_KEY_PART2);
 
-// ── Gemini model fallback chain (Gemini 3.5 Flash Lite as primary for low cost & high limit) ──
+// ── Gemini model fallback chain (Gemini 3.5 Flash Lite primary, Gemini 3.6 Flash fallback) ──
 const MODEL_CHAIN = [
   'gemini-3.5-flash-lite',
-  'gemini-2.5-flash-lite',
-  'gemini-3.5-flash',
+  'gemini-3.6-flash',
 ];
 
 // ── Build system prompt (porting langsung dari worker.js project lama) ────────
@@ -98,20 +97,21 @@ export async function POST(req: NextRequest) {
     let geminiRes: Response | null = null;
     let lastError = '';
 
-    // ── Try each model in chain ─────────────────────────────────────────────
+    // ── Try each model in chain with strict 15s timeout per attempt ─────────
     for (const model of MODEL_CHAIN) {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
       try {
         const res = await fetch(geminiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal: AbortSignal.timeout(15000), // Max 15s wait per model
           body: JSON.stringify({
             contents: [
               { role: 'user', parts: [{ text: userPrompt }] },
             ],
             generationConfig: {
               temperature: 0.85,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 4096,
             },
           }),
         });

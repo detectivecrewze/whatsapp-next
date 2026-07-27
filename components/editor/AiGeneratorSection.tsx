@@ -29,6 +29,7 @@ export default function AiGeneratorSection() {
       const res = await fetch('/api/ai-generator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: AbortSignal.timeout(30000), // Max 30s timeout
         body: JSON.stringify({
           prompt: topic,
           count: msgCount,
