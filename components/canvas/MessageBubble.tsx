@@ -6,10 +6,7 @@ import { getSenderColor } from '@/lib/utils';
 import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2 } from 'lucide-react';
 import { Message } from '@/types';
 
-interface MessageBubbleProps {
-  message: Message;
-  isVisible?: boolean;
-}
+
 
 // Time + tick row
 function TimeRow({ time, direction }: { time?: string; direction: 'incoming' | 'outgoing' }) {
@@ -258,8 +255,22 @@ function DeletedBubble({ message }: { message: Message }) {
   );
 }
 
+interface MessageBubbleProps {
+  message: Message;
+  isVisible?: boolean;
+  isZoomed?: boolean;
+  zoomScale?: number;
+  zoomSpeed?: number;
+}
+
 // Main MessageBubble dispatcher
-export default function MessageBubble({ message, isVisible = true }: MessageBubbleProps) {
+export default function MessageBubble({
+  message,
+  isVisible = true,
+  isZoomed = false,
+  zoomScale = 1.08,
+  zoomSpeed = 400,
+}: MessageBubbleProps) {
   const { chatType } = useEditorStore();
   const isOut = message.direction === 'outgoing';
 
@@ -285,7 +296,14 @@ export default function MessageBubble({ message, isVisible = true }: MessageBubb
   }
 
   return (
-    <div className={`flex flex-col mb-1 ${isOut ? 'items-end' : 'items-start'}`}>
+    <div
+      className={`flex flex-col mb-1 ${isOut ? 'items-end' : 'items-start'} transition-transform duration-300`}
+      style={{
+        transform: isZoomed ? `scale(${zoomScale})` : 'scale(1)',
+        transformOrigin: isOut ? 'right center' : 'left center',
+        transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
+      }}
+    >
       {/* Group sender badge */}
       {!isOut && chatType === 'group' && message.senderName && (
         <span

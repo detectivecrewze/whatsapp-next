@@ -68,18 +68,20 @@ export default function ChatArea() {
         </div>
       )}
 
-      {/* Messages area — auto-zoom applies only inside the chat viewport */}
+      {/* Messages area */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-y-auto px-2.5 py-2 flex flex-col gap-[2px]"
-        style={{
-          transform: `scale(${currentZoomScale})`,
-          transformOrigin: 'bottom center',
-          transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
-        }}
       >
         {displayedMessages.map((msg) => (
-          <MessageBubble key={msg.id} message={msg} isVisible={true} />
+          <MessageBubble
+            key={msg.id}
+            message={msg}
+            isVisible={true}
+            isZoomed={isPlaying && autoZoom && activeMsgId === msg.id}
+            zoomScale={zoomScale}
+            zoomSpeed={zoomSpeed}
+          />
         ))}
 
         {/* Typing indicator bubble */}
