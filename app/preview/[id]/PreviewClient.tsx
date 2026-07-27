@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Play, Pause } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { usePlayerStore } from '@/store/usePlayerStore';
+import { usePlayerStore, initTtsAudio } from '@/store/usePlayerStore';
 import dynamic from 'next/dynamic';
 
 const WhatsAppCanvas = dynamic(
@@ -90,6 +90,7 @@ export default function PreviewClient({ presetId }: Props) {
   // ── Start playback via user gesture ───────────────────────────────────────
   function handleStart() {
     unlockAudio();
+    initTtsAudio(); // Pre-create & unlock singleton TTS audio element for iOS
     startCountdown();
   }
 
@@ -121,6 +122,7 @@ export default function PreviewClient({ presetId }: Props) {
   // ── Replay ────────────────────────────────────────────────────────────────
   function handleReplay() {
     unlockAudio();
+    initTtsAudio(); // Re-unlock TTS audio element on replay
     stop();
     startCountdown();
   }

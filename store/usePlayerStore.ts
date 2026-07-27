@@ -27,6 +27,39 @@ function clearTimer() {
   }
 }
 
+// ── iOS Safari Audio Unlock ─────────────────────────────────────────────────
+// iOS Safari blocks audio elements that are created outside a user gesture.
+// Solution: create ONE singleton HTMLAudioElement during the user gesture (Start button click),
+// then REUSE it for all subsequent TTS playback by changing .src.
+// This keeps the audio element in an "unlocked" state throughout the session.
+let _ttsAudioEl: HTMLAudioElement | null = null;
+
+/**
+ * Call this ONCE during a user gesture (e.g. Start button click) to
+ * pre-create and unlock the shared TTS audio element for iOS Safari.
+ * Exported so PreviewClient.tsx can call it from handleStart().
+ */
+export function initTtsAudio(): void {
+  if (typeof window === 'undefined') return;
+  if (_ttsAudioEl) return; // already initialized
+
+  _ttsAudioEl = new Audio();
+  _ttsAudioEl.preload = 'auto';
+
+  // Play a silent audio immediately to unlock on iOS
+  _ttsAudioEl.src = '/sounds/notification.mp3';
+  _ttsAudioEl.volume = 0.001;
+  _ttsAudioEl.play()
+    .then(() => {
+      _ttsAudioEl!.pause();
+      _ttsAudioEl!.currentTime = 0;
+      _ttsAudioEl!.volume = 1.0;
+    })
+    .catch(() => {
+      // Unlock failed — will attempt normally during playback
+    });
+}
+
 // ── Sound Effects Playback ──────────────────────────────────────────────────
 function playSfx(direction: 'incoming' | 'outgoing') {
   const state = useEditorStore.getState();
@@ -45,9 +78,9 @@ function playSfx(direction: 'incoming' | 'outgoing') {
 }
 
 // ── TTS Voiceover Playback ──────────────────────────────────────────────────
-// Returns a Promise that resolves ONLY when the TTS audio finishes playing.
-// Resolves immediately if TTS is disabled or no audio URL found for this message.
-function playTtsAudio(msgId: string, speed: number, msgIndex?: number): Promise<void> {
+// Uses the singleton audio element so iOS Safari keeps audio unlocked.
+// Resolves when audio ends, errors, or stalls too long.
+function playTtsAudio(msgId: string, msgIndex?: number): Promise<void> {
   return new Promise((resolve) => {
     const state = useEditorStore.getState();
     if (!state.enableTts) return resolve();
@@ -55,24 +88,44 @@ function playTtsAudio(msgId: string, speed: number, msgIndex?: number): Promise<
     const audioMap = state.ttsAudioMap as Record<string, string> | undefined;
     const audioUrl =
       audioMap?.[msgId] ??
-      (msgIndex !== undefined ? (audioMap?.[msgIndex] ?? audioMap?.[String(msgIndex)]) : undefined);
+      (msgIndex !== undefined
+        ? (audioMap?.[msgIndex] ?? audioMap?.[String(msgIndex)])
+        : undefined);
 
     if (!audioUrl) return resolve();
 
     try {
-      const audio = new Audio(audioUrl);
+      // ── Use singleton element (iOS-safe) or fall back to new Audio ──────
+      const audio = _ttsAudioEl ?? new Audio();
+
+      let stalledTimer: ReturnType<typeof setTimeout> | null = null;
+
+      const cleanup = () => {
+        audio.removeEventListener('ended', onEnded);
+        audio.removeEventListener('error', onError);
+        audio.removeEventListener('stalled', onStalled);
+        if (stalledTimer) clearTimeout(stalledTimer);
+      };
+
+      const onEnded = () => { cleanup(); resolve(); };
+      const onError = () => { cleanup(); resolve(); };
+      const onStalled = () => {
+        // If stalled for 6s, give up and continue
+        stalledTimer = setTimeout(() => { cleanup(); resolve(); }, 6000);
+      };
+
+      audio.addEventListener('ended', onEnded, { once: true });
+      audio.addEventListener('error', onError, { once: true });
+      audio.addEventListener('stalled', onStalled, { once: true });
+
+      // Change src on the existing element and replay
       audio.volume = 1.0;
-      // NOTE: Do NOT set audio.playbackRate here.
-      // ElevenLabs bakes `speed` into the audio file at generation time.
-      // Applying playbackRate on top would cause double-speed effect.
-
-      audio.addEventListener('ended', () => resolve(), { once: true });
-      audio.addEventListener('error', () => resolve(), { once: true });
-      audio.addEventListener('stalled', () => {
-        setTimeout(resolve, 5000);
-      }, { once: true });
-
-      audio.play().catch(() => resolve());
+      audio.src = audioUrl;
+      audio.load(); // required after changing src
+      audio.play().catch(() => {
+        cleanup();
+        resolve();
+      });
     } catch {
       resolve();
     }
@@ -102,6 +155,15 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   stop: () => {
     clearTimer();
     isRunning = false; // cancel any in-flight async sequence
+
+    // Stop the singleton TTS audio immediately
+    if (_ttsAudioEl) {
+      try {
+        _ttsAudioEl.pause();
+        _ttsAudioEl.currentTime = 0;
+      } catch {}
+    }
+
     set({
       isPlaying: false,
       isPaused: false,
@@ -176,7 +238,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         playSfx(msg.direction);
 
         // TTS: wait for voice to finish before proceeding
-        await playTtsAudio(msg.id, speed, currentIdx - 1);
+        await playTtsAudio(msg.id, currentIdx - 1);
         if (!isRunning) return;
 
         // Hold pause after audio ends (configured per-message or global)
@@ -190,7 +252,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         playSfx(msg.direction);
 
         // TTS: wait for voice to finish before proceeding
-        await playTtsAudio(msg.id, speed, currentIdx - 1);
+        await playTtsAudio(msg.id, currentIdx - 1);
         if (!isRunning) return;
 
         // Hold pause after audio ends
