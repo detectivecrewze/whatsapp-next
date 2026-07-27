@@ -11,6 +11,9 @@ import ChatSequenceSection from './ChatSequenceSection';
 import WallpaperSection from './WallpaperSection';
 import VideoOptionsSection from './VideoOptionsSection';
 import ZoomSection from './ZoomSection';
+import TtsSection from './TtsSection';
+import AiGeneratorSection from './AiGeneratorSection';
+import CloudSection from '@/components/cloud/CloudSection';
 import ShareLinkButton from '@/components/cloud/ShareLinkButton';
 
 // ─── Accordion section wrapper ────────────────────────────────────────────────
@@ -100,51 +103,26 @@ export default function EditorPanel() {
           <ZoomSection />
         </Section>
 
-        <Section icon={<Volume2 size={15} />} title="Voice Over AI (TTS)">
-          <TtsPlaceholder />
+        <Section icon={<Zap size={15} />} title="🤖 Generator Naskah AI">
+          <AiGeneratorSection />
         </Section>
 
-        <Section icon={<Zap size={15} />} title="Generator Naskah AI">
-          <AiPlaceholder />
+        <Section icon={<Volume2 size={15} />} title="🎙️ Voice Over AI (TTS)">
+          <TtsSection />
         </Section>
 
-        <Section icon={<Cloud size={15} />} title="Cloud Preset">
-          <CloudPlaceholder />
+        <Section icon={<Cloud size={15} />} title="☁️ Cloud Preset">
+          <CloudSection />
         </Section>
       </div>
 
-      {/* Bottom: preview button */}
+      {/* Bottom: preview/record button */}
       <div
         className="px-3 py-3 border-t shrink-0"
         style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
       >
         <ShareLinkButton />
       </div>
-    </div>
-  );
-}
-
-// ── Placeholder sections (Phase 5, 4, 6) ──────────────────────────────────────
-function TtsPlaceholder() {
-  return (
-    <div className="text-center py-4" style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>
-      🎙️ TTS Voice Over — Fase 5
-    </div>
-  );
-}
-
-function AiPlaceholder() {
-  return (
-    <div className="text-center py-4" style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>
-      🤖 AI Script Generator — Fase 4
-    </div>
-  );
-}
-
-function CloudPlaceholder() {
-  return (
-    <div className="text-center py-4" style={{ color: 'var(--wa-text-muted)', fontSize: 12 }}>
-      ☁️ Cloud Preset Manager — Fase 6
     </div>
   );
 }
