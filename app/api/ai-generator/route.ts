@@ -47,7 +47,13 @@ Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
   "messages": [
     { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Sayang" },
     { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Kamu udah tidur belom?" },
-    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Belom nih, baru kelar cuci muka. Kenapa?" }
+    { "type": "view_once", "direction": "incoming", "time": "21:31", "text": "Nih liat foto ini jgn dispill" },
+    { "type": "voice_note", "direction": "incoming", "time": "21:31", "duration": "0:12", "text": "[whispers] Ssst... jangan berisik..." },
+    { "type": "image", "direction": "outgoing", "time": "21:32", "caption": "Nih bukti kejadiannya!", "imageData": "https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80" },
+    { "type": "transfer", "direction": "incoming", "time": "21:33", "text": "Rp 500.000", "caption": "Transfer M-Banking Berhasil" },
+    { "type": "location", "direction": "outgoing", "time": "21:34", "text": "Kopi Kenangan Rest Area KM 19", "caption": "Jl. Tol Jakarta-Cikampek" },
+    { "type": "contact", "direction": "incoming", "time": "21:35", "text": "Dr. Hendra (Spesialis)", "caption": "+62 812-3456-7890" },
+    { "type": "deleted", "direction": "incoming", "time": "21:36" }
   ]
 }
 
@@ -57,19 +63,27 @@ Aturan Penulisan Gaya Chat WhatsApp (SANGAT PENTING):
    - DILARANG BIKIN KALIMAT NARRATIVE TEATER PANJANG BAKU BOHONGAN.
    - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
 
-2. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
+2. PENGGUNAAN VARIASI TIPE PESAN INTERAKTIF & CERDAS (SANGAT DIANJURKAN):
+   Gunakan tipe pesan yang sesuai dengan konteks dan alur cerita agar chat terasa 100% hidup & dramatis:
+   - "text" : Pesan teks biasa (bisa disertai audio tag seperti [excited], [scared], [laughing], dll.)
+   - "image" : Gunakan saat lawan bicara/pengguna mengirim foto bukti, foto suasana tempat/kamar/makanan/cafe/horor. Masukkan URL Unsplash yang relevan jika ada, atau sertakan caption menarik.
+   - "view_once" : Gunakan "Foto Sekali Lihat" (Foto 1x) saat ada pesan rahasia, pap privat, bukti sensitif, atau foto horor yang hanya bisa dilihat 1 kali.
+   - "voice_note" : Gunakan Voice Note saat suasana mendesak, emosi tinggi, bisikan ketakutan, atau malas ketik. Isi field "duration": "0:05", "0:14", "0:28", dll.
+   - "transfer" : Gunakan kartu Transfer Uang saat ada adegan bayar utang, kirim uang jajan, beli barang, atau transferan bokap. Isi field "text": "Rp 250.000" & "caption": "Transfer M-Banking Berhasil".
+   - "contact" : Gunakan saat ada adegan merekomendasikan/mengirim nomor kontak orang lain. Isi field "text": "Nama Kontak" & "caption": "+62 812-xxxx-xxxx".
+   - "location" : Gunakan saat adegan share location / janjian / lokasi tersesat / posisi tempat nongkrong. Isi field "text": "Nama Tempat" & "caption": "Alamat".
+   - "deleted" : Gunakan "Pesan ini telah dihapus" saat ada adegan salah kirim, pesan ditarik karena malu/panik, atau misteri.
+   - "notification" : Notifikasi sistem (cth: "🔒 Pesan dienkripsi secara end-to-end").
+
+3. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
    - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA:
-     * Kalo ide HOROR/SUSPENSE: Buat suasana seram mencekam, rasa takut luar biasa, intonasi emosi melimpah di setiap bubble, atau plot twist impostor.
-     * Kalo ide KOMEDI/LUCU/PRANK: Buat cerita humor yang lucu, ada kebodohan konyol, salah paham kocak, atau ending yang bikin ngakak/tepok jidat. Bahasa santai & gaul!
-     * Kalo ide ROMANTIS/BUCIN: Buat obrolan manis, cemburu lucu, kangen, atau momen romantis yang bikin senyum-senyum sendiri.
-     * Kalo ide DAILY/OLSHOP/NAGIH UTANG: Buat obrolan realistis sehari-hari yang menghibur & relatable.
+     * Kalo ide HOROR/SUSPENSE: Sisipkan Voice Note bisikan ketakutan, Foto Sekali Lihat suasana gelap, atau foto tempat seram.
+     * Kalo ide KOMEDI/LUCU/PRANK: Sisipkan Voice Note tertawa, foto konyol, atau pesan dihapus yang bikin curiga.
+     * Kalo ide ROMANTIS/BUCIN: Sisipkan Voice Note ucapan romantis, Foto Sekali Lihat pap lucu, atau share location ketemuan.
+     * Kalo ide MONEY/UANG/BOKAP/UTANG: Sisipkan kartu Transfer Uang (Rp ...), bukti foto transfer, atau kontak penagih.
 
 ${dramaticRuleInstruction}
 
-4. ATURAN FITUR:
-   - DILARANG MENGGUNAKAN type "voice" (Voice Note).
-   - Gunakan type "notification" HANYA jika cerita butuh notifikasi sistem (misalnya chat dibuka dari nomor lain).
-   - Selain kasus khusus, pakai type "text" saja.
 5. JUMLAH PESAN: ${lengthRule} Wajib penuhi target jumlah pesan TEPAT, jangan kurang.
 6. Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }

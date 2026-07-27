@@ -81,32 +81,53 @@ export default function AiGeneratorSection() {
         throw new Error('AI tidak menghasilkan naskah percakapan. Coba generate ulang atau ubah prompt.');
       }
 
-      // ── Build Message objects with sequential timestamps ──────────────────
+      // ── Build Message objects with sequential timestamps & rich types ─────────
       const now = new Date();
       let currentHour = now.getHours();
       let currentMin = now.getMinutes();
 
+      const validTypes = ['text', 'image', 'view_once', 'voice_note', 'notification', 'transfer', 'contact', 'location', 'deleted'];
+
       const newMessages: Message[] = raw.map((item) => {
-        // Use provided time if valid, else auto-increment
-        if (item.time && /^\d{2}:\d{2}$/.test(item.time)) {
-          return {
-            id: newId('msg'),
-            type: 'text' as const,
-            direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
-            text: item.text ?? '',
-            time: item.time,
-          };
+        // Validate type
+        const rawType = (item.type || 'text').toLowerCase();
+        const type = (validTypes.includes(rawType) ? rawType : 'text') as Message['type'];
+
+        // Determine timestamp
+        let timeStr = item.time;
+        if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) {
+          currentMin += Math.floor(Math.random() * 2) + 1;
+          if (currentMin >= 60) { currentMin -= 60; currentHour = (currentHour + 1) % 24; }
+          timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
         }
 
-        currentMin += Math.floor(Math.random() * 2) + 1;
-        if (currentMin >= 60) { currentMin -= 60; currentHour = (currentHour + 1) % 24; }
-        const timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
+        // Image fallback handling
+        let imageData = (item as any).imageData;
+        if (type === 'image' && !imageData) {
+          const lowerPrompt = topic.toLowerCase();
+          if (lowerPrompt.includes('horor') || lowerPrompt.includes('hantu') || lowerPrompt.includes('seram')) {
+            imageData = 'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&q=80';
+          } else if (lowerPrompt.includes('makan') || lowerPrompt.includes('seblak') || lowerPrompt.includes('kafe') || lowerPrompt.includes('kopi')) {
+            imageData = 'https://images.unsplash.com/photo-1554118811-1e0d58224f24?w=400&q=80';
+          } else {
+            imageData = 'https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=400&q=80';
+          }
+        }
+
+        // Voice note waveform generation
+        const waveform = type === 'voice_note'
+          ? Array.from({ length: 24 }, (_, i) => Math.floor(Math.sin(i * 0.45 + Math.random()) * 35) + 30)
+          : undefined;
 
         return {
           id: newId('msg'),
-          type: 'text' as const,
+          type,
           direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
-          text: item.text ?? '',
+          text: item.text ?? (type === 'text' ? '' : undefined),
+          caption: (item as any).caption,
+          imageData,
+          duration: (item as any).duration || (type === 'voice_note' ? '0:12' : undefined),
+          waveform,
           time: timeStr,
         };
       });
