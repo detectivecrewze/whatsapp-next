@@ -29,35 +29,61 @@ function clearTimer() {
 
 // ── iOS Safari Audio Unlock ─────────────────────────────────────────────────
 // iOS Safari blocks audio elements that are created outside a user gesture.
-// Solution: create ONE singleton HTMLAudioElement during the user gesture (Start button click),
-// then REUSE it for all subsequent TTS playback by changing .src.
-// This keeps the audio element in an "unlocked" state throughout the session.
+// Solution: pre-create shared HTMLAudioElements during user gesture (Start button click),
+// then REUSE them for subsequent TTS & SFX playback.
 let _ttsAudioEl: HTMLAudioElement | null = null;
+let _sfxInAudioEl: HTMLAudioElement | null = null;
+let _sfxOutAudioEl: HTMLAudioElement | null = null;
 
 /**
  * Call this ONCE during a user gesture (e.g. Start button click) to
- * pre-create and unlock the shared TTS audio element for iOS Safari.
- * Exported so PreviewClient.tsx can call it from handleStart().
+ * pre-create and unlock shared TTS & SFX audio elements for iOS Safari / Mobile.
+ * Exported so PreviewClient.tsx & StudioPlayerControl.tsx can call it.
  */
 export function initTtsAudio(): void {
   if (typeof window === 'undefined') return;
-  if (_ttsAudioEl) return; // already initialized
 
-  _ttsAudioEl = new Audio();
-  _ttsAudioEl.preload = 'auto';
+  // 1. TTS Singleton Audio
+  if (!_ttsAudioEl) {
+    _ttsAudioEl = new Audio('/sounds/notification.mp3');
+    _ttsAudioEl.preload = 'auto';
+    _ttsAudioEl.volume = 0.001;
+    _ttsAudioEl.play()
+      .then(() => {
+        _ttsAudioEl!.pause();
+        _ttsAudioEl!.currentTime = 0;
+        _ttsAudioEl!.volume = 1.0;
+      })
+      .catch(() => {});
+  }
 
-  // Play a silent audio immediately to unlock on iOS
-  _ttsAudioEl.src = '/sounds/notification.mp3';
-  _ttsAudioEl.volume = 0.001;
-  _ttsAudioEl.play()
-    .then(() => {
-      _ttsAudioEl!.pause();
-      _ttsAudioEl!.currentTime = 0;
-      _ttsAudioEl!.volume = 1.0;
-    })
-    .catch(() => {
-      // Unlock failed — will attempt normally during playback
-    });
+  // 2. SFX Incoming Singleton Audio
+  if (!_sfxInAudioEl) {
+    _sfxInAudioEl = new Audio('/sounds/notification.mp3');
+    _sfxInAudioEl.preload = 'auto';
+    _sfxInAudioEl.volume = 0.001;
+    _sfxInAudioEl.play()
+      .then(() => {
+        _sfxInAudioEl!.pause();
+        _sfxInAudioEl!.currentTime = 0;
+        _sfxInAudioEl!.volume = 0.85;
+      })
+      .catch(() => {});
+  }
+
+  // 3. SFX Outgoing Singleton Audio
+  if (!_sfxOutAudioEl) {
+    _sfxOutAudioEl = new Audio('/sounds/sfx-out.mp3');
+    _sfxOutAudioEl.preload = 'auto';
+    _sfxOutAudioEl.volume = 0.001;
+    _sfxOutAudioEl.play()
+      .then(() => {
+        _sfxOutAudioEl!.pause();
+        _sfxOutAudioEl!.currentTime = 0;
+        _sfxOutAudioEl!.volume = 0.85;
+      })
+      .catch(() => {});
+  }
 }
 
 // ── Sound Effects Playback ──────────────────────────────────────────────────
@@ -68,10 +94,23 @@ function playSfx(direction: 'incoming' | 'outgoing') {
   if (direction === 'outgoing' && state.useSoundOut === false) return;
 
   try {
-    const src = direction === 'incoming' ? '/sounds/notification.mp3' : '/sounds/sfx-out.mp3';
-    const audio = new Audio(src);
-    audio.volume = 0.85;
-    audio.play().catch(() => {});
+    const sfxAudio = direction === 'incoming' ? _sfxInAudioEl : _sfxOutAudioEl;
+    if (sfxAudio) {
+      sfxAudio.currentTime = 0;
+      sfxAudio.volume = 0.85;
+      sfxAudio.play().catch((err) => {
+        console.warn('[SFX] Pre-unlocked audio play failed, trying fallback:', err);
+        const src = direction === 'incoming' ? '/sounds/notification.mp3' : '/sounds/sfx-out.mp3';
+        const fallback = new Audio(src);
+        fallback.volume = 0.85;
+        fallback.play().catch(() => {});
+      });
+    } else {
+      const src = direction === 'incoming' ? '/sounds/notification.mp3' : '/sounds/sfx-out.mp3';
+      const audio = new Audio(src);
+      audio.volume = 0.85;
+      audio.play().catch(() => {});
+    }
   } catch (e) {
     console.warn('[SFX] Audio play error:', e);
   }
@@ -177,6 +216,7 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   play: () => {
     clearTimer();
     isRunning = false; // cancel previous run if any
+    initTtsAudio(); // Ensure all iOS audio elements (TTS & SFX) are initialized & unlocked
 
     const editorState = useEditorStore.getState();
     const messages = editorState.messages;
