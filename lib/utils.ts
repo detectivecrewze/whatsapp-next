@@ -100,10 +100,19 @@ export function generateWaveform(length = 30): number[] {
   return Array.from({ length }, () => Math.floor(Math.random() * 80) + 10);
 }
 
-/** Group chat — assign deterministic color to sender name */
+/** Group chat — assign deterministic color to sender name (Authentic WhatsApp Dark Mode participant palette) */
 const SENDER_COLORS = [
-  '#e84393', '#00b8d9', '#00c7b1', '#ff8c00',
-  '#a855f7', '#22c55e', '#f59e0b', '#ef4444',
+  '#53bdeb', // WhatsApp Sky Blue
+  '#25d366', // WhatsApp Emerald Green
+  '#e84393', // WhatsApp Deep Pink / Magenta
+  '#a855f7', // WhatsApp Vibrant Purple
+  '#ff8c00', // WhatsApp Amber Orange
+  '#00c7b1', // WhatsApp Persian Teal
+  '#f59e0b', // WhatsApp Golden Honey
+  '#ef4444', // WhatsApp Coral Red
+  '#38bdf8', // WhatsApp Ice Cyan
+  '#f472b6', // WhatsApp Rose Pink
+  '#34d399', // WhatsApp Mint Green
 ];
 export function getSenderColor(name: string): string {
   let hash = 0;

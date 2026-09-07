@@ -10,7 +10,7 @@ import TypingBubble from './TypingBubble';
 const WA_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23111b21'/%3E%3Cg opacity='0.04' fill='%2325d366'%3E%3Cpath d='M25 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM75 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM50 35c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function ChatArea() {
-  const { bgType, bgColor, bgImage, messages, pinnedMessage, autoZoom, zoomScale, zoomSpeed, dateBadge } =
+  const { chatType, bgType, bgColor, bgImage, messages, pinnedMessage, autoZoom, zoomScale, zoomSpeed, dateBadge } =
     useEditorStore();
   const { isPlaying, visibleCount, isTyping, activeMsgId } = usePlayerStore();
 
@@ -93,16 +93,27 @@ export default function ChatArea() {
           </div>
         )}
 
-        {displayedMessages.map((msg) => (
-          <MessageBubble
-            key={msg.id}
-            message={msg}
-            isVisible={true}
-            isZoomed={isPlaying && autoZoom && activeMsgId === msg.id}
-            zoomScale={zoomScale}
-            zoomSpeed={zoomSpeed}
-          />
-        ))}
+        {displayedMessages.map((msg, idx) => {
+          const prevMsg = idx > 0 ? displayedMessages[idx - 1] : null;
+          // Cluster grouping: only show sender name on first message of a consecutive series from the same sender
+          const showSenderName =
+            chatType === 'group' &&
+            msg.direction === 'incoming' &&
+            Boolean(msg.senderName) &&
+            (!prevMsg || prevMsg.direction !== 'incoming' || prevMsg.senderName !== msg.senderName);
+
+          return (
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              isVisible={true}
+              isZoomed={isPlaying && autoZoom && activeMsgId === msg.id}
+              zoomScale={zoomScale}
+              zoomSpeed={zoomSpeed}
+              showSenderName={showSenderName}
+            />
+          );
+        })}
 
         {/* Typing indicator bubble */}
         {isTyping && <TypingBubble />}

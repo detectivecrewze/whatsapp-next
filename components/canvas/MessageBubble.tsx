@@ -21,14 +21,29 @@ function TimeRow({ time, direction }: { time?: string; direction: 'incoming' | '
   );
 }
 
+// Sender Name Header inside Group Chat Bubbles (Authentic WhatsApp)
+function SenderNameHeader({ message, className }: { message: Message; className?: string }) {
+  if (!message.senderName) return null;
+  const color = message.senderColor || getSenderColor(message.senderName);
+  return (
+    <div
+      className={`text-[12.5px] font-bold leading-tight select-none tracking-tight ${className || 'mb-1'}`}
+      style={{ color }}
+    >
+      {message.senderName}
+    </div>
+  );
+}
+
 // Text Bubble
-function TextBubble({ message }: { message: Message }) {
+function TextBubble({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   const visualText = stripAudioTags(message.text || '');
   const isPureUrl = visualText.startsWith('http://') || visualText.startsWith('https://');
 
   return (
     <div className={`bubble-base ${isOut ? 'bubble-out' : 'bubble-in'}`}>
+      {showSenderName && <SenderNameHeader message={message} />}
       {visualText && (
         <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
           {isPureUrl ? (
@@ -46,7 +61,7 @@ function TextBubble({ message }: { message: Message }) {
 }
 
 // Image & GIF Bubble (Full Width Alignment & Default App Placeholder Card)
-function ImageBubble({ message }: { message: Message }) {
+function ImageBubble({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   const isGif = message.imageData?.includes('.gif') || message.imageData?.startsWith('data:image/gif');
   const [imgErr, setImgErr] = React.useState(false);
@@ -66,9 +81,14 @@ function ImageBubble({ message }: { message: Message }) {
         maxWidth: '260px',
         width: '100%',
         boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-        padding: captionText ? '3px 3px 0 3px' : '0',
+        padding: captionText || showSenderName ? '3px 3px 0 3px' : '0',
       }}
     >
+      {showSenderName && (
+        <div className="px-2 pt-1 pb-1">
+          <SenderNameHeader message={message} className="" />
+        </div>
+      )}
       {hasValidImage ? (
         <div className="relative w-full overflow-hidden" style={{ borderRadius: captionText ? '8px' : br }}>
           <img
@@ -115,24 +135,27 @@ function ImageBubble({ message }: { message: Message }) {
 }
 
 // View Once Bubble (Authentic WhatsApp Pill Badge)
-function ViewOnceBubble({ message }: { message: Message }) {
+function ViewOnceBubble({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   return (
     <div
-      className={`bubble-base flex items-center gap-2.5 px-3 py-2 ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
+      className={`bubble-base flex flex-col ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
       style={{ minWidth: '150px' }}
     >
-      <div className="w-6 h-6 rounded-full border-2 border-[#00a884] flex items-center justify-center shrink-0">
-        <span className="text-[11px] font-bold text-[#00a884]">1</span>
+      {showSenderName && <SenderNameHeader message={message} />}
+      <div className="flex items-center gap-2.5 w-full">
+        <div className="w-6 h-6 rounded-full border-2 border-[#00a884] flex items-center justify-center shrink-0">
+          <span className="text-[11px] font-bold text-[#00a884]">1</span>
+        </div>
+        <span className="text-[14px] font-semibold text-white flex-1">Foto</span>
+        <TimeRow time={message.time} direction={message.direction} />
       </div>
-      <span className="text-[14px] font-semibold text-white flex-1">Foto</span>
-      <TimeRow time={message.time} direction={message.direction} />
     </div>
   );
 }
 
 // Voice Note Bubble (Authentic WhatsApp Waveform & Mic Badge)
-function VoiceNoteBubble({ message }: { message: Message }) {
+function VoiceNoteBubble({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   const waveform = message.waveform ?? Array.from({ length: 24 }, (_, i) => Math.floor(Math.sin(i * 0.45) * 35) + 35);
   const { pfp } = useEditorStore();
@@ -141,9 +164,11 @@ function VoiceNoteBubble({ message }: { message: Message }) {
 
   return (
     <div
-      className={`bubble-base flex items-center gap-2.5 px-3 py-2 ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
+      className={`bubble-base flex flex-col ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}
       style={{ width: '235px' }}
     >
+      {showSenderName && <SenderNameHeader message={message} className="mb-1" />}
+      <div className="flex items-center gap-2.5 w-full">
       {/* Avatar for incoming */}
       {!isOut && (
         <div className="w-8 h-8 rounded-full shrink-0 overflow-hidden bg-[#00a884] flex items-center justify-center">
@@ -199,7 +224,8 @@ function VoiceNoteBubble({ message }: { message: Message }) {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
 // Notification Bubble
@@ -223,7 +249,7 @@ function NotificationBubble({ message }: { message: Message }) {
 }
 
 // Transfer Card
-function TransferCard({ message }: { message: Message }) {
+function TransferCard({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   return (
     <div
@@ -231,6 +257,7 @@ function TransferCard({ message }: { message: Message }) {
       style={{ maxWidth: '220px', background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
     >
       <div className="px-3 py-3">
+        {showSenderName && <SenderNameHeader message={message} className="mb-2" />}
         <div className="flex items-center gap-2 mb-2">
           <div className="w-8 h-8 rounded-full bg-green-600 flex items-center justify-center">
             <span className="text-white text-[13px] font-bold">Rp</span>
@@ -255,14 +282,19 @@ function TransferCard({ message }: { message: Message }) {
 }
 
 // Contact Card
-function ContactCard({ message }: { message: Message }) {
+function ContactCard({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   return (
     <div
       className={`rounded-[10px] overflow-hidden ${isOut ? 'ml-auto' : ''}`}
       style={{ maxWidth: '220px', background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
     >
-      <div className="px-3 py-3 flex items-center gap-2.5">
+      {showSenderName && (
+        <div className="px-3 pt-2.5 pb-0.5">
+          <SenderNameHeader message={message} className="" />
+        </div>
+      )}
+      <div className="px-3 py-2.5 flex items-center gap-2.5">
         <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--wa-green-teal)' }}>
           <Phone size={18} className="text-white" />
         </div>
@@ -282,13 +314,18 @@ function ContactCard({ message }: { message: Message }) {
 }
 
 // Location Card
-function LocationCard({ message }: { message: Message }) {
+function LocationCard({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   return (
     <div
       className={`rounded-[10px] overflow-hidden ${isOut ? 'ml-auto' : ''}`}
       style={{ maxWidth: '220px', background: isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)' }}
     >
+      {showSenderName && (
+        <div className="px-3 pt-2 pb-1">
+          <SenderNameHeader message={message} className="" />
+        </div>
+      )}
       <div
         className="w-full h-[120px] flex items-center justify-center"
         style={{ background: '#1a2738' }}
@@ -309,7 +346,7 @@ function LocationCard({ message }: { message: Message }) {
 }
 
 // Link & Web Preview Bubble (Aesthetic WhatsApp Rich Card)
-function LinkBubble({ message }: { message: Message }) {
+function LinkBubble({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   const bg = isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)';
   const br = isOut ? '12px 0 12px 12px' : '0 12px 12px 12px';
@@ -336,9 +373,16 @@ function LinkBubble({ message }: { message: Message }) {
         padding: '3px 3px 2px 3px',
       }}
     >
+      {/* Group Sender Name */}
+      {showSenderName && (
+        <div className="px-2 pt-1 pb-1">
+          <SenderNameHeader message={message} className="" />
+        </div>
+      )}
+
       {/* Optional Commentary Header */}
       {commentary && (
-        <div className="px-2 pt-1 pb-1.5">
+        <div className="px-2 pt-0.5 pb-1.5">
           <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
             {commentary}
           </p>
@@ -435,14 +479,17 @@ function LinkBubble({ message }: { message: Message }) {
 }
 
 // Deleted Message
-function DeletedBubble({ message }: { message: Message }) {
+function DeletedBubble({ message, showSenderName }: { message: Message; showSenderName?: boolean }) {
   const isOut = message.direction === 'outgoing';
   return (
-    <div className={`bubble-base flex items-center gap-2 ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}>
-      <Trash2 size={14} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} />
-      <p style={{ fontSize: '13.5px', fontStyle: 'italic', color: 'var(--wa-text-muted)' }}>
-        Pesan ini telah dihapus
-      </p>
+    <div className={`bubble-base flex flex-col ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}>
+      {showSenderName && <SenderNameHeader message={message} />}
+      <div className="flex items-center gap-2">
+        <Trash2 size={14} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} />
+        <p style={{ fontSize: '13.5px', fontStyle: 'italic', color: 'var(--wa-text-muted)' }}>
+          Pesan ini telah dihapus
+        </p>
+      </div>
     </div>
   );
 }
@@ -453,6 +500,7 @@ interface MessageBubbleProps {
   isZoomed?: boolean;
   zoomScale?: number;
   zoomSpeed?: number;
+  showSenderName?: boolean;
 }
 
 // Main MessageBubble dispatcher
@@ -462,8 +510,8 @@ export default function MessageBubble({
   isZoomed = false,
   zoomScale = 1.08,
   zoomSpeed = 400,
+  showSenderName = false,
 }: MessageBubbleProps) {
-  const { chatType } = useEditorStore();
   const { isPlaying } = usePlayerStore();
   const isOut = message.direction === 'outgoing';
 
@@ -471,17 +519,17 @@ export default function MessageBubble({
 
   const renderBubble = () => {
     switch (message.type) {
-      case 'text': return <TextBubble message={message} />;
-      case 'link': return <LinkBubble message={message} />;
-      case 'image': return <ImageBubble message={message} />;
-      case 'view_once': return <ViewOnceBubble message={message} />;
-      case 'voice_note': return <VoiceNoteBubble message={message} />;
+      case 'text': return <TextBubble message={message} showSenderName={showSenderName} />;
+      case 'link': return <LinkBubble message={message} showSenderName={showSenderName} />;
+      case 'image': return <ImageBubble message={message} showSenderName={showSenderName} />;
+      case 'view_once': return <ViewOnceBubble message={message} showSenderName={showSenderName} />;
+      case 'voice_note': return <VoiceNoteBubble message={message} showSenderName={showSenderName} />;
       case 'notification': return <NotificationBubble message={message} />;
-      case 'transfer': return <TransferCard message={message} />;
-      case 'contact': return <ContactCard message={message} />;
-      case 'location': return <LocationCard message={message} />;
-      case 'deleted': return <DeletedBubble message={message} />;
-      default: return <TextBubble message={message} />;
+      case 'transfer': return <TransferCard message={message} showSenderName={showSenderName} />;
+      case 'contact': return <ContactCard message={message} showSenderName={showSenderName} />;
+      case 'location': return <LocationCard message={message} showSenderName={showSenderName} />;
+      case 'deleted': return <DeletedBubble message={message} showSenderName={showSenderName} />;
+      default: return <TextBubble message={message} showSenderName={showSenderName} />;
     }
   };
 
@@ -507,15 +555,6 @@ export default function MessageBubble({
         transition: `transform ${zoomSpeed}ms cubic-bezier(0.4, 0, 0.2, 1)`,
       }}
     >
-      {/* Group sender badge */}
-      {!isOut && chatType === 'group' && message.senderName && (
-        <span
-          className="text-[11.5px] font-semibold ml-2 mb-0.5"
-          style={{ color: message.senderColor || getSenderColor(message.senderName) }}
-        >
-          {message.senderName}
-        </span>
-      )}
       {renderBubble()}
     </div>
   );
