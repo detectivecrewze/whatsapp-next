@@ -4,6 +4,7 @@
 
 export type MessageType =
   | 'text'
+  | 'link'
   | 'image'
   | 'view_once'
   | 'voice_note'
@@ -27,6 +28,10 @@ export interface Message {
   text?: string;
   caption?: string;
   imageData?: string;       // base64 or CDN URL
+  linkUrl?: string;         // The URL e.g. https://anniv.for-you-always.my.id/...
+  linkTitle?: string;       // Page title e.g. Surprise Nadin 🎁
+  linkDescription?: string; // Description e.g. Kirim satu pesan rahasia...
+  linkImage?: string;       // Thumbnail/banner image (base64 or URL)
   audioDataUrl?: string;    // Pre-rendered TTS CDN URL
   time?: string;
   senderName?: string;      // For group chat badge

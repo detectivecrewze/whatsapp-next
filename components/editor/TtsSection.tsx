@@ -32,9 +32,13 @@ export default function TtsSection() {
     } catch {}
   }, [setElevenKey, setQwenKey]);
 
-  // Helper to extract speakable text from any message type (text, image caption, notification, transfer, etc.)
+  // Helper to extract speakable text from any message type (text, link, image caption, notification, transfer, etc.)
   function getMessageSpeakableText(msg: (typeof messages)[0]): string | undefined {
     if (msg.type === 'text') return msg.text?.trim();
+    if (msg.type === 'link') {
+      const commentary = (msg.text && !msg.text.startsWith('http')) ? msg.text : '';
+      return (commentary || msg.caption || msg.linkTitle || 'Tautan web terkirim')?.trim();
+    }
     if (msg.type === 'image' || msg.type === 'view_once') return (msg.caption || msg.text)?.trim();
     if (msg.type === 'notification') {
       return msg.text?.trim() || msg.caption?.trim() || `${msg.notifSender || 'Notifikasi'}: ${msg.notifTitle || 'Pesan Baru'}`;

@@ -3,8 +3,8 @@
 import React from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
-import { getSenderColor, stripAudioTags } from '@/lib/utils';
-import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2, Image as ImageIcon } from 'lucide-react';
+import { getSenderColor, stripAudioTags, extractDomain } from '@/lib/utils';
+import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2, Image as ImageIcon, Globe } from 'lucide-react';
 import { Message } from '@/types';
 
 // Time + tick row
@@ -25,11 +25,19 @@ function TimeRow({ time, direction }: { time?: string; direction: 'incoming' | '
 function TextBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
   const visualText = stripAudioTags(message.text || '');
+  const isPureUrl = visualText.startsWith('http://') || visualText.startsWith('https://');
+
   return (
     <div className={`bubble-base ${isOut ? 'bubble-out' : 'bubble-in'}`}>
       {visualText && (
         <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
-          {visualText}
+          {isPureUrl ? (
+            <span style={{ color: '#53bdeb' }} className="underline break-all">
+              {visualText}
+            </span>
+          ) : (
+            visualText
+          )}
         </p>
       )}
       <TimeRow time={message.time} direction={message.direction} />
@@ -300,6 +308,132 @@ function LocationCard({ message }: { message: Message }) {
   );
 }
 
+// Link & Web Preview Bubble (Aesthetic WhatsApp Rich Card)
+function LinkBubble({ message }: { message: Message }) {
+  const isOut = message.direction === 'outgoing';
+  const bg = isOut ? 'var(--wa-bubble-out)' : 'var(--wa-bubble-in)';
+  const br = isOut ? '12px 0 12px 12px' : '0 12px 12px 12px';
+
+  const rawUrl = message.linkUrl || (message.text?.startsWith('http') ? message.text : '') || 'https://anniv.for-you-always.my.id/c/auto-********';
+  const domain = extractDomain(rawUrl);
+  const displayTitle = message.linkTitle || (domain ? `${domain}` : 'Tautan Web');
+  const displayDesc = message.linkDescription || 'Klik untuk membuka tautan halaman web';
+  const displayImg = message.linkImage || message.imageData;
+  const [imgErr, setImgErr] = React.useState(false);
+
+  // Commentary text (e.g. "guys, kirim satu pesan buat dia yaa...")
+  const commentary = message.text && !message.text.startsWith('http') ? stripAudioTags(message.text) : (message.caption ? stripAudioTags(message.caption) : null);
+
+  return (
+    <div
+      className={`relative overflow-hidden ${isOut ? 'ml-auto' : ''}`}
+      style={{
+        background: bg,
+        borderRadius: br,
+        maxWidth: '280px',
+        width: '100%',
+        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        padding: '3px 3px 2px 3px',
+      }}
+    >
+      {/* Optional Commentary Header */}
+      {commentary && (
+        <div className="px-2 pt-1 pb-1.5">
+          <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
+            {commentary}
+          </p>
+        </div>
+      )}
+
+      {/* Embedded Rich Preview Card */}
+      <div
+        className="rounded-[8px] overflow-hidden flex flex-col"
+        style={{
+          background: 'rgba(0, 0, 0, 0.22)',
+          border: '1px solid rgba(255, 255, 255, 0.07)',
+        }}
+      >
+        {/* Banner Image or Aesthetic Fallback Banner */}
+        {displayImg && !imgErr ? (
+          <div className="relative w-full h-[125px] overflow-hidden bg-black/30">
+            <img
+              src={displayImg}
+              alt=""
+              className="w-full h-full object-cover block"
+              onError={() => setImgErr(true)}
+            />
+          </div>
+        ) : (
+          <div
+            className="w-full h-[95px] flex flex-col items-center justify-center gap-1.5 relative overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(0,0,0,0.35) 100%)',
+            }}
+          >
+            {/* Ambient circle */}
+            <div
+              className="absolute w-24 h-24 rounded-full pointer-events-none opacity-25"
+              style={{
+                background: 'radial-gradient(circle, #53bdeb 0%, transparent 70%)',
+              }}
+            />
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center shadow-md backdrop-blur-sm"
+              style={{
+                background: 'rgba(255, 255, 255, 0.12)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
+              }}
+            >
+              <Globe size={18} className="text-[#53bdeb]" />
+            </div>
+            <span
+              className="text-[10.5px] font-mono tracking-wider px-2 py-0.5 rounded-full"
+              style={{ background: 'rgba(0,0,0,0.45)', color: 'rgba(255,255,255,0.75)' }}
+            >
+              {domain || 'WEB PREVIEW'}
+            </span>
+          </div>
+        )}
+
+        {/* Card Metadata (Title, Description, Domain) */}
+        <div className="px-2.5 py-2 flex flex-col gap-0.5">
+          <p
+            className="font-semibold text-white leading-tight line-clamp-1"
+            style={{ fontSize: '13.5px' }}
+          >
+            {displayTitle}
+          </p>
+          <p
+            className="text-[11.5px] line-clamp-2 leading-relaxed"
+            style={{ color: 'rgba(255,255,255,0.65)' }}
+          >
+            {displayDesc}
+          </p>
+          <div className="flex items-center gap-1 pt-0.5 text-[10.5px] font-mono" style={{ color: 'rgba(255,255,255,0.45)' }}>
+            <Globe size={11} className="shrink-0 text-[#53bdeb]" />
+            <span className="truncate">{domain}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* The URL itself in WhatsApp link blue (#53bdeb) */}
+      <div className="px-2 pt-1.5 pb-0.5">
+        <span
+          className="break-all hover:underline cursor-pointer select-text"
+          style={{ fontSize: '13.5px', color: '#53bdeb', lineHeight: '1.3' }}
+        >
+          {rawUrl}
+        </span>
+      </div>
+
+      {/* Time & tick row */}
+      <div className="px-1 pb-0.5">
+        <TimeRow time={message.time} direction={message.direction} />
+      </div>
+    </div>
+  );
+}
+
 // Deleted Message
 function DeletedBubble({ message }: { message: Message }) {
   const isOut = message.direction === 'outgoing';
@@ -338,6 +472,7 @@ export default function MessageBubble({
   const renderBubble = () => {
     switch (message.type) {
       case 'text': return <TextBubble message={message} />;
+      case 'link': return <LinkBubble message={message} />;
       case 'image': return <ImageBubble message={message} />;
       case 'view_once': return <ViewOnceBubble message={message} />;
       case 'voice_note': return <VoiceNoteBubble message={message} />;

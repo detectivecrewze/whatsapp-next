@@ -39,6 +39,19 @@ export function stripAudioTags(text: string): string {
     .trim();
 }
 
+/** Extract clean hostname/domain from URL for aesthetic link preview badge */
+export function extractDomain(url?: string): string {
+  if (!url) return '';
+  try {
+    const raw = url.trim();
+    const full = raw.startsWith('http://') || raw.startsWith('https://') ? raw : `https://${raw}`;
+    const parsed = new URL(full);
+    return parsed.hostname.replace(/^www\./, '');
+  } catch {
+    return url.replace(/^https?:\/\//, '').split('/')[0] || '';
+  }
+}
+
 /** Format seconds to mm:ss */
 export function formatDuration(seconds: number): string {
   const m = Math.floor(seconds / 60);

@@ -3,11 +3,12 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, ArrowUpDown, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { newId, getCurrentTime, compressImageFile } from '@/lib/utils';
+import { newId, getCurrentTime, compressImageFile, extractDomain } from '@/lib/utils';
 import { Message, MessageType } from '@/types';
 
 const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
   text: '💬 Teks',
+  link: '🔗 Link / Web',
   image: '🖼️ Gambar',
   view_once: '👁️ View Once',
   voice_note: '🎤 Voice Note',
@@ -63,6 +64,7 @@ function MessageRow({
             style={{
               background:
                 message.type === 'notification' ? 'rgba(168,85,247,0.2)' :
+                message.type === 'link' ? 'rgba(56,189,248,0.2)' :
                 message.type === 'image' ? 'rgba(59,130,246,0.2)' :
                 message.type === 'transfer' ? 'rgba(34,197,94,0.2)' :
                 message.type === 'location' ? 'rgba(239,68,68,0.2)' :
@@ -70,6 +72,7 @@ function MessageRow({
                 message.type === 'deleted' ? 'rgba(107,114,128,0.2)' : 'rgba(255,255,255,0.06)',
               color:
                 message.type === 'notification' ? '#c084fc' :
+                message.type === 'link' ? '#38bdf8' :
                 message.type === 'image' ? '#60a5fa' :
                 message.type === 'transfer' ? '#4ade80' :
                 message.type === 'location' ? '#f87171' :
@@ -90,6 +93,8 @@ function MessageRow({
           <span className="truncate text-[12px] flex-1" style={{ color: 'var(--wa-text)' }}>
             {message.type === 'notification'
               ? `${message.notifSender || 'Notif'}: ${message.text || 'Pesan Baru'}`
+              : message.type === 'link'
+              ? `${message.linkTitle || message.linkUrl || message.text || '🔗 Link Web'}`
               : message.text || MESSAGE_TYPE_LABELS[message.type]}
           </span>
           {open ? <ChevronDown size={12} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} /> : <ChevronRight size={12} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} />}
@@ -149,6 +154,108 @@ function MessageRow({
                   'Ketik pesan...'
                 }
               />
+            </div>
+          )}
+
+          {/* Link / Web Preview specific inputs */}
+          {message.type === 'link' && (
+            <div className="flex flex-col gap-2.5 p-2.5 rounded-lg border border-sky-500/25 bg-sky-500/5">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-sky-400">🔗 Link &amp; Web Rich Preview</span>
+                <span className="text-[10px] text-gray-400">Aesthetic WA Card</span>
+              </div>
+
+              {/* URL Link */}
+              <div>
+                <label className="section-label">URL / Tautan Halaman Web</label>
+                <input
+                  className="input font-mono text-[12px]"
+                  value={message.linkUrl ?? message.text ?? ''}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    onUpdate({
+                      linkUrl: val,
+                      // If title is empty, suggest clean domain
+                      linkTitle: message.linkTitle || (val ? extractDomain(val) : ''),
+                    });
+                  }}
+                  placeholder="https://anniv.for-you-always.my.id/c/auto-..."
+                />
+              </div>
+
+              {/* Title & Description */}
+              <div className="grid grid-cols-1 gap-2">
+                <div>
+                  <label className="section-label">Judul Halaman (Title)</label>
+                  <input
+                    className="input"
+                    value={message.linkTitle ?? ''}
+                    onChange={(e) => onUpdate({ linkTitle: e.target.value })}
+                    placeholder="cth: Surprises Nadin 🎁 / Spotify / Hadiah Spesial"
+                  />
+                </div>
+                <div>
+                  <label className="section-label">Deskripsi / Cuplikan Subtitle</label>
+                  <input
+                    className="input"
+                    value={message.linkDescription ?? ''}
+                    onChange={(e) => onUpdate({ linkDescription: e.target.value })}
+                    placeholder="cth: Klik untuk membuka pesan rahasia buat kamu..."
+                  />
+                </div>
+              </div>
+
+              {/* Additional Commentary Text (e.g. "guys, kirim satu pesan buat dia yaa...") */}
+              <div>
+                <label className="section-label">Pesan Tambahan (Komentar di atas Link)</label>
+                <textarea
+                  className="input resize-none"
+                  rows={2}
+                  value={message.text?.startsWith('http') ? '' : (message.text ?? message.caption ?? '')}
+                  onChange={(e) => onUpdate({ text: e.target.value })}
+                  placeholder="cth: guys, kirim satu pesan buat dia yaa. jangan bilang-bilang 🤫"
+                />
+              </div>
+
+              {/* Banner / Cover Thumbnail */}
+              <div className="flex flex-col gap-1.5">
+                <label className="section-label">Gambar Banner / Thumbnail (Opsional)</label>
+                <input
+                  type="file"
+                  accept="image/*,image/png,image/jpeg,image/gif,image/webp"
+                  className="input text-[11px] p-1"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      const compressedDataUrl = await compressImageFile(file);
+                      onUpdate({ linkImage: compressedDataUrl, imageData: compressedDataUrl });
+                    } catch (err) {
+                      console.error('[ImageUpload] Error compressing link image:', err);
+                    }
+                  }}
+                />
+                <input
+                  className="input text-[11.5px]"
+                  value={message.linkImage?.startsWith('data:') ? '' : (message.linkImage ?? message.imageData ?? '')}
+                  onChange={(e) => onUpdate({ linkImage: e.target.value, imageData: e.target.value })}
+                  placeholder="Atau paste URL Gambar/Banner (https://...)"
+                />
+
+                {/* Preview Thumbnail */}
+                {(message.linkImage || message.imageData) && (
+                  <div className="relative w-24 h-16 rounded-lg overflow-hidden border mt-1" style={{ borderColor: 'var(--ui-border)' }}>
+                    <img src={message.linkImage || message.imageData} alt="preview" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => onUpdate({ linkImage: undefined, imageData: undefined })}
+                      className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full bg-black/80 text-white flex items-center justify-center text-[10px]"
+                      title="Hapus banner"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
