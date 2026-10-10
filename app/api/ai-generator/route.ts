@@ -15,6 +15,9 @@ const QWEN_KEY = process.env.QWEN_API_KEY || '';
 // ── Gemini model chain ────────────────────────────────────────────────────────
 const GEMINI_MODEL_CHAIN = [
   'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-2.5-flash',
+  'gemini-flash-latest',
 ];
 
 // ── Qwen endpoints & model chain ─────────────────────────────────────────────
@@ -24,112 +27,145 @@ const QWEN_ENDPOINTS = [
 ];
 const QWEN_MODEL_CHAIN = ['qwen-max', 'qwen-plus', 'qwen-turbo'];
 
+type StoryType = 'drama_product' | 'horror';
+type RevealType = 'link' | 'image';
+
+interface ProductBrief {
+  url?: string;
+  name?: string;
+  description?: string;
+  image?: string;
+}
+
+interface ExistingMessageBrief {
+  direction?: string;
+  senderName?: string;
+  text?: string;
+  caption?: string;
+  type?: string;
+}
+
+function buildStoryDirective(
+  storyType: StoryType,
+  product?: ProductBrief | null,
+  revealType: RevealType = 'link',
+): string {
+  if (storyType === 'horror') {
+    return `JENIS KONTEN: FAKE CHAT HORROR
+- Mulai dengan kejadian biasa yang langsung memancing rasa penasaran dalam 1-2 bubble pertama.
+- Naikkan ketegangan secara bertahap lewat detail kecil yang realistis, bukan narasi panjang.
+- Pesan terakhir harus menjadi plot twist yang jelas dan pendek.
+- Jangan gunakan link produk, promosi, komedi, tag suara, atau kalimat narator.`;
+  }
+
+  const safeProduct = {
+    url: product?.url?.trim() || 'https://produk-kamu.com',
+    name: product?.name?.trim() || 'Produk Digital',
+    description: product?.description?.trim() || 'Klik untuk membuka',
+  };
+
+  if (revealType === 'image') {
+    return `JENIS KONTEN: DRAMA + PRODUCT REVEAL
+- Ini adalah cerita drama singkat, bukan iklan. Produk harus masuk sebagai penyelesaian emosi atau kejutan di akhir.
+- Bangun pola: hook konflik → respons emosional → rasa penasaran → satu kalimat pengantar → foto/barcode.
+- Pesan TERAKHIR wajib type "image". Aplikasi akan memasang foto/barcode asli milik user, jadi jangan mengarang URL atau isi gambar.
+- Untuk pesan image terakhir, isi field caption dengan satu kalimat pendek yang natural sesuai konteks. Kosongkan caption jika bubble sebelumnya sudah menjadi pengantar yang jelas.
+- Gambar dikirim oleh pihak yang menawarkan solusi/kejutan.
+- Jangan menyebut istilah produk digital, soft selling, CTA, penonton, konten, iklan, atau menjelaskan bahwa gambar tersebut adalah barcode kecuali ide user memang memerlukannya.`;
+  }
+
+  return `JENIS KONTEN: DRAMA + PRODUCT REVEAL
+- Ini adalah cerita drama singkat, bukan iklan. Produk harus masuk sebagai penyelesaian emosi atau kejutan di akhir.
+- Bangun pola: hook konflik → respons emosional → rasa penasaran → satu kalimat pengantar → kartu link.
+- Tema produk dan kalimat pengantar link WAJIB mengikuti ide user. Jangan memakai kalimat tentang minta maaf atau "sedikit tenang" jika ceritanya ulang tahun, hadiah, atau tema lain.
+- Hanya boleh ada SATU ajakan membuka link: pilih salah satu antara bubble sebelum kartu ATAU field text pada kartu link. Jangan menulis dua ajakan yang maknanya sama.
+- Pesan TERAKHIR wajib type "link" dan gunakan data produk berikut PERSIS, jangan mengarang URL/judul baru:
+  linkUrl: ${JSON.stringify(safeProduct.url)}
+  linkTitle: ${JSON.stringify(safeProduct.name)}
+  linkDescription: ${JSON.stringify(safeProduct.description)}
+  linkImage: ""
+- Kartu link dikirim oleh pihak yang menawarkan solusi/kejutan. Isi field text dengan kalimat pendek yang sesuai konteks, atau kosongkan jika bubble sebelumnya sudah mengajak membuka link.
+- Thumbnail asli dipasang otomatis oleh aplikasi setelah AI selesai; jangan mengarang URL gambar.
+- Jangan menyebut istilah produk digital, soft selling, CTA, penonton, konten, atau iklan di dalam percakapan.`;
+}
+
 // ── Build system prompt ───────────────────────────────────────────────────────
-function buildSystemPrompt(targetLength: number, voiceStyle: 'dramatic' | 'normal'): string {
-  let lengthRule = `Buat TEPAT ${targetLength} bubble chat dari awal sampai tamat cerita (tidak boleh kurang, tidak boleh lebih).`;
+function buildSystemPrompt(
+  targetLength: number,
+  storyType: StoryType,
+  product?: ProductBrief | null,
+  revealType: RevealType = 'link',
+): string {
+  return `Kamu adalah penulis naskah fake chat WhatsApp untuk video TikTok dan Reels Indonesia.
 
-  const dramaticRuleInstruction = voiceStyle === 'normal'
-    ? `3. GAYA NORMAL (TANPA TAG EMOSI & TANPA FORMAT EKSTREM):
-   - DILARANG menyisipkan tag emosi kurung siku seperti [scared], [whispers], [laughing], dll.
-   - DILARANG menggunakan format dramatis berlebihan seperti titik-titik berturut-turut banyak atau HURUF KAPITAL TERIAKAN.
-   - Tulis teks percakapan biasa yang santai, alami, bercanda/serius sesuai tema, dan manusiawi.`
-    : `3. ELEVENLABS AUDIO EMOTION TAGS & INTENSIFIKASI FORMATTING (SANGAT WAJIB & INTENS PADA BUBBLE TEKS):
-   - AI ElevenLabs v3 SANGAT PEKA terhadap simbol tanda baca, kapitalisasi, dan Audio Tag.
-   - SISIPKAN AUDIO TAG EMOSI DI BUBBLE TEKS (terutama untuk Horor, Suspense, Drama, & Komedi):
-     * KALO HOROR / SUSPENSE / MISTERI:
-       - Pasang Kombo Tag di AWAL bubble teks: [scared][whispers], [panicked][shouting], [gasp][fearful], [crying][desperate], [trembling][quietly], [angry][shouting].
-       - Gunakan Jeda Napas Ketakutan (... / ......), Gagap (B-bu..., K-kamu...), Teriakan ALL CAPS (JANGAN BUKA!), & Cutoff (—).
-       - Contoh: { "type": "text", "direction": "outgoing", "time": "02:15", "text": "[scared][whispers] B-bu...... di luar kamar...... ada yang ketuk pintu......" }
-     * KALO KOMEDI / LUCU / PRANK:
-       - Gunakan tag: [laughing], [excited], [gasp], [angry], [sighs], [quietly]. Contoh: [laughing] Wkwkwk bjir... lu seriousan?!
-     * KALO ROMANTIS / BUCIN:
-       - Gunakan tag: [whispers], [shy], [happy], [sighs], [quietly], [crying]. Contoh: [whispers] Aku... aku kangen banget sama kamu...`;
+${buildStoryDirective(storyType, product, revealType)}
 
-  return `Kamu adalah penulis naskah cerita pendek percakapan WhatsApp viral profesional (spesialis konten Komedi, Romantis/Bucin, Drama, Horor, dan Olshop/Daily TikTok/Reels/Shorts).
+ATURAN CERITA:
+1. Buat TEPAT ${targetLength} bubble chat dari awal sampai ending. Tidak boleh kurang atau lebih.
+2. Setiap bubble harus merespons bubble sebelumnya dan menjaga identitas dua tokoh secara konsisten.
+3. "outgoing" adalah pemilik HP; "incoming" adalah kontak lawan bicara.
+4. Gunakan bahasa Indonesia sehari-hari yang natural. Satu bubble berisi satu pikiran, idealnya 2-14 kata.
+5. Percakapan harus terasa seperti dua orang yang sudah saling mengenal. Hindari bahasa formal/kaku seperti "aku percaya kamu pasti punya sesuatu yang mengejutkan", "aku baik-baik saja kok", atau kalimat yang menjelaskan situasi secara terang-terangan.
+6. Jangan mengulang informasi, pertanyaan, maupun ajakan yang sama di dua bubble berurutan. Respons harus membawa percakapan maju.
+7. Utamakan ketikan jempol yang spontan: respons pendek, sedikit tidak sempurna, dan sesuai emosi. Jangan membuat setiap bubble menjadi kalimat lengkap yang rapi.
+8. Jangan memakai tag ElevenLabs seperti [scared], [whispers], atau teks narasi dalam tanda kurung.
+9. Jangan memakai voice_note. Tipe yang diizinkan: text, link, image, view_once, notification, transfer, location, deleted.
+10. Gunakan image/notifikasi hanya jika benar-benar membantu alur. Untuk image, taruh keterangannya di field caption.
+11. Jam harus maju secara wajar dengan format HH:MM.
+12. Sebelum mengeluarkan JSON, lakukan pengecekan diam-diam: siapa pemilik HP, siapa kontak, siapa yang mengalami masalah, siapa yang menawarkan solusi, dan apa yang sudah diketahui masing-masing. Perbaiki setiap kata ganti atau respons yang tertukar.
 
-Format Output WAJIB JSON Murni (TANPA markdown backtick, langsung raw JSON):
+FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
 {
   "chatType": "personal",
-  "name": "Nama Kontak yang Pas untuk Cerita (cth: Sayang 💕, Mantan 💔, Bokap 👨, dll)",
+  "name": "Nama kontak yang sesuai cerita",
   "messages": [
-    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Sayang" },
-    { "type": "image", "direction": "incoming", "time": "21:31", "text": "Lihat nih foto yang tadi di tangga depan kamar..." },
-    { "type": "notification", "direction": "incoming", "time": "21:31", "notifSender": "Mama", "notifTitle": "Pesan Baru", "text": "Pulang sekarang nak, udah malam!" }
+    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Isi pesan" },
+    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Balasan" }
   ]
 }
 
-Aturan Penulisan Gaya Chat WhatsApp (SANGAT IMPORTANT & MANDATORI):
-1. ALUR CHAT BERKESINAMBUNGAN & NYAMBUNG 100% (SETIAP PESAN MERESPON PESAN SEBELUMNYA):
-   - Setiap bubble chat HARUS BERHUBUNGAN LANGSUNG & LOGIS dengan pesan sebelumnya! Dilarang keras menghasilkan kalimat yang ngablu / tiba-tiba ganti topik tanpa konteks.
-   - Jika suatu pihak mengirim GAMBAR ('image'), FOTO ('view_once'), atau NOTIFIKASI ('notification') dengan teks/caption (misal: "Nih aku udah berdiri di depan pintu kamu"), maka bubble chat SETELAHNYA HARUS LANGSUNG MERESPON secara spesifik (misal: "Tapi kok gak ada suara langkah kaki ya...").
+Jika memakai type "link", formatnya:
+{ "type": "link", "direction": "incoming", "time": "21:35", "text": "Kalimat pengantar singkat", "linkUrl": "https://...", "linkTitle": "Judul", "linkDescription": "Deskripsi", "linkImage": "https://... atau kosong" }
 
-2. ALOKASI BABAK CERITA DENGAN TARGET ${targetLength} CHAT (PAHAMI KAPAN ENDING):
-   - Kamu harus mengelola alur cerita agar pas dalam TEPAT ${targetLength} bubble chat:
-     * BABAK 1 (Awal ~25% chat): Pancingan & Pembuka Obrolan (Hook yang menarik).
-     * BABAK 2 (Tengah ~50% chat): Perkembangan Cerita, Bukti Foto/Notif/Transfer, Konflik Makin Panas/Seram.
-     * BABAK 3 (Klimaks ~20% chat): Puncak Kejutan / Plot Twist Utama.
-     * BABAK 4 (PESAN TERAKHIR ke-${targetLength}): ENDING PUNCHLINE MEMATIKAN (Penutup cerita yang jelas: bikin kaget/merinding/tertawa). DILARANG MENUTUP CERITA DENGAN GAMBAR TANPA CAPTION ATAU CHAT GANTUNG NGABLU!
+Jika memakai type "image", formatnya:
+{ "type": "image", "direction": "incoming", "time": "21:35", "caption": "Kalimat pendek yang menyertai gambar" }
 
-3. ADAPTIF & PINTAR MEMILIH TIPE PESAN (VARIASKAN SESUAI CERITA — DILARANG VOICE NOTE!):
-   - Jangan kaku berpaku pada pesan teks 100%! Pilih tipe pesan yang paling cocok dan natural untuk mendukung cerita (terutama GAMBAR/PAP FOTO, NOTIFIKASI, TRANSFER, DLL.):
-   - DILARANG PAKAI type 'voice_note' (Jangan pernah gunakan Voice Note / VN).
-   - Type 'image': Sangat disarankan jika ada momen minta pap, tunjukin bukti foto/penampakan/makanan/bukti struk/kondisi tempat/rekening/baju/dll. Contoh: { "type": "image", "direction": "incoming", "time": "21:32", "text": "Liat nih foto penampakan tadi..." } (Isi teks di atribut 'text' sebagai caption foto!).
-   - Type 'view_once': Gunakan saat kirim foto rahasia / sekali lihat (view once).
-   - Type 'notification': Gunakan saat ada notifikasi HP yang memotong obrolan (cth: Notifikasi m-Banking, WhatsApp pesan dari Mama/Mantan, Notifikasi IG, dll.). Contoh: { "type": "notification", "direction": "incoming", "time": "21:33", "notifSender": "m-Banking", "notifTitle": "Transfer Masuk", "text": "Rp 500.000 masuk dari Budi" }
-   - Type 'transfer': Gunakan saat ada momen bayar utang / transfer saldo.
-   - Type 'location': Gunakan saat share location / janjian ketemuan.
-   - Type 'deleted': Gunakan saat ada momen salah kirim lalu ditarik (Pesan ini telah dihapus).
-   - Type 'text': Gunakan untuk obrolan teks biasa.
-
-4. CHAT ALAMI BUBBLE PENDEK KETIKAN JEMPOL INDONESIA:
-   - Teks pesan HARUS terasa seperti ketikan orang Indonesia asli di HP (singkat, 1-8 kata per bubble, spontan, pakai bahasa gaul/santai sehari-hari seperti: wkwk, njir, banget, gak, lu, gua, aku, kamu, dll. sesuai konteks).
-   - Pisahkan teks menjadi bubble-bubble chat pendek yang alami! Satu bubble = 1 pikiran/respon pendek.
-
-5. FLEXIBEL ADAPTASI GENRE / TEMA (SESUAIKAN DENGAN IDE USER):
-   - BACA DENGAN TELITI ide/skenario dari User dan buat cerita yang 100% SESUAI GENRE NYA (Horor, Komedi, Romantis, Olshop, dll.).
-
-${dramaticRuleInstruction}
-
-6. JUMLAH PESAN: ${lengthRule} Wajib penuhi target jumlah pesan TEPAT, jangan kurang.
-7. Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
+Kembalikan hanya JSON valid.`;
 }
 
 // ── Build improvise system prompt ─────────────────────────────────────────────
 function buildImproviseSystemPrompt(
   targetLength: number,
-  voiceStyle: 'dramatic' | 'normal',
-  existingMessagesText: string
+  existingMessagesText: string,
+  storyType: StoryType,
+  product?: ProductBrief | null,
+  revealType: RevealType = 'link',
 ): string {
-  let lengthRule = `Buat TEPAT ${targetLength} bubble chat BARU (tidak kurang, tidak lebih).`;
+  return `Kamu adalah penulis naskah fake chat WhatsApp untuk video TikTok dan Reels Indonesia.
+Tugasmu adalah MELANJUTKAN percakapan yang sudah ada tanpa mengulang atau mengubah pesan lama.
 
-  const dramaticRuleInstruction = voiceStyle === 'normal'
-    ? `- GAYA NORMAL: Tulis teks percakapan biasa yang santai, alami, dan manusiawi tanpa tag emosi.`
-    : `- AUDIO EMOTION TAGS: Sisipkan tag emosi kurung siku seperti [scared][whispers], [laughing], [excited], [gasp], [crying], [shouting], dll. di awal/tengah bubble teks.`;
-
-  return `Kamu adalah penulis naskah cerita pendek percakapan WhatsApp viral profesional.
-Tugas kamu adalah **MELANJUTKAN & MENGIMPROVISASI PERCAKAPAN WHATSAPP YANG SUDAH ADA**.
-
-Diberikan percakapan WhatsApp yang SUDAH ADA di layar Editor saat ini:
 === PERCAKAPAN SEBELUMNYA ===
 ${existingMessagesText}
 =============================
 
-Instruksi Tambahan / Arahan Improvisasi dari User:
-- Pahami konteks obrolan sebelumnya di atas.
-- Lanjutkan percakapan tersebut dengan menambahkan TEPAT ${targetLength} bubble chat BARU.
-- Setiap bubble chat baru HARUS MENYAMBUNG 100% SECARA LOGIS dengan pesan terakhir di atas!
-- Kelola alur ${targetLength} chat baru ini agar berkembang, memuncak (klimaks), dan diakhiri dengan ENDING PUNCHLINE / PLOT TWIST MEMATIKAN pada pesan terakhir!
-- Variasikan tipe pesan: 'text', 'image' (kirim pap/bukti), 'notification' (notif transfer/pesan dari orang lain), 'view_once', 'transfer', 'location', 'deleted'. DILARANG PAKAI 'voice_note'!
-${dramaticRuleInstruction}
+${buildStoryDirective(storyType, product, revealType)}
 
-Format Output WAJIB JSON Murni:
+ATURAN LANJUTAN:
+- Tambahkan TEPAT ${targetLength} bubble BARU.
+- Bubble pertama harus langsung merespons pesan terakhir percakapan lama.
+- Jaga identitas dan arah incoming/outgoing secara konsisten.
+- Gunakan bahasa Indonesia sehari-hari, satu pikiran per bubble, tanpa tag emosi ElevenLabs dan tanpa narasi.
+- Jangan memakai voice_note.
+- Jam harus melanjutkan waktu percakapan lama secara wajar.
+
+FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
 {
-  "name": "Nama Kontak (bisa pakai nama sebelumnya atau ubah jika relevan)",
+  "name": "Nama kontak",
   "messages": [
-    { "type": "text", "direction": "outgoing", "time": "21:35", "text": "Pesan baru yang menyambung..." }
+    { "type": "text", "direction": "outgoing", "time": "21:35", "text": "Pesan baru yang menyambung" }
   ]
 }
-Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
+Kembalikan hanya JSON valid.`;
 }
 
 // ── Build enhance emotion system prompt ───────────────────────────────────────
@@ -161,6 +197,96 @@ Format Output WAJIB JSON Murni:
 Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }
 
+async function requestGemini(systemInstruction: string, userPrompt: string): Promise<string> {
+  if (!GEMINI_KEY) throw new Error('GEMINI_API_KEY tidak dikonfigurasi.');
+
+  const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
+  let lastError = '';
+
+  for (const model of GEMINI_MODEL_CHAIN) {
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+    const startedAt = Date.now();
+    console.log(`[AI/Gemini] → Trying model: ${model}...`);
+    try {
+      const response = await fetch(geminiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: fullPrompt }] }],
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.72,
+            maxOutputTokens: 8192,
+          },
+        }),
+      });
+
+      console.log(`[AI/Gemini] ← ${model}: HTTP ${response.status} in ${Date.now() - startedAt}ms`);
+      if (response.ok) {
+        const json = await response.json();
+        const text = json?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+        if (text) return text;
+        lastError = `${model} mengembalikan respons kosong.`;
+      } else {
+        const body = await response.text();
+        lastError = `${model} HTTP ${response.status}: ${body.slice(0, 300)}`;
+      }
+    } catch (error) {
+      lastError = `${model}: ${error instanceof Error ? error.message : String(error)}`;
+    }
+  }
+
+  throw new Error(lastError || 'Semua model Gemini gagal.');
+}
+
+async function requestQwen(
+  systemInstruction: string,
+  userPrompt: string,
+  customKey = '',
+): Promise<string> {
+  const activeQwenKey = customKey.trim() || QWEN_KEY;
+  if (!activeQwenKey) throw new Error('QWEN_API_KEY tidak dikonfigurasi.');
+
+  let lastError = '';
+  for (const model of QWEN_MODEL_CHAIN) {
+    for (const endpoint of QWEN_ENDPOINTS) {
+      try {
+        console.log(`[AI/Qwen] → Trying model: ${model}...`);
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${activeQwenKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: 'system', content: systemInstruction },
+              { role: 'user', content: userPrompt },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.72,
+          }),
+        });
+
+        if (response.ok) {
+          const json = await response.json();
+          const text = json?.choices?.[0]?.message?.content ?? '';
+          if (text) return text;
+          lastError = `${model} mengembalikan respons kosong.`;
+        } else {
+          const body = await response.text();
+          lastError = `${model} HTTP ${response.status}: ${body.slice(0, 300)}`;
+        }
+      } catch (error) {
+        lastError = `${model}: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    }
+  }
+
+  throw new Error(lastError || 'Semua model Qwen gagal.');
+}
+
 export async function POST(req: NextRequest) {
   const t0 = Date.now();
   console.log(`[AI] ─── NEW REQUEST ───────────────────────────`);
@@ -168,12 +294,17 @@ export async function POST(req: NextRequest) {
     const {
       prompt,
       count = 8,
-      voiceStyle = 'dramatic',
-      provider = 'qwen', // Default to Qwen or Google
+      provider = 'google', // Gemini is the primary writer; Qwen remains available as a fallback provider.
       qwenKeyCustom = '',
       mode = 'create', // 'create' | 'improvise' | 'enhance_emotion'
+      storyType = 'drama_product',
+      revealType = 'link',
+      product = null,
       existingMessages = [],
     } = await req.json();
+
+    const normalizedStoryType: StoryType = storyType === 'horror' ? 'horror' : 'drama_product';
+    const normalizedRevealType: RevealType = revealType === 'image' ? 'image' : 'link';
 
     if (!prompt?.trim() && mode === 'create') {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
@@ -184,7 +315,7 @@ export async function POST(req: NextRequest) {
 
     if (mode === 'enhance_emotion' && Array.isArray(existingMessages) && existingMessages.length > 0) {
       const formattedHistory = existingMessages
-        .map((m: any, idx: number) => {
+        .map((m: ExistingMessageBrief, idx: number) => {
           const dir = m.direction === 'incoming' ? '[Masuk]' : '[Keluar]';
           const sender = m.senderName ? `(${m.senderName})` : '';
           const content = m.text || m.caption || `[Tipe: ${m.type}]`;
@@ -196,7 +327,7 @@ export async function POST(req: NextRequest) {
       userPrompt = `Tolong pertajam dan sisipkan ElevenLabs Audio Emotion Tags (seperti [scared][whispers], [laughing], [shouting], dll.) ke teks setiap pesan di atas!`;
     } else if (mode === 'improvise' && Array.isArray(existingMessages) && existingMessages.length > 0) {
       const formattedHistory = existingMessages
-        .map((m: any, idx: number) => {
+        .map((m: ExistingMessageBrief, idx: number) => {
           const dir = m.direction === 'incoming' ? '[Masuk]' : '[Keluar]';
           const sender = m.senderName ? `(${m.senderName})` : '';
           const content = m.text || m.caption || `[Tipe: ${m.type}]`;
@@ -204,132 +335,45 @@ export async function POST(req: NextRequest) {
         })
         .join('\n');
 
-      systemInstruction = buildImproviseSystemPrompt(Number(count), voiceStyle, formattedHistory);
+      systemInstruction = buildImproviseSystemPrompt(
+        Number(count),
+        formattedHistory,
+        normalizedStoryType,
+        product,
+        normalizedRevealType,
+      );
       userPrompt = prompt?.trim()
         ? `Arahan Khusus Improvisasi:\n${prompt.trim()}`
         : `Tolong lanjutkan obrolan di atas menjadi lebih seru, ada plot twist dan ending punchline menarik!`;
     } else {
-      systemInstruction = buildSystemPrompt(Number(count), voiceStyle);
+      systemInstruction = buildSystemPrompt(Number(count), normalizedStoryType, product, normalizedRevealType);
       userPrompt = `Ide Cerita & Spesifikasi User:\n${prompt?.trim() || 'Drama percakapan WhatsApp viral'}`;
     }
 
     let rawText = '';
+    let activeProvider = provider === 'qwen' ? 'qwen' : 'google';
+    const providerOrder = provider === 'qwen' ? ['qwen'] : ['google', 'qwen'];
+    const providerErrors: string[] = [];
 
-    // ── QWEN PROVIDER ───────────────────────────────────────────────────────
-    if (provider === 'qwen') {
-      const activeQwenKey = qwenKeyCustom.trim() || QWEN_KEY;
-      if (!activeQwenKey) {
-        return NextResponse.json(
-          { error: 'API Key Qwen tidak dikonfigurasi. Masukkan API Key Qwen di setting atau pastikan QWEN_API_KEY diset.' },
-          { status: 400 }
-        );
+    for (const candidate of providerOrder) {
+      try {
+        rawText = candidate === 'google'
+          ? await requestGemini(systemInstruction, userPrompt)
+          : await requestQwen(systemInstruction, userPrompt, qwenKeyCustom);
+        activeProvider = candidate;
+        break;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        providerErrors.push(`${candidate}: ${message}`);
+        console.warn(`[AI] ${candidate} failed${candidate === 'google' ? ', trying Qwen fallback' : ''}: ${message}`);
       }
-
-      console.log(`[AI/Qwen] Requesting Qwen model chain...`);
-      let qwenRes: Response | null = null;
-      let lastQwenErr = '';
-
-      for (const qwenModel of QWEN_MODEL_CHAIN) {
-        for (const endpoint of QWEN_ENDPOINTS) {
-          try {
-            console.log(`[AI/Qwen] → Trying model: ${qwenModel} at ${endpoint}...`);
-            const res = await fetch(endpoint, {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${activeQwenKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                model: qwenModel,
-                messages: [
-                  { role: 'system', content: systemInstruction },
-                  { role: 'user', content: userPrompt },
-                ],
-                response_format: { type: 'json_object' },
-                temperature: 0.8,
-              }),
-            });
-
-            if (res.ok) {
-              console.log(`[AI/Qwen] ✅ SUCCESS with model ${qwenModel}`);
-              qwenRes = res;
-              break;
-            } else {
-              const errBody = await res.text();
-              lastQwenErr = `Model ${qwenModel} HTTP ${res.status}: ${errBody.slice(0, 300)}`;
-              console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
-            }
-          } catch (e: any) {
-            lastQwenErr = `Model ${qwenModel} exception: ${e.message}`;
-            console.warn(`[AI/Qwen] FAIL: ${lastQwenErr}`);
-          }
-        }
-        if (qwenRes) break;
-      }
-
-      if (!qwenRes) {
-        return NextResponse.json(
-          { error: `Gagal memanggil API Qwen. ${lastQwenErr}` },
-          { status: 500 }
-        );
-      }
-
-      const qwenJson = await qwenRes.json();
-      rawText = qwenJson?.choices?.[0]?.message?.content ?? '';
     }
-    // ── GOOGLE GEMINI PROVIDER ──────────────────────────────────────────────
-    else {
-      if (!GEMINI_KEY) {
-        return NextResponse.json({ error: 'GEMINI_API_KEY tidak dikonfigurasi di server.' }, { status: 500 });
-      }
 
-      const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
-      let geminiRes: Response | null = null;
-      let lastError = '';
-
-      for (const model of GEMINI_MODEL_CHAIN) {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
-        const tModel = Date.now();
-        console.log(`[AI/Gemini] → Trying model: ${model}...`);
-        try {
-          const res = await fetch(geminiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [
-                { role: 'user', parts: [{ text: fullPrompt }] },
-              ],
-              generationConfig: {
-                temperature: 0.85,
-                maxOutputTokens: 8192,
-              },
-            }),
-          });
-
-          const elapsed = Date.now() - tModel;
-          console.log(`[AI/Gemini] ← Model ${model} responded: HTTP ${res.status} in ${elapsed}ms`);
-
-          if (res.ok) {
-            geminiRes = res;
-            break;
-          } else {
-            const errText = await res.text();
-            lastError = `Model ${model} HTTP ${res.status}: ${errText.slice(0, 300)}`;
-          }
-        } catch (e: any) {
-          lastError = `Model ${model} exception: ${e.message}`;
-        }
-      }
-
-      if (!geminiRes) {
-        return NextResponse.json(
-          { error: `Semua Gemini model gagal. Error terakhir: ${lastError}` },
-          { status: 500 }
-        );
-      }
-
-      const geminiJson = await geminiRes.json();
-      rawText = geminiJson?.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
+    if (!rawText) {
+      return NextResponse.json(
+        { error: `Semua provider AI gagal. ${providerErrors.join(' | ')}` },
+        { status: 500 },
+      );
     }
 
     // ── Clean markdown wrappers ──────────────────────────────────────────────
@@ -345,16 +389,17 @@ export async function POST(req: NextRequest) {
     // ── Parse & return ───────────────────────────────────────────────────────
     try {
       const parsed = JSON.parse(rawText);
-      console.log(`[AI] ✅ DONE in ${Date.now() - t0}ms via ${provider}. Messages: ${parsed.messages?.length ?? 0}, Name: ${parsed.name}`);
+      console.log(`[AI] ✅ DONE in ${Date.now() - t0}ms via ${activeProvider}. Messages: ${parsed.messages?.length ?? 0}, Name: ${parsed.name}`);
       return NextResponse.json(parsed);
-    } catch (parseErr) {
+    } catch {
       console.error('[AI] JSON parse failed. Raw:', rawText.slice(0, 500));
       return NextResponse.json({ error: 'AI menghasilkan format yang tidak valid — coba generate ulang.' }, { status: 500 });
     }
-  } catch (e: any) {
-    console.error(`[AI] FATAL after ${Date.now() - t0}ms:`, e);
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[AI] FATAL after ${Date.now() - t0}ms:`, error);
     return NextResponse.json(
-      { error: `Internal server error: ${e.message}` },
+      { error: `Internal server error: ${message}` },
       { status: 500 }
     );
   }

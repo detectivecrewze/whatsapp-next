@@ -9,8 +9,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'WhatsApp Dark Mode Generator',
-  description: 'Buat konten video viral WhatsApp dengan AI Voice Over',
+  title: 'WA Story Studio',
+  description: 'Studio lokal untuk membuat video chat vertikal dengan AI dan Remotion',
   keywords: ['whatsapp', 'content creator', 'viral', 'tiktok', 'ai voice'],
 };
 

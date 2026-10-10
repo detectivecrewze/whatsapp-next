@@ -1,148 +1,252 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { PenLine, Smartphone } from 'lucide-react';
+import {
+  ChevronRight,
+  Cloud,
+  Eye,
+  Film,
+  Image as ImageIcon,
+  MessageSquare,
+  PenLine,
+  Smartphone,
+  Volume2,
+  Zap,
+  type LucideIcon,
+} from 'lucide-react';
+import { useEditorStore } from '@/store/useEditorStore';
+import {
+  EDITOR_SECTIONS,
+  type EditorSectionId,
+} from '@/components/editor/EditorPanel';
+import styles from './studio.module.css';
 
-// Dynamically import to avoid SSR issues with Zustand/DOM APIs
 const WhatsAppCanvas = dynamic(() => import('@/components/canvas/WhatsAppCanvas'), { ssr: false });
 const EditorPanel = dynamic(() => import('@/components/editor/EditorPanel'), { ssr: false });
 const StudioPlayerControl = dynamic(() => import('@/components/canvas/StudioPlayerControl'), { ssr: false });
 
-type MobileTab = 'editor' | 'preview';
+type WorkspaceId = 'chat' | 'ai' | 'voice' | 'visual' | 'project' | 'export';
+type MobileView = 'editor' | 'preview';
+
+type Workspace = {
+  id: WorkspaceId;
+  label: string;
+  title: string;
+  description: string;
+  icon: LucideIcon;
+  sections: EditorSectionId[];
+};
+
+const WORKSPACES: Workspace[] = [
+  {
+    id: 'chat',
+    label: 'Chat',
+    title: 'Percakapan',
+    description: 'Profil kontak dan seluruh isi chat.',
+    icon: MessageSquare,
+    sections: ['contact', 'messages'],
+  },
+  {
+    id: 'ai',
+    label: 'AI Naskah',
+    title: 'AI Naskah',
+    description: 'Buat dan poles alur percakapan.',
+    icon: Zap,
+    sections: ['ai-script'],
+  },
+  {
+    id: 'voice',
+    label: 'Voice',
+    title: 'Voice Over',
+    description: 'Kelola suara untuk setiap karakter.',
+    icon: Volume2,
+    sections: ['voice-over'],
+  },
+  {
+    id: 'visual',
+    label: 'Visual',
+    title: 'Visual & Gerakan',
+    description: 'Tampilan chat dan animasi video.',
+    icon: ImageIcon,
+    sections: ['wallpaper', 'video-options', 'auto-zoom'],
+  },
+  {
+    id: 'project',
+    label: 'Project',
+    title: 'Project',
+    description: 'Preset, preview, dan tautan berbagi.',
+    icon: Cloud,
+    sections: ['cloud-presets', 'preview-share'],
+  },
+  {
+    id: 'export',
+    label: 'Export',
+    title: 'Export Video',
+    description: 'Pengecekan akhir dan render MP4.',
+    icon: Film,
+    sections: ['export-video'],
+  },
+];
+
+function findWorkspace(section: EditorSectionId) {
+  return WORKSPACES.find((workspace) => workspace.sections.includes(section)) ?? WORKSPACES[0];
+}
 
 export default function EditorPage() {
-  const [mobileTab, setMobileTab] = useState<MobileTab>('editor');
+  const [activeSection, setActiveSection] = useState<EditorSectionId>('messages');
+  const [mobileView, setMobileView] = useState<MobileView>('editor');
+  const name = useEditorStore((state) => state.name);
+  const messageCount = useEditorStore((state) => state.messages.length);
+  const activeWorkspace = useMemo(() => findWorkspace(activeSection), [activeSection]);
+
+  function selectWorkspace(workspace: Workspace) {
+    setActiveSection(workspace.sections[0]);
+    setMobileView('editor');
+  }
 
   return (
-    <>
-      {/* ═══════════════════════════════════════════════════════════
-          DESKTOP LAYOUT (md and above) — two-column side by side
-          ═══════════════════════════════════════════════════════════ */}
-      <div className="hidden md:flex h-screen overflow-hidden" style={{ background: 'var(--ui-bg)' }}>
-        {/* Left panel — editor controls */}
-        <div
-          className="w-[360px] shrink-0 flex flex-col border-r panel-scroll z-10"
-          style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
-        >
-          <EditorPanel />
+    <main className={styles.shell}>
+      <header className={styles.topbar}>
+        <div className={styles.brand}>
+          <span className={styles.brandMark}><MessageSquare size={17} /></span>
+          <span className={styles.brandCopy}>
+            <strong>WA Story Studio</strong>
+            <small>Local Creator</small>
+          </span>
         </div>
 
-        {/* Right panel — live canvas + studio control */}
-        <div
-          className="flex-1 flex flex-col items-center justify-between p-4 relative overflow-hidden"
-          style={{ background: 'var(--ui-bg)' }}
-        >
-          <div className="flex-1 w-full flex items-center justify-center min-h-0 relative">
+        <div className={styles.projectTitle}>
+          <strong>{name || 'Proyek tanpa judul'}</strong>
+          <span>•</span>
+          <span>{messageCount} pesan</span>
+          <span className={styles.savedState}>Tersimpan otomatis</span>
+        </div>
+
+        <div className={styles.topActions}>
+          <button
+            type="button"
+            className={styles.previewShortcut}
+            onClick={() => setMobileView('preview')}
+          >
+            <Eye size={15} />
+            <span>Preview</span>
+          </button>
+          <button
+            type="button"
+            className={styles.exportShortcut}
+            onClick={() => {
+              setActiveSection('export-video');
+              setMobileView('editor');
+            }}
+          >
+            <Film size={15} />
+            Export MP4
+          </button>
+        </div>
+      </header>
+
+      <div className={styles.workspace}>
+        <nav className={styles.rail} aria-label="Workspace studio">
+          {WORKSPACES.map((workspace) => {
+            const Icon = workspace.icon;
+            const active = activeWorkspace.id === workspace.id;
+            return (
+              <button
+                key={workspace.id}
+                type="button"
+                className={`${styles.railButton} ${active ? styles.railButtonActive : ''}`}
+                onClick={() => selectWorkspace(workspace)}
+                aria-current={active ? 'page' : undefined}
+              >
+                <Icon size={18} />
+                <span>{workspace.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <aside className={styles.contextPanel}>
+          <div className={styles.contextHeader}>
+            <span className={styles.eyebrow}>Workspace</span>
+            <h1>{activeWorkspace.title}</h1>
+            <p>{activeWorkspace.description}</p>
+          </div>
+
+          <div className={styles.contextList}>
+            {activeWorkspace.sections.map((sectionId) => {
+              const section = EDITOR_SECTIONS[sectionId];
+              const Icon = section.icon;
+              const active = activeSection === sectionId;
+              return (
+                <button
+                  key={sectionId}
+                  type="button"
+                  className={`${styles.contextButton} ${active ? styles.contextButtonActive : ''}`}
+                  onClick={() => {
+                    setActiveSection(sectionId);
+                    setMobileView('editor');
+                  }}
+                >
+                  <span className={styles.contextIcon}><Icon size={16} /></span>
+                  <span className={styles.contextButtonCopy}>
+                    <strong>{section.shortTitle}</strong>
+                    <small>{section.description}</small>
+                  </span>
+                  <ChevronRight size={14} className={styles.contextChevron} />
+                </button>
+              );
+            })}
+          </div>
+
+          <div className={styles.contextHint}>
+            <span className={styles.hintDot} />
+            Perubahan langsung terlihat di preview.
+          </div>
+        </aside>
+
+        <section className={`${styles.previewArea} ${mobileView === 'preview' ? styles.mobileVisible : styles.mobileHidden}`}>
+          <div className={styles.previewToolbar}>
+            <div>
+              <strong>Live Preview</strong>
+              <span>WhatsApp Story</span>
+            </div>
+            <div className={styles.previewBadges}>
+              <span>9:16</span>
+              <span>1080p</span>
+            </div>
+          </div>
+          <div className={styles.canvasStage}>
             <WhatsAppCanvas />
           </div>
-          <div className="pt-2 shrink-0 z-30">
+          <div className={styles.playerDock}>
             <StudioPlayerControl />
           </div>
-        </div>
+        </section>
+
+        <aside className={`${styles.inspector} ${mobileView === 'editor' ? styles.mobileVisible : styles.mobileHidden}`}>
+          <EditorPanel activeSection={activeSection} />
+        </aside>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════
-          MOBILE LAYOUT (below md) — tab-based single column
-          ═══════════════════════════════════════════════════════════ */}
-      <div
-        className="flex md:hidden flex-col overflow-hidden"
-        style={{ height: '100dvh', background: 'var(--ui-bg)' }}
-      >
-        {/* Tab content area — fills remaining space */}
-        <div className="flex-1 overflow-hidden relative">
-
-          {/* Editor Tab */}
-          <div
-            className="absolute inset-0 flex flex-col overflow-hidden transition-opacity duration-200"
-            style={{ opacity: mobileTab === 'editor' ? 1 : 0, pointerEvents: mobileTab === 'editor' ? 'auto' : 'none' }}
-          >
-            <div
-              className="flex-1 overflow-y-auto overflow-x-hidden panel-scroll"
-              style={{ background: 'var(--ui-panel)' }}
-            >
-              <EditorPanel />
-            </div>
-          </div>
-
-          {/* Preview Tab */}
-          <div
-            className="absolute inset-0 flex flex-col overflow-hidden transition-opacity duration-200"
-            style={{ opacity: mobileTab === 'preview' ? 1 : 0, pointerEvents: mobileTab === 'preview' ? 'auto' : 'none' }}
-          >
-            <div
-              className="flex-1 flex flex-col items-center justify-between pb-2 pt-2 px-2 relative overflow-hidden"
-              style={{ background: 'var(--ui-bg)' }}
-            >
-              <div className="flex-1 w-full flex items-center justify-center min-h-0 relative">
-                <WhatsAppCanvas />
-              </div>
-              <div className="pt-2 shrink-0 z-30 w-full flex justify-center">
-                <StudioPlayerControl />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Bottom Tab Bar */}
-        <div
-          className="shrink-0 flex border-t safe-area-bottom"
-          style={{
-            borderColor: 'var(--ui-border)',
-            background: 'var(--ui-panel)',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-          }}
+      <nav className={styles.mobileTabs} aria-label="Tampilan mobile">
+        <button
+          type="button"
+          className={mobileView === 'editor' ? styles.mobileTabActive : ''}
+          onClick={() => setMobileView('editor')}
         >
-          <button
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
-            style={{
-              color: mobileTab === 'editor' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-            onClick={() => setMobileTab('editor')}
-          >
-            {/* Active indicator line */}
-            <div
-              style={{
-                height: 2,
-                width: 28,
-                borderRadius: 2,
-                background: mobileTab === 'editor' ? 'var(--wa-green)' : 'transparent',
-                marginBottom: 4,
-                transition: 'background 0.2s',
-              }}
-            />
-            <PenLine size={20} />
-            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.04em' }}>EDITOR</span>
-          </button>
-
-          <button
-            className="flex-1 flex flex-col items-center justify-center gap-1 py-2.5 transition-colors"
-            style={{
-              color: mobileTab === 'preview' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-            }}
-            onClick={() => setMobileTab('preview')}
-          >
-            <div
-              style={{
-                height: 2,
-                width: 28,
-                borderRadius: 2,
-                background: mobileTab === 'preview' ? 'var(--wa-green)' : 'transparent',
-                marginBottom: 4,
-                transition: 'background 0.2s',
-              }}
-            />
-            <Smartphone size={20} />
-            <span style={{ fontSize: 10, fontWeight: 600, letterSpacing: '0.04em' }}>PREVIEW</span>
-          </button>
-        </div>
-      </div>
-    </>
+          <PenLine size={19} />
+          Editor
+        </button>
+        <button
+          type="button"
+          className={mobileView === 'preview' ? styles.mobileTabActive : ''}
+          onClick={() => setMobileView('preview')}
+        >
+          <Smartphone size={19} />
+          Preview
+        </button>
+      </nav>
+    </main>
   );
 }

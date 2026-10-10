@@ -1,99 +1,204 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Loader2, Wand2, RefreshCw, CheckCircle, Mic, MicOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  CheckCircle,
+  Loader2,
+  RefreshCw,
+  Wand2,
+} from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { Message } from '@/types';
-import { newId } from '@/lib/utils';
+import { compressImageFile, newId } from '@/lib/utils';
 
-const MSG_COUNTS = [4, 6, 8, 10, 12, 16, 20];
+type GeneratorMode = 'create' | 'improvise';
+type ContentGoal = 'drama_product' | 'horror';
+type ProductReveal = 'link' | 'image';
 
-interface PresetTheme {
+interface StoryPreset {
   id: string;
+  goal: ContentGoal;
   name: string;
-  emoji: string;
-  badgeColor: string;
+  eyebrow: string;
+  description: string;
   prompt: string;
+  productName?: string;
+  productDescription?: string;
 }
 
-const PRESET_THEMES: PresetTheme[] = [
+interface RawAiMessage {
+  type?: string;
+  direction?: string;
+  text?: string;
+  caption?: string;
+  time?: string;
+  notifSender?: string;
+  notifTitle?: string;
+  linkUrl?: string;
+  linkTitle?: string;
+  linkDescription?: string;
+  linkImage?: string;
+  imageData?: string;
+}
+
+const MESSAGE_LENGTHS = [
+  { count: 6, label: 'Cepat' },
+  { count: 8, label: 'Ideal' },
+  { count: 10, label: 'Detail' },
+];
+
+const STORY_PRESETS: StoryPreset[] = [
   {
-    id: 'horror',
-    name: 'Horor Mencekam',
-    emoji: '👻',
-    badgeColor: '#ef4444',
-    prompt: 'Cerita horor plot twist malam hari di kosan, pacar ketakutan dengar suara di luar kamar, ternyata orang yang ngechat adalah setan itu sendiri.',
+    id: 'cold-war-apology',
+    goal: 'drama_product',
+    name: 'Perang Dingin',
+    eyebrow: 'Apology',
+    description: 'Tensi tinggi di awal, minta maaf, lalu reveal produk.',
+    prompt:
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Cewek membuka dengan "Gak usah hubungin aku dulu. Aku capek debat terus." Cowok merespons singkat dan tulus. Akhiri dengan cowok (incoming) mengirim sesuatu sebagai bentuk permintaan maaf. Jangan terasa seperti iklan.',
+    productName: "I'm Sorry, Love",
+    productDescription: 'Pesan yang sulit aku ucapkan langsung buat kamu',
   },
   {
-    id: 'comedy',
-    name: 'Komedi & Prank',
-    emoji: '🤣',
-    badgeColor: '#f59e0b',
-    prompt: 'Obrolan komedi konyol prank teman tagih utang seblak yang lupa dibayar 2 minggu, saling bales meme dan stiker lucu.',
+    id: 'proud-but-caring',
+    goal: 'drama_product',
+    name: 'Gengsi tapi Sayang',
+    eyebrow: 'Soft selling',
+    description: 'Sulit bicara langsung, akhirnya mengirim sesuatu yang personal.',
+    prompt:
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Cewek menyindir karena cowok terlihat tidak merasa bersalah. Cowok mengaku tidak pandai merangkai kata, lalu cowok (incoming) mengirim sesuatu yang sudah ia siapkan. Buat percakapan natural, emosional, dan tidak menjual secara terang-terangan.',
+    productName: 'A Little Note for You',
+    productDescription: 'Ada sesuatu yang ingin aku sampaikan lewat halaman ini',
   },
   {
-    id: 'romance',
-    name: 'Romantis & Bucin',
-    emoji: '💕',
-    badgeColor: '#ec4899',
-    prompt: 'Obrolan romantis bucin malam hari antara sepasang kekasih, ceweknya ngambek minta dibelikan boba lalu cowoknya kejutan kirim notifikasi transfer.',
+    id: 'digital-surprise',
+    goal: 'drama_product',
+    name: 'Kejutan Digital',
+    eyebrow: 'Product reveal',
+    description: 'Bangun rasa penasaran sebelum hadiah digital dibuka.',
+    prompt:
+      'KONTAK / incoming adalah orang yang sedang ulang tahun. PEMILIK HP / outgoing adalah pasangannya yang sebenarnya sudah menyiapkan kejutan. Alur naturalnya: incoming bertanya "Kamu lupa hari ini hari apa?", outgoing menjawab santai "Hari apa emang?", incoming kecewa singkat "Oh, gapapa", lalu outgoing mengaku cuma bercanda dan sudah menyiapkan sesuatu. Akhiri dengan outgoing mengirim kejutan tersebut. Buat variasi dari alur ini, jangan salin kaku. Jangan menukar peran, jangan membuat orang yang ulang tahun mengirim hadiah untuk dirinya sendiri, dan jangan menulis kalimat aneh seperti "Hari ulang tahunku, deh".',
+    productName: 'A Birthday Surprise',
+    productDescription: 'Kejutan kecil yang aku siapkan khusus buat kamu',
   },
   {
-    id: 'drama',
-    name: 'Drama & Perselingkuhan',
-    emoji: '🎭',
-    badgeColor: '#a855f7',
-    prompt: 'Drama perselisihan mantan pacar yang tiba-tiba ngechat ngajak balikan pas malam minggu, tapi ketahuan sudah punya gebetan baru.',
+    id: 'boarding-house',
+    goal: 'horror',
+    name: 'Ada di Depan Kos',
+    eyebrow: 'Horror realistis',
+    description: 'Suara di luar kamar berubah menjadi bukti yang mengerikan.',
+    prompt:
+      'Chat malam hari di kos. Seseorang mendengar ketukan dan mengira pasangannya datang, padahal pasangannya masih jauh. Naikkan ketegangan sedikit demi sedikit dan beri plot twist yang masuk akal tetapi mengerikan pada pesan terakhir.',
   },
   {
-    id: 'olshop',
-    name: 'Olshop & Transfer',
-    emoji: '💸',
-    badgeColor: '#10b981',
-    prompt: 'Chat penjual olshop dengan pembeli yang nawar harga sadis tapi langsung dikirimkan bukti transfer uang M-Banking.',
+    id: 'last-message',
+    goal: 'horror',
+    name: 'Chat Terakhir',
+    eyebrow: 'Plot twist',
+    description: 'Pesan baru datang dari orang yang seharusnya sudah tidak bisa chat.',
+    prompt:
+      'Tokoh utama menerima chat santai dari teman dekat. Perlahan muncul detail yang mustahil karena pengirim ternyata sudah meninggal atau hilang. Hindari penjelasan panjang; biarkan satu pesan terakhir menjadi plot twist.',
+  },
+  {
+    id: 'wrong-number',
+    goal: 'horror',
+    name: 'Salah Nomor',
+    eyebrow: 'Creepy chat',
+    description: 'Orang asing tahu detail kamar dan posisi tokoh utama.',
+    prompt:
+      'Nomor asing mengirim pesan seperti salah sambung. Awalnya biasa, lalu ia menyebut detail kecil yang hanya bisa dilihat dari dalam kamar tokoh utama. Akhiri dengan pesan pendek yang membuat merinding.',
   },
 ];
 
+const FALLBACK_PRODUCT = {
+  name: "I'm Sorry, Love",
+  description: 'Klik untuk membuka pesan spesial buat kamu',
+};
+
 export default function AiGeneratorSection() {
   const { setName, reorderMessages, messages } = useEditorStore();
+  const existingLink = useMemo(() => messages.find((message) => message.type === 'link'), [messages]);
 
-  const [generatorMode, setGeneratorMode] = useState<'create' | 'improvise' | 'enhance_emotion'>('create');
-  const [promptText, setPromptText] = useState('');
-  const [selectedPreset, setSelectedPreset] = useState<string | null>(null);
+  const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('create');
+  const [contentGoal, setContentGoal] = useState<ContentGoal>('drama_product');
+  const [selectedPreset, setSelectedPreset] = useState('cold-war-apology');
+  const [promptText, setPromptText] = useState(STORY_PRESETS[0].prompt);
   const [msgCount, setMsgCount] = useState(8);
-  const [voiceStyle, setVoiceStyle] = useState<'dramatic' | 'normal'>('dramatic');
-  const [aiProvider, setAiProvider] = useState<'qwen' | 'google'>('qwen');
+  const [productReveal, setProductReveal] = useState<ProductReveal>('link');
+  const [productUrl, setProductUrl] = useState(existingLink?.linkUrl ?? '');
+  const [productName, setProductName] = useState(existingLink?.linkTitle ?? FALLBACK_PRODUCT.name);
+  const [productDescription, setProductDescription] = useState(
+    existingLink?.linkDescription ?? FALLBACK_PRODUCT.description,
+  );
+  const [productImage, setProductImage] = useState(existingLink?.linkImage ?? existingLink?.imageData ?? '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
 
+  const visiblePresets = STORY_PRESETS.filter((preset) => preset.goal === contentGoal);
+
+  function chooseGoal(goal: ContentGoal) {
+    const firstPreset = STORY_PRESETS.find((preset) => preset.goal === goal);
+    setContentGoal(goal);
+    setSelectedPreset(firstPreset?.id ?? '');
+    setPromptText(firstPreset?.prompt ?? '');
+    if (firstPreset?.productName) setProductName(firstPreset.productName);
+    if (firstPreset?.productDescription) setProductDescription(firstPreset.productDescription);
+    setGenerated(false);
+    setError(null);
+  }
+
+  function choosePreset(preset: StoryPreset) {
+    setSelectedPreset(preset.id);
+    setPromptText(preset.prompt);
+    if (preset.productName) setProductName(preset.productName);
+    if (preset.productDescription) setProductDescription(preset.productDescription);
+    setGenerated(false);
+    setError(null);
+  }
+
   async function generate() {
+    if (contentGoal === 'drama_product' && productReveal === 'link' && !productUrl.trim()) {
+      setError('Isi link produk dulu agar AI bisa membuat reveal yang benar.');
+      return;
+    }
+    if (contentGoal === 'drama_product' && productReveal === 'image' && !productImage) {
+      setError('Upload foto atau barcode dulu agar bisa dipakai sebagai reveal terakhir.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setGenerated(false);
 
     try {
-      const topic = promptText.trim() || (
-        generatorMode === 'enhance_emotion'
-          ? 'Pertajam tag emosi ElevenLabs di percakapan ini'
-          : generatorMode === 'improvise'
-            ? 'Lanjutkan percakapan sebelumnya agar lebih seru'
-            : 'Drama percintaan antara pacar yang lucu dan viral'
-      );
-
+      const topic = promptText.trim() ||
+        (contentGoal === 'horror'
+          ? 'Buat fake chat horror realistis dengan hook cepat dan plot twist.'
+          : 'Buat drama pasangan yang berakhir dengan reveal produk secara natural.');
       const currentMessages = messages;
 
       const res = await fetch('/api/ai-generator', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        signal: AbortSignal.timeout(60000), // Max 60s timeout
+        signal: AbortSignal.timeout(60000),
         body: JSON.stringify({
           prompt: topic,
           count: msgCount,
-          voiceStyle,
-          provider: aiProvider,
+          voiceStyle: 'normal',
+          provider: 'google',
           mode: generatorMode,
-          existingMessages: (generatorMode === 'improvise' || generatorMode === 'enhance_emotion') ? currentMessages : [],
+          storyType: contentGoal,
+          revealType: productReveal,
+          presetId: selectedPreset,
+          product: contentGoal === 'drama_product'
+            ? {
+                url: productUrl.trim(),
+                name: productName.trim() || FALLBACK_PRODUCT.name,
+                description: productDescription.trim() || FALLBACK_PRODUCT.description,
+              }
+            : null,
+          existingMessages: generatorMode === 'improvise' ? currentMessages : [],
         }),
       });
 
@@ -102,18 +207,11 @@ export default function AiGeneratorSection() {
         throw new Error(errData.error || `HTTP ${res.status}`);
       }
 
-      // Route sekarang langsung return parsed JSON object
       const data = await res.json();
-
-      // ── Ambil contactName dari response ────────────────────────────────────
       const contactName: string = data.name || data.contactName || '';
-      if (contactName && generatorMode === 'create') {
-        setName(contactName.trim());
-      }
+      if (contactName && generatorMode === 'create') setName(contactName.trim());
 
-      // ── Ambil messages array ───────────────────────────────────────────────
-      let raw: { type?: string; direction: string; text: string; time?: string; index?: number }[] = [];
-
+      let raw: RawAiMessage[] = [];
       if (Array.isArray(data.messages) && data.messages.length > 0) {
         raw = data.messages;
       } else if (Array.isArray(data)) {
@@ -129,411 +227,511 @@ export default function AiGeneratorSection() {
           } catch {}
         }
         if (raw.length === 0 && arrMatch) {
-          try { raw = JSON.parse(arrMatch[0]); } catch {}
+          try {
+            raw = JSON.parse(arrMatch[0]);
+          } catch {}
         }
       }
 
       if (!Array.isArray(raw) || raw.length === 0) {
-        throw new Error('AI tidak menghasilkan respon. Coba generate ulang atau ubah prompt.');
+        throw new Error('AI tidak menghasilkan percakapan. Coba generate ulang.');
       }
 
-      if (generatorMode === 'enhance_emotion') {
-        if (currentMessages.length === 0) {
-          throw new Error('Editor masih kosong. Tambahkan atau generate percakapan terlebih dahulu.');
-        }
-
-        // Map enhanced texts back onto existing messages in-place
-        const updatedMessages = currentMessages.map((msg, idx) => {
-          const item = raw[idx] || raw.find((r: any) => r.index === idx + 1);
-          if (item && item.text) {
-            if (msg.type === 'image' || msg.caption) {
-              return { ...msg, caption: item.text };
-            }
-            return { ...msg, text: item.text };
-          }
-          return msg;
-        });
-
-        reorderMessages(updatedMessages);
-        setGenerated(true);
-        return;
-      }
-
-      // ── Build Message objects with sequential timestamps & rich types ─────────
       const now = new Date();
       let currentHour = now.getHours();
       let currentMin = now.getMinutes();
-
-      const validTypes = ['text', 'image', 'view_once', 'notification', 'transfer', 'contact', 'location', 'deleted'];
+      const validTypes: Message['type'][] = [
+        'text',
+        'link',
+        'image',
+        'view_once',
+        'notification',
+        'transfer',
+        'contact',
+        'location',
+        'deleted',
+      ];
 
       const newMessages: Message[] = raw.map((item) => {
         let rawType = (item.type || 'text').toLowerCase();
         if (rawType === 'voice_note') rawType = 'text';
-        const type = (validTypes.includes(rawType) ? rawType : 'text') as Message['type'];
+        const type = validTypes.includes(rawType as Message['type'])
+          ? (rawType as Message['type'])
+          : 'text';
 
         let timeStr = item.time;
         if (!timeStr || !/^\d{2}:\d{2}$/.test(timeStr)) {
           currentMin += Math.floor(Math.random() * 2) + 1;
-          if (currentMin >= 60) { currentMin -= 60; currentHour = (currentHour + 1) % 24; }
+          if (currentMin >= 60) {
+            currentMin -= 60;
+            currentHour = (currentHour + 1) % 24;
+          }
           timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
         }
-
-        let imageData: string | undefined = undefined;
-        let caption: string | undefined = undefined;
-        if (type === 'image') {
-          if (item.text && item.text.trim()) {
-            caption = item.text.trim();
-          }
-        }
-
-        const waveform = type === 'voice_note'
-          ? Array.from({ length: 24 }, (_, i) => Math.floor(Math.sin(i * 0.45 + Math.random()) * 35) + 30)
-          : undefined;
 
         return {
           id: newId('msg'),
           type,
-          direction: (item.direction === 'outgoing' ? 'outgoing' : 'incoming') as 'incoming' | 'outgoing',
+          direction: item.direction === 'outgoing' ? 'outgoing' : 'incoming',
           text: item.text ?? (type === 'text' ? '' : undefined),
-          caption: caption || (item as any).caption,
-          notifSender: (item as any).notifSender,
-          notifTitle: (item as any).notifTitle,
-          imageData,
-          duration: (item as any).duration || (type === 'voice_note' ? '0:12' : undefined),
-          waveform,
+          caption: item.caption ?? (type === 'image' ? item.text?.trim() : undefined),
+          notifSender: item.notifSender,
+          notifTitle: item.notifTitle,
+          imageData: item.imageData,
+          linkUrl: item.linkUrl,
+          linkTitle: item.linkTitle,
+          linkDescription: item.linkDescription,
+          linkImage: item.linkImage,
           time: timeStr,
         };
       });
 
-      if (generatorMode === 'improvise' && currentMessages.length > 0) {
-        reorderMessages([...currentMessages, ...newMessages]);
-      } else {
-        reorderMessages(newMessages);
+      if (contentGoal === 'drama_product') {
+        const revealDirection = selectedPreset === 'digital-surprise' ? 'outgoing' : 'incoming';
+        const fallbackRevealText = selectedPreset === 'digital-surprise'
+          ? 'Aku udah siapin ini buat kamu.'
+          : selectedPreset === 'proud-but-caring'
+            ? 'Aku susah ngomong langsung. Jadi aku bikin ini.'
+            : 'Aku bikin ini buat minta maaf.';
+
+        if (productReveal === 'image') {
+          const imageIndex = newMessages.findIndex((message) => message.type === 'image');
+          let productPhoto: Message;
+
+          if (imageIndex >= 0) {
+            [productPhoto] = newMessages.splice(imageIndex, 1);
+            productPhoto = {
+              ...productPhoto,
+              type: 'image',
+              direction: revealDirection,
+              imageData: productImage,
+              caption: productPhoto.caption || productPhoto.text || fallbackRevealText,
+              text: undefined,
+            };
+          } else {
+            const lastIndex = Math.max(0, newMessages.length - 1);
+            productPhoto = {
+              id: newId('msg'),
+              type: 'image',
+              direction: revealDirection,
+              imageData: productImage,
+              caption: fallbackRevealText,
+              time: newMessages[lastIndex]?.time,
+            };
+            newMessages.splice(lastIndex, 1);
+          }
+
+          const previousText = newMessages[newMessages.length - 1]?.text ?? '';
+          if (/\b(lihat|cek|foto|barcode|qr|ini)\b/i.test(previousText)) {
+            productPhoto.caption = undefined;
+          }
+          newMessages.push(productPhoto);
+        } else {
+        const product = {
+          linkUrl: productUrl.trim(),
+          linkTitle: productName.trim() || FALLBACK_PRODUCT.name,
+          linkDescription: productDescription.trim() || FALLBACK_PRODUCT.description,
+          linkImage: productImage || undefined,
+          imageData: productImage || undefined,
+        };
+        const linkIndex = newMessages.findIndex((message) => message.type === 'link');
+        let productLink: Message;
+
+        if (linkIndex >= 0) {
+          [productLink] = newMessages.splice(linkIndex, 1);
+          productLink = {
+            ...productLink,
+            ...product,
+            direction: revealDirection,
+          };
+        } else {
+          const lastIndex = Math.max(0, newMessages.length - 1);
+          productLink = {
+            id: newId('msg'),
+            type: 'link',
+            direction: revealDirection,
+            text: selectedPreset === 'digital-surprise'
+              ? 'Aku bikinin sesuatu buat kamu. Buka ya.'
+              : selectedPreset === 'proud-but-caring'
+                ? 'Aku susah ngomong langsung. Buka ini ya.'
+                : 'Aku bikin ini buat minta maaf. Buka ya.',
+            time: newMessages[lastIndex]?.time,
+            ...product,
+          };
+          newMessages.splice(lastIndex, 1);
+        }
+
+        const previousText = newMessages[newMessages.length - 1]?.text ?? '';
+        const hasRevealCta = (value?: string) => /\b(buka|klik|link|tautan)\b/i.test(value ?? '');
+        if (hasRevealCta(previousText) && hasRevealCta(productLink.text)) {
+          productLink.text = undefined;
+        }
+        newMessages.push(productLink);
+        }
       }
+
+      reorderMessages(
+        generatorMode === 'improvise' && currentMessages.length > 0
+          ? [...currentMessages, ...newMessages]
+          : newMessages,
+      );
       setGenerated(true);
-    } catch (e: any) {
-      setError(e.message || 'Gagal memproses AI. Cek koneksi dan API key.');
+    } catch (caughtError) {
+      setError(caughtError instanceof Error ? caughtError.message : 'Gagal memproses AI.');
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="flex flex-col gap-3">
-      {/* Generator Mode Switcher */}
-      <div>
-        <label className="section-label">🎯 Mode AI Generator</label>
-        <div className="grid grid-cols-3 gap-1 p-1 rounded-lg border bg-[var(--ui-card)] border-[var(--ui-border)]">
-          <button
-            type="button"
-            onClick={() => setGeneratorMode('create')}
-            className={`py-1.5 px-1.5 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all ${
-              generatorMode === 'create'
-                ? 'bg-[#00a884] text-white shadow-sm font-bold'
-                : 'text-[var(--wa-text-muted)] hover:text-gray-200'
-            }`}
-          >
-            <span>📝 Cerita Baru</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setGeneratorMode('improvise')}
-            className={`py-1.5 px-1.5 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all ${
-              generatorMode === 'improvise'
-                ? 'bg-purple-600 text-white shadow-sm font-bold'
-                : 'text-[var(--wa-text-muted)] hover:text-gray-200'
-            }`}
-          >
-            <span>🪄 Lanjutkan</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setGeneratorMode('enhance_emotion')}
-            className={`py-1.5 px-1.5 rounded-md text-[11px] font-semibold flex items-center justify-center gap-1 transition-all ${
-              generatorMode === 'enhance_emotion'
-                ? 'bg-pink-600 text-white shadow-sm font-bold'
-                : 'text-[var(--wa-text-muted)] hover:text-gray-200'
-            }`}
-          >
-            <span>🎭 Tag Emosi</span>
-          </button>
+    <div className="flex flex-col gap-5 pb-2">
+      <div
+        className="rounded-xl border p-1"
+        style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
+      >
+        <div className="grid grid-cols-2 gap-1">
+          {([
+            ['create', 'Cerita baru'],
+            ['improvise', 'Lanjutkan chat'],
+          ] as const).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => {
+                setGeneratorMode(mode);
+                setGenerated(false);
+                setError(null);
+              }}
+              className="rounded-lg px-3 py-2 text-[12px] font-semibold transition-colors"
+              style={{
+                background: generatorMode === mode ? 'rgba(37,211,102,0.14)' : 'transparent',
+                color: generatorMode === mode ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+              }}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Mode Banner Info */}
-      <div
-        className="p-2.5 rounded-lg border transition-all"
-        style={{
-          background: generatorMode === 'enhance_emotion' ? 'rgba(236,72,153,0.1)' : generatorMode === 'improvise' ? 'rgba(168,85,247,0.1)' : 'rgba(37,211,102,0.06)',
-          borderColor: generatorMode === 'enhance_emotion' ? 'rgba(236,72,153,0.3)' : generatorMode === 'improvise' ? 'rgba(168,85,247,0.3)' : 'rgba(37,211,102,0.2)',
-        }}
-      >
-        <p className="text-[11.5px] leading-relaxed" style={{ color: generatorMode === 'enhance_emotion' ? '#fbcfe8' : generatorMode === 'improvise' ? '#e9d5ff' : 'var(--wa-text-muted)' }}>
-          {generatorMode === 'enhance_emotion' ? (
-            <>
-              🎭 <strong>Mode Tag Emosi ElevenLabs:</strong> AI akan membaca <strong>{messages.length} pesan di Editor</strong> dan secara otomatis menyisipkan Audio Emotion Tags ElevenLabs ([scared][whispers], [laughing], [shouting], dll.) langsung ke setiap pesan!
-            </>
-          ) : generatorMode === 'improvise' ? (
-            <>
-              🪄 <strong>Mode Improvisasi:</strong> AI akan membaca <strong>{messages.length} chat saat ini</strong> di Editor dan menambahkan <strong>{msgCount} bubble chat baru</strong> yang menyambung secara alami!
-            </>
-          ) : (
-            <>
-              🤖 <strong>Mode Buat Baru:</strong> AI akan membuatkan script percakapan WA dari awal berdasarkan topik di bawah (menggantikan chat saat ini).
-            </>
-          )}
-        </p>
+      <div className="-mt-3 flex items-center justify-between px-1 text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+        <span>✨ Gemini sebagai penulis utama</span>
+        <span>Qwen cadangan otomatis</span>
       </div>
 
-      {/* Preset Tone & Tema Cerita Viral */}
-      <div>
-        <label className="section-label flex items-center justify-between">
-          <span>🎯 Preset Tone & Tema Cerita</span>
-          {selectedPreset && (
-            <button
-              onClick={() => { setSelectedPreset(null); setPromptText(''); }}
-              className="text-[10px] text-red-400 hover:underline"
-            >
-              Reset Preset
-            </button>
-          )}
-        </label>
-        <div className="flex flex-wrap gap-1.5">
-          {PRESET_THEMES.map((theme) => {
-            const isSelected = selectedPreset === theme.id;
-            return (
+      {generatorMode === 'create' ? (
+        <>
+          <section>
+            <label className="section-label">1 · Tujuan konten</label>
+            <div className="grid grid-cols-2 gap-2">
               <button
-                key={theme.id}
-                onClick={() => {
-                  setSelectedPreset(theme.id);
-                  setPromptText(theme.prompt);
-                }}
-                className="px-2.5 py-1 rounded-lg text-[11.5px] font-medium border transition-all flex items-center gap-1.5"
+                type="button"
+                onClick={() => chooseGoal('drama_product')}
+                className="rounded-xl border p-3 text-left transition-all"
                 style={{
-                  background: isSelected ? `${theme.badgeColor}22` : 'var(--ui-card)',
-                  borderColor: isSelected ? theme.badgeColor : 'var(--ui-border)',
-                  color: isSelected ? theme.badgeColor : 'var(--wa-text-muted)',
-                  boxShadow: isSelected ? `0 0 10px ${theme.badgeColor}33` : 'none',
+                  background: contentGoal === 'drama_product' ? 'rgba(37,211,102,0.09)' : 'var(--ui-card)',
+                  borderColor: contentGoal === 'drama_product' ? 'rgba(37,211,102,0.55)' : 'var(--ui-border)',
                 }}
               >
-                <span>{theme.emoji}</span>
-                <span>{theme.name}</span>
+                <span className="text-[18px]">💌</span>
+                <strong className="mt-2 block text-[12px]" style={{ color: 'var(--wa-text)' }}>Drama + Produk</strong>
+                <span className="mt-1 block text-[10.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+                  Cerita emosional dengan reveal produk yang halus.
+                </span>
               </button>
-            );
-          })}
-        </div>
-      </div>
 
-      {/* AI Provider Engine Choice */}
-      <div>
-        <label className="section-label">⚡ AI Engine Provider</label>
-        <div className="grid grid-cols-2 gap-1.5">
-          <button
-            type="button"
-            onClick={() => setAiProvider('qwen')}
-            className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
-              aiProvider === 'qwen'
-                ? 'bg-purple-950/60 border-purple-500 text-purple-300 shadow-sm shadow-purple-500/20'
-                : 'bg-[var(--ui-card)] border-[var(--ui-border)] text-[var(--wa-text-muted)] hover:text-gray-200'
-            }`}
-          >
-            <span>🌐 Qwen (Aliyun)</span>
-          </button>
+              <button
+                type="button"
+                onClick={() => chooseGoal('horror')}
+                className="rounded-xl border p-3 text-left transition-all"
+                style={{
+                  background: contentGoal === 'horror' ? 'rgba(168,85,247,0.10)' : 'var(--ui-card)',
+                  borderColor: contentGoal === 'horror' ? 'rgba(168,85,247,0.60)' : 'var(--ui-border)',
+                }}
+              >
+                <span className="text-[18px]">👻</span>
+                <strong className="mt-2 block text-[12px]" style={{ color: 'var(--wa-text)' }}>Horror Chat</strong>
+                <span className="mt-1 block text-[10.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+                  Chat realistis, tegang, dan berakhir plot twist.
+                </span>
+              </button>
+            </div>
+          </section>
 
-          <button
-            type="button"
-            onClick={() => setAiProvider('google')}
-            className={`px-3 py-2 rounded-lg text-xs font-semibold border flex items-center justify-center gap-1.5 transition-all ${
-              aiProvider === 'google'
-                ? 'bg-blue-950/60 border-blue-500 text-blue-300 shadow-sm shadow-blue-500/20'
-                : 'bg-[var(--ui-card)] border-[var(--ui-border)] text-[var(--wa-text-muted)] hover:text-gray-200'
-            }`}
-          >
-            <span>✨ Google Gemini</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Prompt Input Textarea */}
-      <div>
-        <label className="section-label">
-          {generatorMode === 'enhance_emotion'
-            ? 'Instruksi Khusus Tag Emosi (Opsional)'
-            : generatorMode === 'improvise'
-              ? 'Arahan Improvisasi / Lanjutan Cerita (Opsional)'
-              : 'Prompt / Cerita yang Ingin Dibuat'}
-        </label>
-        <textarea
-          className="input resize-none text-[12.5px] leading-relaxed"
-          rows={3}
-          value={promptText}
-          onChange={(e) => {
-            setPromptText(e.target.value);
-            setSelectedPreset(null);
-          }}
-          placeholder={
-            generatorMode === 'enhance_emotion'
-              ? 'cth: "Fokus kasih tag ketakutan horor ekstrem" atau kosongkan untuk otomatis AI...'
-              : generatorMode === 'improvise'
-                ? 'Ketik arahan lanjutan (cth: "Tiba-tiba ada yang ketuk jendela dan mama kirim notif transfer 500rb"), atau kosongkan untuk improvisasi otomatis AI...'
-                : 'Ketik topik cerita di sini (cth: Cerita horor ada hantu di kos, chat mantan ngajak balikan, bokap transfer uang, dll)...'
-          }
-          onKeyDown={(e) => { if (e.key === 'Enter' && e.ctrlKey) generate(); }}
-        />
-        <p className="text-[10px] mt-0.5" style={{ color: 'var(--wa-text-muted)' }}>
-          Ctrl+Enter untuk generate cepat
-        </p>
-      </div>
-
-      {/* Voice Style Toggle (Shown for create & improvise) */}
-      {generatorMode !== 'enhance_emotion' && (
-        <div>
-          <label className="section-label">Gaya Suara / Emosi</label>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setVoiceStyle('dramatic')}
-              className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
-              style={{
-                background: voiceStyle === 'dramatic' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
-                borderColor: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--ui-border)',
-                color: voiceStyle === 'dramatic' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-              }}
-            >
-              <Mic size={11} />
-              Dramatis (ElevenLabs)
-            </button>
-            <button
-              onClick={() => setVoiceStyle('normal')}
-              className="flex-1 py-1.5 rounded-lg text-[12px] font-medium border transition-all flex items-center justify-center gap-1.5"
-              style={{
-                background: voiceStyle === 'normal' ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
-                borderColor: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--ui-border)',
-                color: voiceStyle === 'normal' ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-              }}
-            >
-              <MicOff size={11} />
-              Normal (Tanpa Tag)
-            </button>
-          </div>
-          <p className="text-[10px] mt-1" style={{ color: 'var(--wa-text-muted)' }}>
-            {voiceStyle === 'dramatic'
-              ? '🎭 Akan ditambahkan tag emosi [scared], [laughing], dll. — bagus untuk TTS ElevenLabs'
-              : '💬 Tanpa tag emosi — cocok untuk pesan biasa tanpa voice over'}
+          <section>
+            <label className="section-label">2 · Pilih alur</label>
+            <div className="flex flex-col gap-2">
+              {visiblePresets.map((preset) => {
+                const active = selectedPreset === preset.id;
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => choosePreset(preset)}
+                    className="rounded-xl border px-3 py-2.5 text-left transition-all"
+                    style={{
+                      background: active ? 'rgba(255,255,255,0.045)' : 'transparent',
+                      borderColor: active
+                        ? contentGoal === 'horror' ? 'rgba(168,85,247,0.55)' : 'rgba(37,211,102,0.50)'
+                        : 'var(--ui-border)',
+                    }}
+                  >
+                    <span className="flex items-center justify-between gap-3">
+                      <strong className="text-[12px]" style={{ color: 'var(--wa-text)' }}>{preset.name}</strong>
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
+                        style={{
+                          background: contentGoal === 'horror' ? 'rgba(168,85,247,0.14)' : 'rgba(37,211,102,0.12)',
+                          color: contentGoal === 'horror' ? '#c084fc' : 'var(--wa-green)',
+                        }}
+                      >
+                        {preset.eyebrow}
+                      </span>
+                    </span>
+                    <span className="mt-1 block text-[10.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+                      {preset.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        </>
+      ) : (
+        <div
+          className="flex items-start gap-2.5 rounded-xl border p-3"
+          style={{ background: 'rgba(168,85,247,0.08)', borderColor: 'rgba(168,85,247,0.25)' }}
+        >
+          <span className="mt-0.5 shrink-0 text-[16px]">💬</span>
+          <p className="text-[11px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+            AI akan membaca <strong style={{ color: 'var(--wa-text)' }}>{messages.length} pesan</strong> yang sudah ada,
+            lalu menambahkan kelanjutan tanpa menghapus chat lama.
           </p>
         </div>
       )}
 
-      {/* Message count selector */}
-      {generatorMode !== 'enhance_emotion' ? (
-        <div>
-          <label className="section-label">
-            {generatorMode === 'improvise'
-              ? 'Jumlah Pesan Baru yang Ingin Ditambahkan'
-              : 'Jumlah Pesan (Pilih atau Ketik Sendiri)'}
-          </label>
-          <div className="flex gap-1.5 flex-wrap items-center">
-            {MSG_COUNTS.map((n) => (
-              <button
-                key={n}
-                onClick={() => setMsgCount(n)}
-                className="py-1 px-2.5 rounded-lg text-[12px] font-medium border transition-all"
-                style={{
-                  background: msgCount === n ? 'rgba(37,211,102,0.15)' : 'var(--ui-card)',
-                  borderColor: msgCount === n ? 'var(--wa-green)' : 'var(--ui-border)',
-                  color: msgCount === n ? 'var(--wa-green)' : 'var(--wa-text-muted)',
-                }}
-              >
-                {n}
-              </button>
-            ))}
-            {/* Custom input */}
-            <div className="flex items-center gap-1 bg-[var(--ui-card)] border border-[var(--ui-border)] rounded-lg px-2 py-0.5 ml-auto">
-              <span className="text-[11px]" style={{ color: 'var(--wa-text-muted)' }}>Kustom:</span>
-              <input
-                type="number"
-                min={1}
-                max={30}
-                value={msgCount}
-                onChange={(e) => setMsgCount(Math.max(1, Math.min(30, parseInt(e.target.value, 10) || 1)))}
-                className="w-12 bg-transparent text-center text-[12px] font-bold focus:outline-none"
-                style={{ color: 'var(--wa-green)' }}
-              />
+      {contentGoal === 'drama_product' && (
+        <section
+          className="rounded-xl border p-3"
+          style={{ background: 'rgba(56,189,248,0.05)', borderColor: 'rgba(56,189,248,0.22)' }}
+        >
+          <div className="mb-3 flex items-start gap-2">
+            <span className="mt-0.5 shrink-0 text-[15px]">🎁</span>
+            <div>
+              <p className="text-[11.5px] font-semibold text-sky-300">Reveal produk di akhir chat</p>
+              <p className="mt-0.5 text-[10px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+                Pilih bagaimana produk muncul pada bubble terakhir.
+              </p>
             </div>
           </div>
-        </div>
-      ) : (
-        <div className="p-2 rounded-lg bg-pink-950/30 border border-pink-500/20 text-[11.5px] text-pink-300 flex items-center justify-between">
-          <span className="font-medium">📊 Target Pesan:</span>
-          <span className="font-bold bg-pink-500/20 px-2 py-0.5 rounded text-pink-200">
-            {messages.length} Chat di Editor (Sama Persis)
-          </span>
-        </div>
+
+          <div className="flex flex-col gap-2.5">
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                ['link', '🔗 Kartu link', 'Thumbnail + tautan'],
+                ['image', '▣ Foto / QR', 'Gambar saja'],
+              ] as const).map(([value, label, description]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => {
+                    setProductReveal(value);
+                    setError(null);
+                  }}
+                  className="rounded-lg border p-2 text-left transition-colors"
+                  style={{
+                    background: productReveal === value ? 'rgba(56,189,248,0.10)' : 'var(--ui-card)',
+                    borderColor: productReveal === value ? 'rgba(56,189,248,0.60)' : 'var(--ui-border)',
+                  }}
+                >
+                  <strong className="block text-[10.5px]" style={{ color: productReveal === value ? '#7dd3fc' : 'var(--wa-text)' }}>
+                    {label}
+                  </strong>
+                  <span className="mt-0.5 block text-[9px]" style={{ color: 'var(--wa-text-muted)' }}>{description}</span>
+                </button>
+              ))}
+            </div>
+
+            {productReveal === 'link' && (
+              <>
+            <div>
+              <label className="section-label">Link produk *</label>
+              <input
+                type="url"
+                className="input font-mono text-[11px]"
+                value={productUrl}
+                onChange={(event) => setProductUrl(event.target.value)}
+                placeholder="https://produk-kamu.com"
+              />
+            </div>
+            <div>
+              <label className="section-label">Judul kartu</label>
+              <input
+                className="input"
+                value={productName}
+                onChange={(event) => setProductName(event.target.value)}
+                placeholder="I'm Sorry, Love"
+              />
+            </div>
+            <div>
+              <label className="section-label">Deskripsi singkat</label>
+              <input
+                className="input"
+                value={productDescription}
+                onChange={(event) => setProductDescription(event.target.value)}
+                placeholder="Klik untuk membuka pesan spesial buat kamu"
+              />
+            </div>
+              </>
+            )}
+            <div>
+              <label className="section-label">
+                {productReveal === 'image' ? 'Foto produk / barcode / QR *' : 'Thumbnail produk (opsional)'}
+              </label>
+              {productImage ? (
+                <div
+                  className="flex items-center gap-2 rounded-lg border p-2"
+                  style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
+                >
+                  <img
+                    src={productImage}
+                    alt="Thumbnail produk"
+                    className="h-12 w-16 rounded-md object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[10.5px] font-medium" style={{ color: 'var(--wa-text)' }}>
+                      Gambar siap dipakai
+                    </p>
+                    <p className="mt-0.5 text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+                      {productReveal === 'image'
+                        ? 'Gambar ini akan menjadi bubble terakhir.'
+                        : 'Gambar ini akan muncul di kartu link.'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setProductImage('')}
+                    className="rounded-md px-2 py-1 text-[10px] text-red-300 hover:bg-red-500/10"
+                  >
+                    Hapus
+                  </button>
+                </div>
+              ) : (
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="input p-1 text-[10px]"
+                  onChange={async (event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    try {
+                      setProductImage(await compressImageFile(file));
+                    } catch {
+                      setError('Gambar tidak bisa diproses. Coba PNG, JPG, atau WebP lain.');
+                    }
+                  }}
+                />
+              )}
+            </div>
+          </div>
+
+          <p className="mt-2 text-[9.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+            Hasil reveal masih bisa disesuaikan setelah generate di menu <strong>Urutan Pesan</strong>.
+          </p>
+        </section>
       )}
 
-      {/* Error */}
+      <section>
+        <label className="section-label">
+          {generatorMode === 'improvise' ? 'Arahan lanjutan' : '3 · Detail cerita'}
+        </label>
+        <textarea
+          className="input resize-none text-[12px] leading-relaxed"
+          rows={5}
+          value={promptText}
+          onChange={(event) => setPromptText(event.target.value)}
+          placeholder={generatorMode === 'improvise'
+            ? 'Contoh: lanjutkan sampai cowok mengirim kejutan permintaan maaf...'
+            : 'Ubah detail tokoh, konflik, atau ending di sini...'}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' && event.ctrlKey) generate();
+          }}
+        />
+      </section>
+
+      <section>
+        <label className="section-label">Panjang cerita</label>
+        <div
+          className="grid grid-cols-3 gap-1 rounded-xl border p-1"
+          style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
+        >
+          {MESSAGE_LENGTHS.map((option) => (
+            <button
+              key={option.count}
+              type="button"
+              onClick={() => setMsgCount(option.count)}
+              className="rounded-lg px-2 py-2 text-[10.5px] transition-colors"
+              style={{
+                background: msgCount === option.count ? 'rgba(37,211,102,0.13)' : 'transparent',
+                color: msgCount === option.count ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+              }}
+            >
+              <strong className="block text-[11.5px]">Target {option.count}</strong>
+              {option.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {error && (
-        <div className="p-2 rounded-lg text-[11.5px]" style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--ui-danger)', border: '1px solid rgba(239,68,68,0.25)' }}>
-          ⚠️ {error}
+        <div
+          className="rounded-xl border p-2.5 text-[11px] leading-relaxed"
+          style={{ background: 'rgba(239,68,68,0.08)', borderColor: 'rgba(239,68,68,0.25)', color: '#fca5a5' }}
+        >
+          {error}
         </div>
       )}
 
-      {/* Success */}
       {generated && !loading && (
-        <div className="flex items-center gap-2 p-2 rounded-lg" style={{ background: 'rgba(37,211,102,0.1)', border: '1px solid rgba(37,211,102,0.3)' }}>
+        <div
+          className="flex items-center gap-2 rounded-xl border p-2.5"
+          style={{ background: 'rgba(37,211,102,0.08)', borderColor: 'rgba(37,211,102,0.25)' }}
+        >
           <CheckCircle size={14} style={{ color: 'var(--wa-green)' }} />
-          <span className="text-[11.5px]" style={{ color: 'var(--wa-green)' }}>
-            {generatorMode === 'enhance_emotion'
-              ? '🎭 Tag Emosi ElevenLabs berhasil disisipkan ke percakapan!'
-              : 'Script berhasil digenerate! Lihat di canvas ➡️'}
+          <span className="text-[11px]" style={{ color: 'var(--wa-green)' }}>
+            Naskah siap. Kamu masih bisa mengedit setiap bubble di Urutan Pesan.
           </span>
         </div>
       )}
 
-      {/* Generate button */}
       <button
+        type="button"
         onClick={generate}
         disabled={loading}
-        className="btn btn-primary w-full py-2.5 text-[13px] font-bold gap-2 shadow-lg"
-        style={{
-          background: loading
-            ? 'var(--ui-card)'
-            : generatorMode === 'enhance_emotion'
-              ? 'linear-gradient(135deg, #ec4899 0%, #be185d 100%)'
-              : generatorMode === 'improvise'
-                ? 'linear-gradient(135deg, #a855f7 0%, #7e22ce 100%)'
-                : 'linear-gradient(135deg, var(--wa-green) 0%, #1a9e50 100%)',
-          color: loading ? 'var(--wa-text-muted)' : '#fff',
-        }}
+        className="btn btn-primary w-full gap-2 py-3 text-[12.5px] font-bold"
       >
         {loading ? (
           <>
-            <Loader2 size={14} className="animate-spin" />
-            {generatorMode === 'enhance_emotion'
-              ? `AI sedang menyisipkan tag emosi…`
-              : generatorMode === 'improvise'
-                ? `AI sedang mengimprovisasi +${msgCount} pesan…`
-                : `AI sedang menulis ${msgCount} pesan…`}
+            <Loader2 size={15} className="animate-spin" />
+            Menulis alur {contentGoal === 'horror' ? 'horror' : 'drama'}…
           </>
         ) : (
           <>
-            <Wand2 size={14} />
-            {generatorMode === 'enhance_emotion'
-              ? `🎭 Auto-Inject Tag Emosi ElevenLabs`
-              : generatorMode === 'improvise'
-                ? `🪄 Improvisasi & Lanjutkan (+${msgCount} Chat)`
-                : `✨ Generate Script AI (${msgCount} Pesan)`}
+            <Wand2 size={15} />
+            {generatorMode === 'improvise' ? 'Lanjutkan naskah' : 'Buat naskah'}
           </>
         )}
       </button>
 
       {generated && (
         <button
+          type="button"
           onClick={generate}
           disabled={loading}
-          className="flex items-center justify-center gap-1.5 w-full py-1.5 rounded-lg text-[12px] border transition-all hover:opacity-70"
-          style={{ borderColor: 'var(--ui-border)', color: 'var(--wa-text-muted)' }}
+          className="flex w-full items-center justify-center gap-1.5 rounded-lg py-1.5 text-[11px] transition-opacity hover:opacity-70"
+          style={{ color: 'var(--wa-text-muted)' }}
         >
-          <RefreshCw size={12} /> {generatorMode === 'enhance_emotion' ? 'Pertajam Tag Emosi Lagi' : generatorMode === 'improvise' ? 'Improvisasi Ulang' : 'Generate Ulang'}
+          <RefreshCw size={12} /> Generate versi lain
         </button>
       )}
     </div>

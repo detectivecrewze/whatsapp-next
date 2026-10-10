@@ -159,6 +159,9 @@ function playTtsAudio(msgId: string, msgIndex?: number): Promise<void> {
 
       // Change src on the existing element and replay
       audio.volume = 1.0;
+      const targetSpeed = Math.max(0.5, Math.min(2, state.ttsSpeed || 1));
+      audio.preservesPitch = true;
+      audio.playbackRate = targetSpeed;
       audio.src = audioUrl;
       audio.load(); // required after changing src
       audio.play().catch(() => {

@@ -41,6 +41,7 @@ function collectVideoProps(): WhatsAppVideoProps {
     zoomSpeed: state.zoomSpeed,
     enableTts: state.enableTts,
     ttsAudioMap: state.ttsAudioMap,
+    ttsSpeed: state.ttsSpeed,
     headerStatus: state.headerStatus,
     headerStatusText: state.headerStatusText,
     pinnedMessage: state.pinnedMessage,

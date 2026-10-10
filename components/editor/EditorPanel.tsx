@@ -1,10 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import {
-  ChevronDown, ChevronUp,
-  User, MessageSquare, Image as ImageIcon,
-  Settings, Volume2, Zap, Cloud, ZoomIn,
+  Cloud,
+  Eye,
+  Film,
+  Image as ImageIcon,
+  MessageSquare,
+  Settings,
+  User,
+  Volume2,
+  Zap,
+  ZoomIn,
+  type LucideIcon,
 } from 'lucide-react';
 import ContactSection from './ContactSection';
 import ChatSequenceSection from './ChatSequenceSection';
@@ -17,113 +25,176 @@ import CloudSection from '@/components/cloud/CloudSection';
 import ShareLinkButton from '@/components/cloud/ShareLinkButton';
 import VideoExportButton from '@/components/video/VideoExportButton';
 
-// ─── Accordion section wrapper ────────────────────────────────────────────────
-function Section({
-  icon,
-  title,
-  children,
-  defaultOpen = false,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+export type EditorSectionId =
+  | 'contact'
+  | 'messages'
+  | 'ai-script'
+  | 'voice-over'
+  | 'wallpaper'
+  | 'video-options'
+  | 'auto-zoom'
+  | 'cloud-presets'
+  | 'preview-share'
+  | 'export-video';
 
+export type EditorSectionMeta = {
+  id: EditorSectionId;
+  title: string;
+  shortTitle: string;
+  description: string;
+  icon: LucideIcon;
+};
+
+export const EDITOR_SECTIONS: Record<EditorSectionId, EditorSectionMeta> = {
+  contact: {
+    id: 'contact',
+    title: 'Profil & Kontak',
+    shortTitle: 'Profil kontak',
+    description: 'Identitas kontak, status header, jam, dan detail tampilan percakapan.',
+    icon: User,
+  },
+  messages: {
+    id: 'messages',
+    title: 'Urutan Pesan',
+    shortTitle: 'Urutan pesan',
+    description: 'Tambah, edit, urutkan, dan atur timing setiap pesan.',
+    icon: MessageSquare,
+  },
+  'ai-script': {
+    id: 'ai-script',
+    title: 'AI Naskah Generator',
+    shortTitle: 'Generator naskah',
+    description: 'Buat drama dengan product reveal atau horror chat melalui alur yang fokus.',
+    icon: Zap,
+  },
+  'voice-over': {
+    id: 'voice-over',
+    title: 'Voice Over AI',
+    shortTitle: 'Voice generator',
+    description: 'Ubah bubble chat menjadi suara untuk preview dan video MP4.',
+    icon: Volume2,
+  },
+  wallpaper: {
+    id: 'wallpaper',
+    title: 'Wallpaper & Tema',
+    shortTitle: 'Wallpaper',
+    description: 'Atur warna atau gambar latar belakang chat.',
+    icon: ImageIcon,
+  },
+  'video-options': {
+    id: 'video-options',
+    title: 'Video & Animasi',
+    shortTitle: 'Video & animasi',
+    description: 'Atur tempo pesan, efek typing, dan suara notifikasi.',
+    icon: Settings,
+  },
+  'auto-zoom': {
+    id: 'auto-zoom',
+    title: 'Auto Zoom',
+    shortTitle: 'Auto zoom',
+    description: 'Atur zoom kamera otomatis untuk menjaga fokus pada pesan.',
+    icon: ZoomIn,
+  },
+  'cloud-presets': {
+    id: 'cloud-presets',
+    title: 'Cloud Preset',
+    shortTitle: 'Preset tersimpan',
+    description: 'Simpan dan muat kembali proyek tanpa membangun ulang dari awal.',
+    icon: Cloud,
+  },
+  'preview-share': {
+    id: 'preview-share',
+    title: 'Preview & Bagikan',
+    shortTitle: 'Preview & share',
+    description: 'Buka preview lokal atau bagikan versi yang tersimpan di cloud.',
+    icon: Eye,
+  },
+  'export-video': {
+    id: 'export-video',
+    title: 'Export Video',
+    shortTitle: 'Render MP4',
+    description: 'Render video vertikal HD 1080×1920 lengkap dengan audio.',
+    icon: Film,
+  },
+};
+
+function ExportSummary() {
   return (
-    <div className="border-b" style={{ borderColor: 'var(--ui-border)' }}>
-      <button
-        className="accordion-header w-full"
-        onClick={() => setOpen(!open)}
-        aria-expanded={open}
+    <div className="flex flex-col gap-3">
+      <div
+        className="rounded-xl border p-3"
+        style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
       >
-        <div className="flex items-center gap-2.5">
-          <span style={{ color: 'var(--wa-green)' }}>{icon}</span>
-          <span className="text-[13.5px] font-semibold" style={{ color: 'var(--wa-text)' }}>
-            {title}
-          </span>
+        <p className="text-[12.5px] font-semibold" style={{ color: 'var(--wa-text)' }}>
+          Siap untuk TikTok & Reels
+        </p>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]" style={{ color: 'var(--wa-text-muted)' }}>
+          <span>Resolusi</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>1080 × 1920</strong>
+          <span>Format</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>MP4 · H.264</strong>
+          <span>Audio</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>AAC</strong>
+          <span>Rasio</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>9:16</strong>
         </div>
-        <span style={{ color: 'var(--wa-text-muted)' }}>
-          {open ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-        </span>
-      </button>
-      {open && (
-        <div className="px-3 pb-3 pt-1 flex flex-col gap-2.5">
-          {children}
-        </div>
-      )}
+      </div>
+      <VideoExportButton />
     </div>
   );
 }
 
-// ─── Main Panel ───────────────────────────────────────────────────────────────
-export default function EditorPanel() {
+function SectionContent({ section }: { section: EditorSectionId }) {
+  switch (section) {
+    case 'contact':
+      return <ContactSection />;
+    case 'messages':
+      return <ChatSequenceSection />;
+    case 'ai-script':
+      return <AiGeneratorSection />;
+    case 'voice-over':
+      return <TtsSection />;
+    case 'wallpaper':
+      return <WallpaperSection />;
+    case 'video-options':
+      return <VideoOptionsSection />;
+    case 'auto-zoom':
+      return <ZoomSection />;
+    case 'cloud-presets':
+      return <CloudSection />;
+    case 'preview-share':
+      return <ShareLinkButton />;
+    case 'export-video':
+      return <ExportSummary />;
+  }
+}
+
+export default function EditorPanel({ activeSection = 'messages' }: { activeSection?: EditorSectionId }) {
+  const meta = EDITOR_SECTIONS[activeSection];
+  const Icon = meta.icon;
+
   return (
-    <div className="flex flex-col h-full overflow-hidden">
-      {/* Header */}
-      <div
-        className="flex items-center gap-2 px-4 py-3.5 border-b shrink-0"
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      <header
+        className="shrink-0 border-b px-4 py-4"
         style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
       >
-        <div
-          className="w-7 h-7 rounded-lg flex items-center justify-center"
-          style={{ background: 'var(--wa-green)' }}
-        >
-          <MessageSquare size={14} className="text-black" />
+        <div className="flex items-start gap-3">
+          <span
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+            style={{ background: 'rgba(37,211,102,0.12)', color: 'var(--wa-green)' }}
+          >
+            <Icon size={18} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-[14px] font-semibold" style={{ color: 'var(--wa-text)' }}>
+              {meta.title}
+            </h2>
+            <p className="mt-1 text-[11px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+              {meta.description}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-[14px] font-bold" style={{ color: 'var(--wa-text)' }}>
-            WA Generator
-          </h1>
-          <p className="text-[10px]" style={{ color: 'var(--wa-text-muted)' }}>
-            Dark Mode Content Creator
-          </p>
-        </div>
-      </div>
+      </header>
 
-      {/* Scrollable accordion sections */}
-      <div className="flex-1 panel-scroll">
-        <Section icon={<User size={15} />} title="Profil & Kontak" defaultOpen>
-          <ContactSection />
-        </Section>
-
-        <Section icon={<MessageSquare size={15} />} title="Urutan Pesan" defaultOpen>
-          <ChatSequenceSection />
-        </Section>
-
-        <Section icon={<ImageIcon size={15} />} title="Wallpaper & Tampilan">
-          <WallpaperSection />
-        </Section>
-
-        <Section icon={<Settings size={15} />} title="Opsi Video & Animasi">
-          <VideoOptionsSection />
-        </Section>
-
-        <Section icon={<ZoomIn size={15} />} title="Auto Zoom">
-          <ZoomSection />
-        </Section>
-
-        <Section icon={<Zap size={15} />} title="🤖 Generator Naskah AI">
-          <AiGeneratorSection />
-        </Section>
-
-        <Section icon={<Volume2 size={15} />} title="🎙️ Voice Over AI (TTS)">
-          <TtsSection />
-        </Section>
-
-        <Section icon={<Cloud size={15} />} title="☁️ Cloud Preset">
-          <CloudSection />
-        </Section>
-      </div>
-
-      {/* Bottom: preview/record button */}
-      <div
-        className="px-3 py-3 border-t shrink-0 flex flex-col gap-2"
-        style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
-      >
-        <VideoExportButton />
-        <ShareLinkButton />
+      <div className="panel-scroll flex-1 px-4 py-4">
+        <SectionContent section={activeSection} />
       </div>
     </div>
   );

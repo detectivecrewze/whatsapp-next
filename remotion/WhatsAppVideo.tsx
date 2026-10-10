@@ -84,7 +84,7 @@ function estimateMessageHeight(message: Message) {
 
   switch (message.type) {
     case 'image':
-      return 500 + senderHeight + (caption ? estimateTextLines(caption) * 46 + 20 : 0);
+      return 525 + senderHeight + (caption ? estimateTextLines(caption) * 46 + 20 : 0);
     case 'link': {
       const commentary = message.text && !message.text.startsWith('http') ? message.text : '';
       return 595 + senderHeight + (commentary ? estimateTextLines(commentary) * 46 + 18 : 0);
@@ -149,11 +149,13 @@ function BubbleShell({
   children,
   showSenderName,
   maxWidth = 760,
+  padding = '19px 22px 15px',
 }: {
   message: Message;
   children: React.ReactNode;
   showSenderName: boolean;
   maxWidth?: number;
+  padding?: string;
 }) {
   const outgoing = message.direction === 'outgoing';
 
@@ -162,7 +164,7 @@ function BubbleShell({
       style={{
         maxWidth,
         minWidth: 190,
-        padding: '19px 22px 15px',
+        padding,
         backgroundColor: outgoing ? COLORS.outgoing : COLORS.incoming,
         borderRadius: outgoing ? '28px 4px 28px 28px' : '4px 28px 28px 28px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.28)',
@@ -192,15 +194,21 @@ function ImageMessage({ message, showSenderName }: { message: Message; showSende
   const isGif = Boolean(message.imageData && isAnimatedImage(message.imageData));
 
   return (
-    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={790}>
+    <BubbleShell
+      message={message}
+      showSenderName={showSenderName}
+      maxWidth={790}
+      padding="11px 11px 12px"
+    >
       <div
         style={{
           position: 'relative',
-          width: 700,
-          height: 410,
-          borderRadius: 20,
+          width: 768,
+          height: 455,
+          borderRadius: 18,
           overflow: 'hidden',
           backgroundColor: '#111b21',
+          boxShadow: 'inset 0 0 0 2px rgba(255,255,255,0.055)',
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
@@ -209,13 +217,22 @@ function ImageMessage({ message, showSenderName }: { message: Message; showSende
         {message.imageData ? (
           <MediaAsset
             src={message.imageData}
-            width={700}
-            height={410}
-            fit="contain"
+            width={768}
+            height={455}
+            fit="cover"
           />
         ) : (
           <div style={{ color: COLORS.muted, fontSize: 30 }}>📷 Gambar</div>
         )}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 18,
+            border: '2px solid rgba(255,255,255,0.07)',
+            pointerEvents: 'none',
+          }}
+        />
         {isGif ? (
           <div
             style={{
@@ -235,7 +252,11 @@ function ImageMessage({ message, showSenderName }: { message: Message; showSende
           </div>
         ) : null}
       </div>
-      {caption ? <div style={{ fontSize: 34, lineHeight: 1.3, marginTop: 15 }}>{caption}</div> : null}
+      {caption ? (
+        <div style={{ fontSize: 34, lineHeight: 1.3, marginTop: 15, padding: '0 10px' }}>
+          {caption}
+        </div>
+      ) : null}
     </BubbleShell>
   );
 }
@@ -705,6 +726,7 @@ function MessageAudioTracks({
   timeline: TimelineEvent[];
 }) {
   const { fps } = useVideoConfig();
+  const voicePlaybackRate = Math.max(0.5, Math.min(2, props.ttsSpeed || 1));
 
   return (
     <>
@@ -729,6 +751,7 @@ function MessageAudioTracks({
                 src={voiceSource}
                 from={event.revealFrame}
                 volume={1}
+                playbackRate={voicePlaybackRate}
                 premountFor={fps}
               />
             ) : null}
@@ -774,6 +797,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     : 50;
 
   let cameraScale = 1;
+  let zoomProgress = 0;
   if (zoomEnabled && activeEvent) {
     const eventDuration = Math.max(2, activeEvent.endFrame - activeEvent.revealFrame);
     const rampFrames = Math.max(
@@ -800,10 +824,23 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
         easing: Easing.bezier(0.4, 0, 0.2, 1),
       }
     );
-    const zoomProgress = Math.min(zoomIn, zoomOut);
-    const targetScale = activeEvent.message.customScale || props.zoomScale;
+    zoomProgress = Math.min(zoomIn, zoomOut);
+    const requestedScale = activeEvent.message.customScale || props.zoomScale;
+    const targetScale = activeEvent.message.type === 'link'
+      ? Math.min(requestedScale, 1.16)
+      : activeEvent.message.type === 'image'
+        ? Math.min(requestedScale, 1.18)
+        : requestedScale;
     cameraScale = 1 + (targetScale - 1) * zoomProgress;
   }
+
+  const isTallMediaCard = activeEvent?.message.type === 'link' || activeEvent?.message.type === 'image';
+  const activeCenterInViewport = heightBeforeActive + activeHeight / 2 + scrollOffset;
+  const safeMediaCenterY = availableChatHeight * (activeEvent?.message.type === 'link' ? 0.58 : 0.56);
+  const mediaFocusShiftY = zoomEnabled && isTallMediaCard
+    ? (safeMediaCenterY - activeCenterInViewport) * zoomProgress
+    : 0;
+  const cameraTranslateY = scrollOffset + mediaFocusShiftY;
 
   const zoomOriginX = activeEvent?.message.direction === 'outgoing' ? 88 : 12;
   const introOpacity = interpolate(frame, [0, Math.round(fps * 0.35)], [0, 1], {
@@ -866,7 +903,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
               flexDirection: 'column',
               gap: 16,
               width: '100%',
-              translate: `0px ${scrollOffset}px`,
+              translate: `0px ${cameraTranslateY}px`,
               scale: cameraScale,
               transformOrigin: `${zoomOriginX}% ${zoomOriginY}%`,
             }}

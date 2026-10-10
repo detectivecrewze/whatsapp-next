@@ -128,19 +128,21 @@ export interface PresetsResponse {
 
 // Default voices for ElevenLabs
 export const ELEVENLABS_VOICES = [
-  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella (Wanita - Lembut)' },
-  { id: 'AZnzlk1XvdvUeBnXmlld', name: 'Domi (Wanita - Ekspresif)' },
-  { id: 'MF3mGyEYCl7XYWbV9V6O', name: 'Elli (Wanita - Ceria)' },
-  { id: 'ThT5KcBeYPX3keUQqHPh', name: 'Dorothy (Wanita - Narasi)' },
-  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (Pria - Deep Narration)' },
-  { id: 'ErXwobaYiN019PkySvjV', name: 'Antoni (Pria - Enerjik)' },
-  { id: 'VR6AewLTigWG4xSOukaG', name: 'Arnold (Pria - Berat)' },
-  { id: 'yoZ06aMxZJJ28mfd3POQ', name: 'Sam (Pria - Santai)' },
-  { id: 'TxGEqnHWrfWFTfGW9XjX', name: 'Josh (Pria - Natural)' },
-  { id: 'custom', name: '🔧 Custom Voice ID...' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', name: 'Bella / Sarah · lembut (basis EN)' },
+  { id: 'cgSgspJ2msm6clMCkdW9', name: 'Jessica · natural (basis EN)' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', name: 'Matilda · santai (basis EN)' },
+  { id: 'pFZP5JQG7iQjIQuC4Bku', name: 'Lily · horror (basis EN)' },
+  { id: 'FGY2WhTYpPnrIDTdsKH5', name: 'Laura · narasi (basis EN)' },
+  { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam · berat (basis EN)' },
+  { id: 'nPczCjzI2devNBz1zQrb', name: 'Brian · storyteller (basis EN)' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam · cerah (basis EN)' },
+  { id: 'N2lVS1w4EtoT3dr4eOWO', name: 'Callum · santai (basis EN)' },
+  { id: 'cjVigY5qzO86Huf0OWal', name: 'Eric · hangat (basis EN)' },
 ] as const;
 
 export const ELEVENLABS_MODELS = [
+  { id: 'eleven_v4', name: 'ElevenLabs v4 (Terbaik lintas bahasa) ⭐' },
+  { id: 'eleven_v4_turbo', name: 'ElevenLabs v4 Turbo (Cepat)' },
   { id: 'eleven_v3', name: 'ElevenLabs v3 (Ultra Realist) ⭐' },
   { id: 'eleven_multilingual_v2', name: 'Multilingual v2 (Stabil)' },
   { id: 'eleven_turbo_v2_5', name: 'Turbo v2.5 (Cepat)' },
@@ -187,7 +189,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   ttsProvider: 'elevenlabs',
   elevenKey: 'sk_a0156fb3be716832cafb958b953d7a09d641be1ae3acbaa5',
   qwenKey: '',
-  elevenModel: 'eleven_v3',
+  elevenModel: 'eleven_v4',
   ttsVoiceIn: 'EXAVITQu4vr4xnSDxMaL',
   ttsVoiceOut: 'pNInz6obpgDQGcFmaJgB',
   ttsStability: 0.25,

@@ -28,6 +28,7 @@ export type WhatsAppVideoProps = Pick<
   | 'zoomSpeed'
   | 'enableTts'
   | 'ttsAudioMap'
+  | 'ttsSpeed'
   | 'headerStatus'
   | 'headerStatusText'
   | 'pinnedMessage'

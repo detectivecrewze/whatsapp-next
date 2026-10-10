@@ -18,6 +18,7 @@ type TimelineInput = {
   replyDelay: number;
   useTyping: boolean;
   enableTts?: boolean;
+  ttsSpeed?: number;
   voiceDurationsMs?: Record<string, number>;
 };
 
@@ -27,6 +28,7 @@ export function buildVideoTimeline({
   replyDelay,
   useTyping,
   enableTts,
+  ttsSpeed = 1,
   voiceDurationsMs,
 }: TimelineInput): TimelineEvent[] {
   let cursor = INTRO_FRAMES;
@@ -40,8 +42,9 @@ export function buildVideoTimeline({
       1,
       Math.round(((message.customHoldMs ?? holdMs) / 1000) * VIDEO_FPS)
     );
+    const playbackRate = Math.max(0.5, ttsSpeed);
     const voiceFrames = enableTts
-      ? Math.max(0, Math.ceil(((voiceDurationsMs?.[message.id] ?? 0) / 1000) * VIDEO_FPS))
+      ? Math.max(0, Math.ceil((((voiceDurationsMs?.[message.id] ?? 0) / playbackRate) / 1000) * VIDEO_FPS))
       : 0;
     const typingStartFrame = cursor;
     const revealFrame = cursor + typingFrames;

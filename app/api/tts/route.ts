@@ -38,6 +38,20 @@ export async function POST(req: NextRequest) {
         targetVoiceId = 'EXAVITQu4vr4xnSDxMaL'; // Default ElevenLabs voice (Bella)
       }
 
+      const isV4Model = model === 'eleven_v4' || model === 'eleven_v4_turbo';
+      const voiceSettings = isV4Model
+        ? {
+            stability,
+            similarity_boost: 0.75,
+          }
+        : {
+            stability,
+            similarity_boost: 0.75,
+            style,
+            speed,
+            use_speaker_boost: true,
+          };
+
       const res = await fetch(`${ELEVEN_BASE}/text-to-speech/${targetVoiceId}`, {
         method: 'POST',
         headers: {
@@ -48,13 +62,8 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           text,
           model_id: model,
-          voice_settings: {
-            stability,
-            similarity_boost: 0.75,
-            style,
-            speed,                  // ← was missing! now forwarded to ElevenLabs
-            use_speaker_boost: true,
-          },
+          language_code: 'id',
+          voice_settings: voiceSettings,
         }),
       });
 
@@ -182,8 +191,8 @@ export async function POST(req: NextRequest) {
           }
 
           lastError = await res.text();
-        } catch (err: any) {
-          lastError = err.message || String(err);
+        } catch (err: unknown) {
+          lastError = err instanceof Error ? err.message : String(err);
         }
       }
 
