@@ -15,6 +15,7 @@ import TtsSection from './TtsSection';
 import AiGeneratorSection from './AiGeneratorSection';
 import CloudSection from '@/components/cloud/CloudSection';
 import ShareLinkButton from '@/components/cloud/ShareLinkButton';
+import VideoExportButton from '@/components/video/VideoExportButton';
 
 // ─── Accordion section wrapper ────────────────────────────────────────────────
 function Section({
@@ -118,9 +119,10 @@ export default function EditorPanel() {
 
       {/* Bottom: preview/record button */}
       <div
-        className="px-3 py-3 border-t shrink-0"
+        className="px-3 py-3 border-t shrink-0 flex flex-col gap-2"
         style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-panel)' }}
       >
+        <VideoExportButton />
         <ShareLinkButton />
       </div>
     </div>

@@ -1,0 +1,963 @@
+import React from 'react';
+import { Audio } from '@remotion/media';
+import { Phone, Search, Video } from 'lucide-react';
+import {
+  AbsoluteFill,
+  AnimatedImage,
+  CanvasImage,
+  Easing,
+  interpolate,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+} from 'remotion';
+import type { Message } from '@/types';
+import { extractDomain, getInitials, getSenderColor, stripAudioTags } from '@/lib/utils';
+import { buildVideoTimeline, getTimelineState, type TimelineEvent } from './timeline';
+import type { WhatsAppVideoProps } from './videoTypes';
+import { getMessageSoundSource, getVoiceSource } from './audio';
+
+const COLORS = {
+  header: '#202c33',
+  chat: '#0b141a',
+  incoming: '#202c33',
+  outgoing: '#005c4b',
+  green: '#00a884',
+  blue: '#53bdeb',
+  text: '#e9edef',
+  muted: '#8696a0',
+};
+
+const FONT = 'Inter, Arial, Helvetica, sans-serif';
+
+function isAnimatedImage(src: string) {
+  const normalized = src.toLowerCase().split('?')[0].split('#')[0];
+  return normalized.endsWith('.gif') || src.toLowerCase().startsWith('data:image/gif');
+}
+
+function MediaAsset({
+  src,
+  width,
+  height,
+  fit = 'cover',
+}: {
+  src: string;
+  width: number;
+  height: number;
+  fit?: 'cover' | 'contain';
+}) {
+  const { fps } = useVideoConfig();
+
+  if (isAnimatedImage(src)) {
+    return (
+      <AnimatedImage
+        src={src}
+        width={width}
+        height={height}
+        fit={fit}
+        loopBehavior="loop"
+        premountFor={fps}
+        style={{ display: 'block' }}
+      />
+    );
+  }
+
+  return (
+    <CanvasImage
+      src={src}
+      premountFor={fps}
+      style={{ width, height, objectFit: fit, display: 'block' }}
+    />
+  );
+}
+
+function estimateTextLines(text: string, charactersPerLine = 34) {
+  return Math.max(
+    1,
+    text.split('\n').reduce((total, line) => total + Math.max(1, Math.ceil(line.length / charactersPerLine)), 0)
+  );
+}
+
+function estimateMessageHeight(message: Message) {
+  const senderHeight = message.senderName ? 42 : 0;
+  const caption = stripAudioTags(message.caption || message.text || '');
+
+  switch (message.type) {
+    case 'image':
+      return 500 + senderHeight + (caption ? estimateTextLines(caption) * 46 + 20 : 0);
+    case 'link': {
+      const commentary = message.text && !message.text.startsWith('http') ? message.text : '';
+      return 595 + senderHeight + (commentary ? estimateTextLines(commentary) * 46 + 18 : 0);
+    }
+    case 'voice_note':
+      return 150 + senderHeight;
+    case 'transfer':
+    case 'contact':
+    case 'location':
+      return 190 + senderHeight;
+    case 'view_once':
+    case 'deleted':
+      return 125 + senderHeight;
+    default:
+      return 78 + senderHeight + estimateTextLines(stripAudioTags(message.text || '')) * 48;
+  }
+}
+
+function TimeAndTicks({ message }: { message: Message }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
+        gap: 7,
+        marginTop: 8,
+        color: 'rgba(233,237,239,0.58)',
+        fontSize: 23,
+        lineHeight: 1,
+      }}
+    >
+      <span>{message.time || '09:41'}</span>
+      {message.direction === 'outgoing' ? (
+        <span style={{ color: COLORS.blue, fontWeight: 800, letterSpacing: -7, paddingRight: 7 }}>
+          ✓✓
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function SenderName({ message }: { message: Message }) {
+  if (!message.senderName) return null;
+
+  return (
+    <div
+      style={{
+        color: message.senderColor || getSenderColor(message.senderName),
+        fontWeight: 800,
+        fontSize: 29,
+        marginBottom: 9,
+      }}
+    >
+      {message.senderName}
+    </div>
+  );
+}
+
+function BubbleShell({
+  message,
+  children,
+  showSenderName,
+  maxWidth = 760,
+}: {
+  message: Message;
+  children: React.ReactNode;
+  showSenderName: boolean;
+  maxWidth?: number;
+}) {
+  const outgoing = message.direction === 'outgoing';
+
+  return (
+    <div
+      style={{
+        maxWidth,
+        minWidth: 190,
+        padding: '19px 22px 15px',
+        backgroundColor: outgoing ? COLORS.outgoing : COLORS.incoming,
+        borderRadius: outgoing ? '28px 4px 28px 28px' : '4px 28px 28px 28px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.28)',
+        color: COLORS.text,
+        overflow: 'hidden',
+      }}
+    >
+      {showSenderName ? <SenderName message={message} /> : null}
+      {children}
+      <TimeAndTicks message={message} />
+    </div>
+  );
+}
+
+function TextMessage({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName}>
+      <div style={{ fontSize: 36, lineHeight: 1.34, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }}>
+        {stripAudioTags(message.text || '')}
+      </div>
+    </BubbleShell>
+  );
+}
+
+function ImageMessage({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  const caption = stripAudioTags(message.caption || message.text || '');
+  const isGif = Boolean(message.imageData && isAnimatedImage(message.imageData));
+
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={790}>
+      <div
+        style={{
+          position: 'relative',
+          width: 700,
+          height: 410,
+          borderRadius: 20,
+          overflow: 'hidden',
+          backgroundColor: '#111b21',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+        }}
+      >
+        {message.imageData ? (
+          <MediaAsset
+            src={message.imageData}
+            width={700}
+            height={410}
+            fit="contain"
+          />
+        ) : (
+          <div style={{ color: COLORS.muted, fontSize: 30 }}>📷 Gambar</div>
+        )}
+        {isGif ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: 16,
+              left: 16,
+              padding: '6px 13px',
+              borderRadius: 10,
+              backgroundColor: 'rgba(0,0,0,0.72)',
+              color: '#00d084',
+              fontSize: 20,
+              fontWeight: 800,
+              letterSpacing: 1.5,
+            }}
+          >
+            GIF
+          </div>
+        ) : null}
+      </div>
+      {caption ? <div style={{ fontSize: 34, lineHeight: 1.3, marginTop: 15 }}>{caption}</div> : null}
+    </BubbleShell>
+  );
+}
+
+function LinkMessage({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  const url = message.linkUrl || message.text || '';
+  const domain = extractDomain(url);
+  const commentary = message.text && !message.text.startsWith('http') ? stripAudioTags(message.text) : '';
+
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={800}>
+      {commentary ? <div style={{ fontSize: 34, lineHeight: 1.3, marginBottom: 15 }}>{commentary}</div> : null}
+      <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 20, overflow: 'hidden' }}>
+        <div
+          style={{
+            // Match the preview card's 125:274 thumbnail ratio at Remotion's width.
+            height: 345,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundImage: 'linear-gradient(135deg, #243b4a, #111b21)',
+          }}
+        >
+          {message.linkImage || message.imageData ? (
+            <MediaAsset
+              src={(message.linkImage || message.imageData) as string}
+              width={756}
+              height={345}
+              fit="cover"
+            />
+          ) : (
+            <div style={{ fontSize: 72 }}>🌐</div>
+          )}
+        </div>
+        <div style={{ padding: '18px 22px 20px' }}>
+          <div style={{ fontSize: 34, fontWeight: 750 }}>{message.linkTitle || domain || 'Tautan Web'}</div>
+          <div style={{ color: COLORS.muted, fontSize: 27, lineHeight: 1.35, marginTop: 8 }}>
+            {message.linkDescription || 'Klik untuk membuka tautan halaman web'}
+          </div>
+          <div style={{ color: 'rgba(233,237,239,0.45)', fontSize: 23, marginTop: 10 }}>{domain}</div>
+        </div>
+      </div>
+      <div style={{ color: COLORS.blue, fontSize: 29, marginTop: 13, overflowWrap: 'anywhere' }}>{url}</div>
+    </BubbleShell>
+  );
+}
+
+function VoiceNoteMessage({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  const waveform = message.waveform || [30, 52, 35, 72, 44, 80, 62, 30, 68, 48, 78, 36, 58, 72, 40, 64, 32, 74, 52, 68];
+
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={760}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
+        <div
+          style={{
+            width: 78,
+            height: 78,
+            borderRadius: 999,
+            backgroundColor: COLORS.green,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 34,
+          }}
+        >
+          ▶
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', height: 58, gap: 5 }}>
+            {waveform.slice(0, 26).map((height, index) => (
+              <div
+                key={index}
+                style={{
+                  flex: 1,
+                  height: Math.max(7, (height / 100) * 56),
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(233,237,239,0.62)',
+                }}
+              />
+            ))}
+          </div>
+          <div style={{ color: COLORS.muted, fontSize: 24, marginTop: 5 }}>{message.duration || '0:12'}</div>
+        </div>
+      </div>
+    </BubbleShell>
+  );
+}
+
+function SpecialCard({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  const icon = message.type === 'transfer' ? 'Rp' : message.type === 'contact' ? '👤' : '📍';
+  const title =
+    message.type === 'transfer'
+      ? 'Transfer Berhasil'
+      : message.type === 'contact'
+        ? message.text || 'Nama Kontak'
+        : message.text || 'Lokasi Saya';
+  const subtitle =
+    message.type === 'transfer'
+      ? message.text || 'Rp 250.000'
+      : message.caption || (message.type === 'contact' ? '+62 812 xxxx xxxx' : 'Jakarta, Indonesia');
+
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={700}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div
+          style={{
+            width: 86,
+            height: 86,
+            borderRadius: 999,
+            backgroundColor: message.type === 'location' ? '#d34b43' : COLORS.green,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: message.type === 'transfer' ? 29 : 42,
+            fontWeight: 800,
+          }}
+        >
+          {icon}
+        </div>
+        <div>
+          <div style={{ fontSize: 34, fontWeight: 750 }}>{title}</div>
+          <div
+            style={{
+              color: message.type === 'transfer' ? '#25d366' : COLORS.muted,
+              fontSize: message.type === 'transfer' ? 43 : 28,
+              fontWeight: message.type === 'transfer' ? 800 : 500,
+              marginTop: 6,
+            }}
+          >
+            {subtitle}
+          </div>
+        </div>
+      </div>
+    </BubbleShell>
+  );
+}
+
+function ViewOnceMessage({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={580}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: 35, fontWeight: 650 }}>
+        <div
+          style={{
+            width: 54,
+            height: 54,
+            borderRadius: 999,
+            border: `4px solid ${COLORS.green}`,
+            color: COLORS.green,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 27,
+          }}
+        >
+          1
+        </div>
+        Foto
+      </div>
+    </BubbleShell>
+  );
+}
+
+function DeletedMessage({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  return (
+    <BubbleShell message={message} showSenderName={showSenderName} maxWidth={650}>
+      <div style={{ color: COLORS.muted, fontSize: 33, fontStyle: 'italic' }}>⊘ Pesan ini telah dihapus</div>
+    </BubbleShell>
+  );
+}
+
+function MessageContent({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  switch (message.type) {
+    case 'image':
+      return <ImageMessage message={message} showSenderName={showSenderName} />;
+    case 'link':
+      return <LinkMessage message={message} showSenderName={showSenderName} />;
+    case 'voice_note':
+      return <VoiceNoteMessage message={message} showSenderName={showSenderName} />;
+    case 'transfer':
+    case 'contact':
+    case 'location':
+      return <SpecialCard message={message} showSenderName={showSenderName} />;
+    case 'view_once':
+      return <ViewOnceMessage message={message} showSenderName={showSenderName} />;
+    case 'deleted':
+      return <DeletedMessage message={message} showSenderName={showSenderName} />;
+    default:
+      return <TextMessage message={message} showSenderName={showSenderName} />;
+  }
+}
+
+function ChatMessage({
+  message,
+  event,
+  frame,
+  showSenderName,
+}: {
+  message: Message;
+  event: TimelineEvent;
+  frame: number;
+  showSenderName: boolean;
+}) {
+  const entry = interpolate(frame, [event.revealFrame, event.revealFrame + 7], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: message.direction === 'outgoing' ? 'flex-end' : 'flex-start',
+        width: '100%',
+        opacity: entry,
+        translate: `${message.direction === 'outgoing' ? 32 * (1 - entry) : -32 * (1 - entry)}px 0px`,
+        flexShrink: 0,
+      }}
+    >
+      <MessageContent message={message} showSenderName={showSenderName} />
+    </div>
+  );
+}
+
+function TypingBubble() {
+  const frame = useCurrentFrame();
+
+  return (
+    <div
+      style={{
+        alignSelf: 'flex-start',
+        display: 'flex',
+        gap: 10,
+        padding: '24px 30px',
+        borderRadius: '4px 28px 28px 28px',
+        backgroundColor: COLORS.incoming,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+      }}
+    >
+      {[0, 1, 2].map((index) => {
+        const phase = (frame + index * 5) % 20;
+        const opacity = interpolate(phase, [0, 10, 20], [0.35, 1, 0.35]);
+        return (
+          <div
+            key={index}
+            style={{ width: 17, height: 17, borderRadius: 999, backgroundColor: COLORS.muted, opacity }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+function StatusBar({ props }: { props: WhatsAppVideoProps }) {
+  const displayTime = props.useCustomTime
+    ? props.customTime
+    : props.messages[0]?.time || '09:41';
+
+  return (
+    <div
+      style={{
+        height: 92,
+        flexShrink: 0,
+        backgroundColor: COLORS.header,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '22px 48px 10px',
+        color: 'white',
+        fontSize: 30,
+        fontWeight: 700,
+      }}
+    >
+      <span>{displayTime}</span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+        <span style={{ fontSize: 25 }}>▮▮▮▮</span>
+        <span style={{ fontSize: 31 }}>⌁</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+          <div
+            style={{
+              width: 58,
+              height: 27,
+              border: '3px solid rgba(255,255,255,0.8)',
+              borderRadius: 7,
+              padding: 3,
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${Math.max(3, props.batteryLevel)}%`,
+                borderRadius: 3,
+                backgroundColor: props.batteryLevel <= 20 ? '#ff3b30' : 'white',
+              }}
+            />
+          </div>
+          <div style={{ width: 4, height: 12, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.8)' }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ChatHeader({ props, isTyping }: { props: WhatsAppVideoProps; isTyping: boolean }) {
+  const status = isTyping
+    ? 'mengetik...'
+    : props.chatType === 'group'
+      ? props.groupSubtitle || 'Grup WhatsApp'
+      : props.headerStatus === 'custom'
+        ? props.headerStatusText || 'Online'
+        : props.headerStatus === 'typing'
+          ? 'mengetik...'
+          : 'Online';
+
+  return (
+    <div
+      style={{
+        height: 154,
+        flexShrink: 0,
+        backgroundColor: COLORS.header,
+        display: 'flex',
+        alignItems: 'center',
+        padding: '18px 31px 24px',
+        color: 'white',
+      }}
+    >
+      <div style={{ color: COLORS.blue, fontSize: 62, lineHeight: 1, marginRight: 12 }}>‹</div>
+      {props.unreadCount > 0 ? (
+        <div style={{ color: COLORS.blue, fontSize: 28, marginRight: 16 }}>{Math.min(99, props.unreadCount)}</div>
+      ) : null}
+      <div
+        style={{
+          width: 92,
+          height: 92,
+          borderRadius: 999,
+          backgroundColor: '#087f69',
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 34,
+          fontWeight: 800,
+          flexShrink: 0,
+        }}
+      >
+        {props.pfp ? (
+          <CanvasImage src={props.pfp} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          getInitials(props.name || 'WA')
+        )}
+      </div>
+      <div style={{ flex: 1, minWidth: 0, marginLeft: 22 }}>
+        <div style={{ fontSize: 39, lineHeight: 1.12, fontWeight: 750, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+          {props.name || 'Nama Kontak'}
+        </div>
+        <div style={{ color: isTyping ? '#25d366' : COLORS.muted, fontSize: 27, marginTop: 8 }}>{status}</div>
+      </div>
+      <div
+        style={{
+          display: 'flex',
+          gap: 44,
+          alignItems: 'center',
+          color: 'rgba(255,255,255,0.8)',
+          flexShrink: 0,
+        }}
+      >
+        <Video size={55} strokeWidth={2} />
+        <Phone size={50} strokeWidth={2} />
+        <Search size={50} strokeWidth={2} />
+      </div>
+    </div>
+  );
+}
+
+function NotificationOverlay({ event }: { event: TimelineEvent }) {
+  const frame = useCurrentFrame();
+  const message = event.message;
+  const entry = interpolate(frame, [event.revealFrame, event.revealFrame + 8], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        top: 112,
+        left: 38,
+        right: 38,
+        padding: '26px 29px',
+        borderRadius: 34,
+        backgroundColor: 'rgba(32,44,51,0.97)',
+        boxShadow: '0 16px 48px rgba(0,0,0,0.55)',
+        color: 'white',
+        display: 'flex',
+        gap: 22,
+        opacity: entry,
+        translate: `0px ${-35 * (1 - entry)}px`,
+      }}
+    >
+      <div
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: 22,
+          backgroundColor: '#25d366',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 42,
+          flexShrink: 0,
+        }}
+      >
+        ☎
+      </div>
+      <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 20 }}>
+          <span style={{ fontSize: 29, fontWeight: 800 }}>{message.notifSender || 'WhatsApp'}</span>
+          <span style={{ color: COLORS.muted, fontSize: 24 }}>{message.time || 'Sekarang'}</span>
+        </div>
+        <div style={{ fontSize: 28, fontWeight: 700, marginTop: 6 }}>{message.notifTitle || 'Pesan Baru'}</div>
+        <div style={{ color: '#d8dde0', fontSize: 28, lineHeight: 1.3, marginTop: 5 }}>{message.text}</div>
+      </div>
+    </div>
+  );
+}
+
+function Wallpaper({ props }: { props: WhatsAppVideoProps }) {
+  if (props.bgType === 'image' && props.bgImage) {
+    return (
+      <CanvasImage
+        src={props.bgImage}
+        style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.72 }}
+      />
+    );
+  }
+
+  if (props.bgType === 'color') {
+    return <AbsoluteFill style={{ backgroundColor: props.bgColor }} />;
+  }
+
+  return (
+    <AbsoluteFill style={{ backgroundColor: COLORS.chat }}>
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          opacity: 0.08,
+          color: '#25d366',
+          fontSize: 55,
+          lineHeight: 1.75,
+          letterSpacing: 32,
+          overflow: 'hidden',
+          padding: 20,
+          wordBreak: 'break-all',
+        }}
+      >
+        {'☎ ✉ ☺ ◌ ✓ ♡ ☎ ✉ ◌ ☺ ✓ ♡ '.repeat(45)}
+      </div>
+    </AbsoluteFill>
+  );
+}
+
+function MessageAudioTracks({
+  props,
+  timeline,
+}: {
+  props: WhatsAppVideoProps;
+  timeline: TimelineEvent[];
+}) {
+  const { fps } = useVideoConfig();
+
+  return (
+    <>
+      {timeline.map((event) => {
+        const soundSource = getMessageSoundSource(props, event.message);
+        const voiceSource = getVoiceSource(props, event.message, event.index);
+
+        return (
+          <React.Fragment key={`audio-${event.message.id}`}>
+            {soundSource ? (
+              <Audio
+                name={`SFX ${event.message.direction} ${event.index + 1}`}
+                src={staticFile(soundSource)}
+                from={event.revealFrame}
+                volume={0.85}
+                premountFor={fps}
+              />
+            ) : null}
+            {voiceSource ? (
+              <Audio
+                name={`Voice ${event.index + 1}`}
+                src={voiceSource}
+                from={event.revealFrame}
+                volume={1}
+                premountFor={fps}
+              />
+            ) : null}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
+export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const timeline = buildVideoTimeline(props);
+  const { visibleCount, activeEvent, typingEvent } = getTimelineState(frame, timeline);
+  const visibleEvents = timeline
+    .slice(0, visibleCount)
+    .filter((event) => event.message.type !== 'notification');
+  const activeNotification = activeEvent?.message.type === 'notification' ? activeEvent : null;
+  const dateBadgeHeight = props.dateBadge && visibleCount > 0 ? 58 : 0;
+  const estimatedHeights = visibleEvents.map((event) => estimateMessageHeight(event.message));
+  const estimatedContentHeight =
+    dateBadgeHeight +
+    estimatedHeights.reduce((total, height) => total + height, 0) +
+    Math.max(0, visibleEvents.length - 1) * 16 +
+    (typingEvent ? 96 : 0);
+  const availableChatHeight = props.pinnedMessage ? 1368 : 1488;
+  const scrollOffset = Math.min(0, availableChatHeight - estimatedContentHeight);
+
+  const activeVisibleIndex = activeEvent
+    ? visibleEvents.findIndex((event) => event.message.id === activeEvent.message.id)
+    : -1;
+  const zoomEnabled =
+    activeEvent !== null &&
+    activeVisibleIndex >= 0 &&
+    (activeEvent.message.enableZoom ?? props.autoZoom);
+  const activeHeight = activeVisibleIndex >= 0 ? estimatedHeights[activeVisibleIndex] : 0;
+  const heightBeforeActive =
+    dateBadgeHeight +
+    estimatedHeights.slice(0, Math.max(0, activeVisibleIndex)).reduce((total, height) => total + height + 16, 0);
+  const zoomOriginY = estimatedContentHeight > 0
+    ? Math.max(8, Math.min(92, ((heightBeforeActive + activeHeight / 2) / estimatedContentHeight) * 100))
+    : 50;
+
+  let cameraScale = 1;
+  if (zoomEnabled && activeEvent) {
+    const eventDuration = Math.max(2, activeEvent.endFrame - activeEvent.revealFrame);
+    const rampFrames = Math.max(
+      1,
+      Math.min(Math.round((props.zoomSpeed / 1000) * fps), Math.floor(eventDuration / 2))
+    );
+    const zoomIn = interpolate(
+      frame,
+      [activeEvent.revealFrame, activeEvent.revealFrame + rampFrames],
+      [0, 1],
+      {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+      }
+    );
+    const zoomOut = interpolate(
+      frame,
+      [activeEvent.endFrame - rampFrames, activeEvent.endFrame],
+      [1, 0],
+      {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.4, 0, 0.2, 1),
+      }
+    );
+    const zoomProgress = Math.min(zoomIn, zoomOut);
+    const targetScale = activeEvent.message.customScale || props.zoomScale;
+    cameraScale = 1 + (targetScale - 1) * zoomProgress;
+  }
+
+  const zoomOriginX = activeEvent?.message.direction === 'outgoing' ? 88 : 12;
+  const introOpacity = interpolate(frame, [0, Math.round(fps * 0.35)], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: COLORS.chat,
+        color: COLORS.text,
+        fontFamily: FONT,
+        overflow: 'hidden',
+        opacity: introOpacity,
+      }}
+    >
+      <StatusBar props={props} />
+      <ChatHeader props={props} isTyping={Boolean(typingEvent)} />
+
+      <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>
+        <Wallpaper props={props} />
+
+        {props.pinnedMessage ? (
+          <div
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: 96,
+              backgroundColor: 'rgba(32,44,51,0.96)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 20,
+              padding: '12px 38px',
+            }}
+          >
+            <div style={{ width: 6, height: 62, borderRadius: 8, backgroundColor: COLORS.green }} />
+            <div>
+              <div style={{ color: '#25d366', fontSize: 24, fontWeight: 750 }}>📌 Pesan Disematkan</div>
+              <div style={{ color: '#c8d0d5', fontSize: 27, marginTop: 3 }}>{props.pinnedMessage}</div>
+            </div>
+          </div>
+        ) : null}
+
+        <div
+          style={{
+            position: 'absolute',
+            left: 30,
+            right: 30,
+            top: props.pinnedMessage ? 120 : 28,
+            bottom: 28,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+              width: '100%',
+              translate: `0px ${scrollOffset}px`,
+              scale: cameraScale,
+              transformOrigin: `${zoomOriginX}% ${zoomOriginY}%`,
+            }}
+          >
+            {props.dateBadge && visibleCount > 0 ? (
+              <div
+                style={{
+                  alignSelf: 'center',
+                  padding: '12px 30px',
+                  borderRadius: 16,
+                  backgroundColor: 'rgba(18,27,33,0.92)',
+                  color: '#c7d0d5',
+                  fontSize: 25,
+                  flexShrink: 0,
+                }}
+              >
+                {props.dateBadge}
+              </div>
+            ) : null}
+
+            {visibleEvents.map((event, visibleIndex) => {
+              const previous = visibleIndex > 0 ? visibleEvents[visibleIndex - 1]?.message : null;
+              const showSenderName =
+                props.chatType === 'group' &&
+                event.message.direction === 'incoming' &&
+                Boolean(event.message.senderName) &&
+                (!previous ||
+                  previous.direction !== 'incoming' ||
+                  previous.senderName !== event.message.senderName);
+
+              return (
+                <ChatMessage
+                  key={event.message.id}
+                  message={event.message}
+                  event={event}
+                  frame={frame}
+                  showSenderName={showSenderName}
+                />
+              );
+            })}
+
+            {typingEvent ? <TypingBubble /> : null}
+          </div>
+        </div>
+      </div>
+
+      <div
+        style={{
+          height: 128,
+          flexShrink: 0,
+          backgroundColor: COLORS.header,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 18,
+          padding: '18px 26px',
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            height: 82,
+            borderRadius: 999,
+            backgroundColor: '#2a3942',
+            color: COLORS.muted,
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0 35px',
+            fontSize: 31,
+          }}
+        >
+          Pesan
+        </div>
+        <div
+          style={{
+            width: 82,
+            height: 82,
+            borderRadius: 999,
+            backgroundColor: COLORS.green,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 38,
+          }}
+        >
+          ●
+        </div>
+      </div>
+
+      {activeNotification ? <NotificationOverlay event={activeNotification} /> : null}
+      <MessageAudioTracks props={props} timeline={timeline} />
+    </AbsoluteFill>
+  );
+};
+
