@@ -17,6 +17,7 @@ interface EditorStore extends EditorState {
   // Background actions
   setBgType: (type: 'default' | 'color' | 'image') => void;
   setBgColor: (color: string) => void;
+  setBubbleColor: (color: string) => void;
   setBgImage: (img: string | null) => void;
 
   // Message actions
@@ -81,6 +82,7 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   // Background
   setBgType: (bgType) => set({ bgType }),
   setBgColor: (bgColor) => set({ bgColor }),
+  setBubbleColor: (bubbleColor) => set({ bubbleColor }),
   setBgImage: (bgImage) => set({ bgImage }),
 
   // Messages

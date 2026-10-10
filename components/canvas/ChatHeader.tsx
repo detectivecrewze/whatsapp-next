@@ -19,8 +19,8 @@ export default function ChatHeader() {
 
   return (
     <div
-      className="flex items-center gap-2 px-2 py-2"
-      style={{ background: 'var(--wa-header)' }}
+      className="flex items-center gap-2 px-2 py-2 border-b"
+      style={{ background: 'var(--wa-header)', borderColor: 'rgba(255,255,255,0.12)' }}
     >
       {/* Back button with unread badge counter next to chevron */}
       <button className="flex items-center gap-0.5 shrink-0 text-white opacity-90">
@@ -42,15 +42,15 @@ export default function ChatHeader() {
           />
         ) : (
           <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-white font-semibold text-[13px]"
-            style={{ background: 'var(--wa-green-teal)' }}
+            className="w-9 h-9 rounded-full flex items-center justify-center font-semibold text-[13px]"
+            style={{ background: '#dfe5e7', color: '#54656f' }}
           >
             {getInitials(name || 'WA')}
           </div>
         )}
         {/* Online indicator dot */}
         {headerStatus === 'online' && (
-          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-400 border-2 border-[#1f2c33]" />
+          <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#25d366] border-2 border-[#075e54]" />
         )}
       </div>
 
@@ -65,7 +65,7 @@ export default function ChatHeader() {
             color:
               currentStatus === 'typing'
                 ? 'var(--wa-green)'
-                : 'var(--wa-text-muted)',
+                : 'rgba(255,255,255,0.72)',
           }}
         >
           {chatType === 'group'
@@ -75,10 +75,10 @@ export default function ChatHeader() {
       </div>
 
       {/* Action icons */}
-      <div className="flex items-center gap-4 text-white opacity-80 shrink-0">
-        <Video size={20} />
-        <Phone size={18} />
-        <Search size={18} />
+      <div className="flex items-center gap-[18px] shrink-0" style={{ color: 'rgba(255,255,255,0.9)' }}>
+        <Video size={19} strokeWidth={1.8} />
+        <Phone size={18} strokeWidth={1.8} />
+        <Search size={18} strokeWidth={1.8} />
       </div>
     </div>
   );

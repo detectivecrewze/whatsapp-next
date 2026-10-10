@@ -18,13 +18,41 @@ interface PlayerState {
   setSpeed: (speed: number) => void;
 }
 
-let animationTimer: NodeJS.Timeout | null = null;
+let animationTimer: ReturnType<typeof setTimeout> | null = null;
+let resolveAnimationWait: (() => void) | null = null;
+let playbackRunId = 0;
+let cancelActiveTts: (() => void) | null = null;
 
 function clearTimer() {
   if (animationTimer) {
     clearTimeout(animationTimer);
     animationTimer = null;
   }
+
+  // Release an async sequence that is waiting on a cancelled timeout so it
+  // can observe its stale run id and exit without leaking in the background.
+  const resolve = resolveAnimationWait;
+  resolveAnimationWait = null;
+  resolve?.();
+}
+
+function waitForDelay(duration: number): Promise<void> {
+  return new Promise((resolve) => {
+    resolveAnimationWait = resolve;
+    animationTimer = setTimeout(() => {
+      animationTimer = null;
+      resolveAnimationWait = null;
+      resolve();
+    }, duration);
+  });
+}
+
+function cancelCurrentPlayback() {
+  clearTimer();
+
+  const cancelTts = cancelActiveTts;
+  cancelActiveTts = null;
+  cancelTts?.();
 }
 
 // ── iOS Safari Audio Unlock ─────────────────────────────────────────────────
@@ -48,11 +76,17 @@ export function initTtsAudio(): void {
     _ttsAudioEl = new Audio('/sounds/notification.mp3');
     _ttsAudioEl.preload = 'auto';
     _ttsAudioEl.volume = 0.001;
-    _ttsAudioEl.play()
+    const unlockAudio = _ttsAudioEl;
+    const unlockSource = unlockAudio.src;
+    unlockAudio.play()
       .then(() => {
-        _ttsAudioEl!.pause();
-        _ttsAudioEl!.currentTime = 0;
-        _ttsAudioEl!.volume = 1.0;
+        // The real voice may already have replaced the silent unlock source.
+        // Never let this delayed callback pause that newer playback.
+        if (unlockAudio.src === unlockSource && !cancelActiveTts) {
+          unlockAudio.pause();
+          unlockAudio.currentTime = 0;
+        }
+        unlockAudio.volume = 1.0;
       })
       .catch(() => {});
   }
@@ -138,6 +172,7 @@ function playTtsAudio(msgId: string, msgIndex?: number): Promise<void> {
       const audio = _ttsAudioEl ?? new Audio();
 
       let stalledTimer: ReturnType<typeof setTimeout> | null = null;
+      let settled = false;
 
       const cleanup = () => {
         audio.removeEventListener('ended', onEnded);
@@ -146,12 +181,35 @@ function playTtsAudio(msgId: string, msgIndex?: number): Promise<void> {
         if (stalledTimer) clearTimeout(stalledTimer);
       };
 
-      const onEnded = () => { cleanup(); resolve(); };
-      const onError = () => { cleanup(); resolve(); };
+      const finish = (stopAudio = false) => {
+        if (settled) return;
+        settled = true;
+        cleanup();
+
+        if (stopAudio) {
+          try {
+            audio.pause();
+            audio.currentTime = 0;
+          } catch {}
+        }
+
+        if (cancelActiveTts === cancel) cancelActiveTts = null;
+        resolve();
+      };
+
+      const cancel = () => finish(true);
+      const onEnded = () => finish();
+      const onError = () => finish();
       const onStalled = () => {
         // If stalled for 6s, give up and continue
-        stalledTimer = setTimeout(() => { cleanup(); resolve(); }, 6000);
+        stalledTimer = setTimeout(() => finish(true), 6000);
       };
+
+      // There must only ever be one voice promise controlling the preview.
+      // Resolve and detach callbacks from an older run before starting this one.
+      const cancelPreviousTts = cancelActiveTts;
+      cancelActiveTts = cancel;
+      cancelPreviousTts?.();
 
       audio.addEventListener('ended', onEnded, { once: true });
       audio.addEventListener('error', onError, { once: true });
@@ -165,17 +223,13 @@ function playTtsAudio(msgId: string, msgIndex?: number): Promise<void> {
       audio.src = audioUrl;
       audio.load(); // required after changing src
       audio.play().catch(() => {
-        cleanup();
-        resolve();
+        finish();
       });
     } catch {
       resolve();
     }
   });
 }
-
-// Guard flag: set to false by stop() to cancel in-flight async playback
-let isRunning = false;
 
 export const usePlayerStore = create<PlayerState>()((set, get) => ({
   isPlaying: false,
@@ -188,15 +242,15 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   setSpeed: (playbackSpeed) => set({ playbackSpeed }),
 
   pause: () => {
-    clearTimer();
-    isRunning = false;
-    set({ isPaused: true });
+    playbackRunId += 1;
+    cancelCurrentPlayback();
+    set({ isPlaying: false, isPaused: true, isTyping: false, activeMsgId: null });
     useEditorStore.getState().setActiveHeaderStatusOverride(null);
   },
 
   stop: () => {
-    clearTimer();
-    isRunning = false; // cancel any in-flight async sequence
+    playbackRunId += 1;
+    cancelCurrentPlayback();
 
     // Stop the singleton TTS audio immediately
     if (_ttsAudioEl) {
@@ -217,8 +271,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
   },
 
   play: () => {
-    clearTimer();
-    isRunning = false; // cancel previous run if any
+    cancelCurrentPlayback();
+    const runId = ++playbackRunId;
     initTtsAudio(); // Ensure all iOS audio elements (TTS & SFX) are initialized & unlocked
 
     const editorState = useEditorStore.getState();
@@ -227,9 +281,6 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     if (!messages || messages.length === 0) return;
 
     const speed = get().playbackSpeed;
-
-    // Mark new run as active
-    isRunning = true;
 
     // Reset to start of sequence
     set({
@@ -243,15 +294,15 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
     let currentIdx = 0;
 
     const playNextStep = async () => {
-      // Bail if stop() was called
-      if (!isRunning) return;
+      // Every Play click owns one run. Old async callbacks may still wake up
+      // after cloud audio finishes buffering, but may never mutate this run.
+      if (runId !== playbackRunId) return;
 
       const state = useEditorStore.getState();
       const currentMessages = state.messages;
 
       if (currentIdx >= currentMessages.length) {
         // ── Animation finished ──────────────────────────────────────────────
-        isRunning = false;
         set({ isPlaying: false, isPaused: false, visibleCount: -1, isTyping: false, activeMsgId: null });
         state.setActiveHeaderStatusOverride(null);
         return;
@@ -269,8 +320,8 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         set({ isTyping: true, activeMsgId: null });
         state.setActiveHeaderStatusOverride('typing');
 
-        await new Promise<void>((r) => { animationTimer = setTimeout(r, replyDelayDuration); });
-        if (!isRunning) return;
+        await waitForDelay(replyDelayDuration);
+        if (runId !== playbackRunId) return;
 
         // ── Phase 2: Show message ─────────────────────────────────────────
         currentIdx++;
@@ -282,10 +333,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
         // TTS: wait for voice to finish before proceeding
         await playTtsAudio(msg.id, currentIdx - 1);
-        if (!isRunning) return;
+        if (runId !== playbackRunId) return;
 
         // Hold pause after audio ends (configured per-message or global)
-        await new Promise<void>((r) => { animationTimer = setTimeout(r, holdDuration); });
+        await waitForDelay(holdDuration);
       } else {
         // ── Direct show (no typing indicator) ────────────────────────────
         currentIdx++;
@@ -296,17 +347,17 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
 
         // TTS: wait for voice to finish before proceeding
         await playTtsAudio(msg.id, currentIdx - 1);
-        if (!isRunning) return;
+        if (runId !== playbackRunId) return;
 
         // Hold pause after audio ends
-        await new Promise<void>((r) => { animationTimer = setTimeout(r, holdDuration); });
+        await waitForDelay(holdDuration);
       }
 
-      if (!isRunning) return;
-      playNextStep();
+      if (runId !== playbackRunId) return;
+      void playNextStep();
     };
 
     // Start sequence
-    playNextStep();
+    void playNextStep();
   },
 }));

@@ -4,14 +4,22 @@ import React from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import { getSenderColor, stripAudioTags, extractDomain } from '@/lib/utils';
-import { Check, CheckCheck, Mic, MapPin, Phone, Eye, Trash2, Image as ImageIcon, Globe } from 'lucide-react';
+import { CheckCheck, Mic, MapPin, Phone, Trash2, Image as ImageIcon, Globe } from 'lucide-react';
 import { Message } from '@/types';
 
 // Time + tick row
-function TimeRow({ time, direction }: { time?: string; direction: 'incoming' | 'outgoing' }) {
+function TimeRow({
+  time,
+  direction,
+  overlay = false,
+}: {
+  time?: string;
+  direction: 'incoming' | 'outgoing';
+  overlay?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-end gap-1 mt-0.5">
-      <span className="text-[11px]" style={{ color: 'rgba(255,255,255,0.5)' }}>
+    <div className={`flex items-center justify-end gap-0.5 ${overlay ? 'absolute bottom-1 right-1.5' : 'mt-0.5'}`}>
+      <span className="text-[11px]" style={{ color: 'var(--wa-chat-time)' }}>
         {time || '09:00'}
       </span>
       {direction === 'outgoing' && (
@@ -45,7 +53,7 @@ function TextBubble({ message, showSenderName }: { message: Message; showSenderN
     <div className={`bubble-base ${isOut ? 'bubble-out' : 'bubble-in'}`}>
       {showSenderName && <SenderNameHeader message={message} />}
       {visualText && (
-        <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
+        <p className="leading-[1.35]" style={{ fontSize: '14.2px', color: 'var(--wa-chat-text)' }}>
           {isPureUrl ? (
             <span style={{ color: '#53bdeb' }} className="underline break-all">
               {visualText}
@@ -53,9 +61,10 @@ function TextBubble({ message, showSenderName }: { message: Message; showSenderN
           ) : (
             visualText
           )}
+          <span aria-hidden className={`inline-block h-px ${isOut ? 'w-[58px]' : 'w-[42px]'}`} />
         </p>
       )}
-      <TimeRow time={message.time} direction={message.direction} />
+      <TimeRow time={message.time} direction={message.direction} overlay />
     </div>
   );
 }
@@ -113,7 +122,7 @@ function ImageBubble({ message, showSenderName }: { message: Message; showSender
           <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-gray-300 mb-0.5">
             <ImageIcon size={18} />
           </div>
-          <span style={{ color: 'var(--wa-text-muted)', fontSize: 11, fontWeight: 600 }}>
+          <span style={{ color: 'var(--wa-chat-muted)', fontSize: 11, fontWeight: 600 }}>
             📷 Gambar (Klik di Editor untuk Upload)
           </span>
         </div>
@@ -121,7 +130,7 @@ function ImageBubble({ message, showSenderName }: { message: Message; showSender
 
       {captionText && (
         <div className="px-2.5 pt-1.5 pb-0.5">
-          <p style={{ fontSize: '13.5px', color: 'var(--wa-text)', lineHeight: '1.35' }}>
+          <p style={{ fontSize: '13.5px', color: 'var(--wa-chat-text)', lineHeight: '1.35' }}>
             {stripAudioTags(captionText)}
           </p>
         </div>
@@ -238,7 +247,7 @@ function NotificationBubble({ message }: { message: Message }) {
           background: 'rgba(17,27,33,0.7)',
           backdropFilter: 'blur(8px)',
           fontSize: '11.5px',
-          color: 'var(--wa-text-muted)',
+          color: 'var(--wa-chat-muted)',
           maxWidth: '80%',
         }}
       >
@@ -263,15 +272,15 @@ function TransferCard({ message, showSenderName }: { message: Message; showSende
             <span className="text-white text-[13px] font-bold">Rp</span>
           </div>
           <div>
-            <p style={{ fontSize: '13px', color: 'var(--wa-text)', fontWeight: 600 }}>Transfer Berhasil</p>
-            <p style={{ fontSize: '11px', color: 'var(--wa-text-muted)' }}>via QRIS / M-Banking</p>
+            <p style={{ fontSize: '13px', color: 'var(--wa-chat-text)', fontWeight: 600 }}>Transfer Berhasil</p>
+            <p style={{ fontSize: '11px', color: 'var(--wa-chat-muted)' }}>via QRIS / M-Banking</p>
           </div>
         </div>
         <p style={{ fontSize: '20px', fontWeight: 700, color: 'var(--wa-green)' }}>
           {message.text || 'Rp 250.000'}
         </p>
         {message.caption && (
-          <p style={{ fontSize: '11px', color: 'var(--wa-text-muted)', marginTop: 4 }}>{message.caption}</p>
+          <p style={{ fontSize: '11px', color: 'var(--wa-chat-muted)', marginTop: 4 }}>{message.caption}</p>
         )}
       </div>
       <div className="px-3 pb-1.5">
@@ -299,8 +308,8 @@ function ContactCard({ message, showSenderName }: { message: Message; showSender
           <Phone size={18} className="text-white" />
         </div>
         <div>
-          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--wa-text)' }}>{message.text || 'Nama Kontak'}</p>
-          <p style={{ fontSize: '11px', color: 'var(--wa-text-muted)' }}>{message.caption || '+62 812 xxxx xxxx'}</p>
+          <p style={{ fontSize: '14px', fontWeight: 600, color: 'var(--wa-chat-text)' }}>{message.text || 'Nama Kontak'}</p>
+          <p style={{ fontSize: '11px', color: 'var(--wa-chat-muted)' }}>{message.caption || '+62 812 xxxx xxxx'}</p>
         </div>
       </div>
       <div
@@ -333,10 +342,10 @@ function LocationCard({ message, showSenderName }: { message: Message; showSende
         <MapPin size={28} style={{ color: 'var(--ui-danger)' }} />
       </div>
       <div className="px-3 py-2">
-        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--wa-text)' }}>
+        <p style={{ fontSize: '13px', fontWeight: 600, color: 'var(--wa-chat-text)' }}>
           {message.text || 'Lokasi Saya'}
         </p>
-        <p style={{ fontSize: '11px', color: 'var(--wa-text-muted)' }}>
+        <p style={{ fontSize: '11px', color: 'var(--wa-chat-muted)' }}>
           {message.caption || 'Jakarta, Indonesia'}
         </p>
         <TimeRow time={message.time} direction={message.direction} />
@@ -383,7 +392,7 @@ function LinkBubble({ message, showSenderName }: { message: Message; showSenderN
       {/* Optional Commentary Header */}
       {commentary && (
         <div className="px-2 pt-0.5 pb-1.5">
-          <p className="text-white leading-[1.35]" style={{ fontSize: '14.2px' }}>
+          <p className="leading-[1.35]" style={{ fontSize: '14.2px', color: 'var(--wa-chat-text)' }}>
             {commentary}
           </p>
         </div>
@@ -393,8 +402,8 @@ function LinkBubble({ message, showSenderName }: { message: Message; showSenderN
       <div
         className="rounded-[8px] overflow-hidden flex flex-col"
         style={{
-          background: 'rgba(0, 0, 0, 0.22)',
-          border: '1px solid rgba(255, 255, 255, 0.07)',
+          background: 'var(--wa-link-card)',
+          border: '1px solid rgba(102,119,129,0.12)',
         }}
       >
         {/* Banner Image or Aesthetic Fallback Banner */}
@@ -442,18 +451,18 @@ function LinkBubble({ message, showSenderName }: { message: Message; showSenderN
         {/* Card Metadata (Title, Description, Domain) */}
         <div className="px-2.5 py-2 flex flex-col gap-0.5">
           <p
-            className="font-semibold text-white leading-tight line-clamp-1"
-            style={{ fontSize: '13.5px' }}
+            className="font-semibold leading-tight line-clamp-1"
+            style={{ fontSize: '13.5px', color: 'var(--wa-chat-text)' }}
           >
             {displayTitle}
           </p>
           <p
             className="text-[11.5px] line-clamp-2 leading-relaxed"
-            style={{ color: 'rgba(255,255,255,0.65)' }}
+            style={{ color: 'var(--wa-chat-muted)' }}
           >
             {displayDesc}
           </p>
-          <div className="flex items-center gap-1 pt-0.5 text-[10.5px] font-mono" style={{ color: 'rgba(255,255,255,0.45)' }}>
+          <div className="flex items-center gap-1 pt-0.5 text-[10.5px] font-mono" style={{ color: 'var(--wa-chat-muted)' }}>
             <Globe size={11} className="shrink-0 text-[#53bdeb]" />
             <span className="truncate">{domain}</span>
           </div>
@@ -485,8 +494,8 @@ function DeletedBubble({ message, showSenderName }: { message: Message; showSend
     <div className={`bubble-base flex flex-col ${isOut ? 'bubble-out ml-auto' : 'bubble-in'}`}>
       {showSenderName && <SenderNameHeader message={message} />}
       <div className="flex items-center gap-2">
-        <Trash2 size={14} style={{ color: 'var(--wa-text-muted)', flexShrink: 0 }} />
-        <p style={{ fontSize: '13.5px', fontStyle: 'italic', color: 'var(--wa-text-muted)' }}>
+        <Trash2 size={14} style={{ color: 'var(--wa-chat-muted)', flexShrink: 0 }} />
+        <p style={{ fontSize: '13.5px', fontStyle: 'italic', color: 'var(--wa-chat-muted)' }}>
           Pesan ini telah dihapus
         </p>
       </div>

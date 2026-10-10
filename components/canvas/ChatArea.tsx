@@ -1,13 +1,11 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
+import { Camera, Mic, Paperclip, Smile } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import MessageBubble from './MessageBubble';
 import TypingBubble from './TypingBubble';
-
-// WhatsApp default wallpaper SVG pattern
-const WA_PATTERN = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Crect width='300' height='300' fill='%23111b21'/%3E%3Cg opacity='0.04' fill='%2325d366'%3E%3Cpath d='M25 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM75 10c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3zM50 35c-3 0-5 2-5 5s2 5 5 5 5-2 5-5-2-5-5-5zm0 8c-1.7 0-3-1.3-3-3s1.3-3 3-3 3 1.3 3 3-1.3 3-3 3z'/%3E%3C/g%3E%3C/svg%3E")`;
 
 export default function ChatArea() {
   const { chatType, bgType, bgColor, bgImage, messages, pinnedMessage, autoZoom, zoomScale, zoomSpeed, dateBadge } =
@@ -31,15 +29,25 @@ export default function ChatArea() {
 
   const backgroundStyle: React.CSSProperties =
     bgType === 'default'
-      ? { backgroundImage: WA_PATTERN, backgroundSize: '300px 300px' }
+      ? {
+          backgroundColor: '#efeae2',
+          backgroundImage: "url('/whatsapp-doodle.svg')",
+          backgroundSize: '240px 240px',
+        }
       : bgType === 'color'
-      ? { backgroundColor: bgColor }
+      ? {
+          backgroundColor: bgColor,
+          backgroundImage: "url('/whatsapp-doodle.svg')",
+          backgroundSize: '240px 240px',
+          backgroundBlendMode: 'soft-light',
+        }
       : bgImage
-      ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-      : { backgroundColor: '#111b21' };
-
-  // Calculate dynamic auto-zoom scale during playback
-  const currentZoomScale = isPlaying && autoZoom && activeMsgId ? zoomScale : 1;
+      ? {
+          backgroundImage: `linear-gradient(rgba(11,20,26,0.12), rgba(11,20,26,0.12)), url(${bgImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }
+      : { backgroundColor: '#efeae2' };
 
   return (
     <div
@@ -51,8 +59,8 @@ export default function ChatArea() {
         <div
           className="flex items-center gap-2 px-3 py-1.5 border-b"
           style={{
-            background: 'rgba(31,44,51,0.92)',
-            borderColor: 'var(--wa-border)',
+            background: bgType === 'default' ? 'rgba(255,255,255,0.94)' : 'rgba(31,44,51,0.92)',
+            borderColor: 'rgba(102,119,129,0.15)',
             backdropFilter: 'blur(6px)',
           }}
         >
@@ -61,7 +69,7 @@ export default function ChatArea() {
             <p className="text-[10px] font-semibold" style={{ color: 'var(--wa-green)' }}>
               📌 Pesan Disematkan
             </p>
-            <p className="text-[11.5px] truncate" style={{ color: 'var(--wa-text-muted)' }}>
+            <p className="text-[11.5px] truncate" style={{ color: 'var(--wa-chat-muted)' }}>
               {pinnedMessage}
             </p>
           </div>
@@ -79,12 +87,12 @@ export default function ChatArea() {
             <div
               className="px-3 py-1 rounded-md text-center shadow-sm"
               style={{
-                background: 'rgba(18, 27, 33, 0.88)',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
+                background: bgType === 'default' ? 'rgba(225,243,251,0.94)' : 'rgba(18, 27, 33, 0.88)',
+                border: bgType === 'default' ? '1px solid rgba(102,119,129,0.08)' : '1px solid rgba(255, 255, 255, 0.05)',
                 backdropFilter: 'blur(8px)',
                 fontSize: '11px',
                 fontWeight: 500,
-                color: 'rgba(241, 245, 249, 0.7)',
+                color: bgType === 'default' ? '#54656f' : 'rgba(241, 245, 249, 0.7)',
                 letterSpacing: '0.2px',
               }}
             >
@@ -107,7 +115,7 @@ export default function ChatArea() {
               key={msg.id}
               message={msg}
               isVisible={true}
-              isZoomed={isPlaying && autoZoom && activeMsgId === msg.id}
+              isZoomed={isPlaying && (msg.enableZoom ?? autoZoom) && activeMsgId === msg.id}
               zoomScale={zoomScale}
               zoomSpeed={zoomSpeed}
               showSenderName={showSenderName}
@@ -121,25 +129,23 @@ export default function ChatArea() {
 
       {/* Bottom input bar (decorative) */}
       <div
-        className="flex items-center gap-2 px-2 py-2"
-        style={{ background: 'var(--wa-header)' }}
+        className="flex items-center gap-1.5 px-2 py-1.5 border-t"
+        style={{ background: 'var(--wa-input-tray)', borderColor: 'rgba(134,150,160,0.12)' }}
       >
         <div
-          className="flex-1 rounded-full px-4 py-2 text-[13px]"
-          style={{ background: 'var(--wa-input)', color: 'var(--wa-text-muted)' }}
+          className="flex-1 h-10 rounded-full px-3 flex items-center gap-2.5 text-[13px]"
+          style={{ background: 'var(--wa-chat-input)', color: 'var(--wa-chat-muted)' }}
         >
-          Pesan
+          <Smile size={19} strokeWidth={1.8} />
+          <span className="flex-1">Pesan</span>
+          <Paperclip size={18} strokeWidth={1.8} />
+          <Camera size={18} strokeWidth={1.8} />
         </div>
         <div
-          className="w-9 h-9 rounded-full flex items-center justify-center"
-          style={{ background: 'var(--wa-green)' }}
+          className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+          style={{ background: 'var(--wa-green-teal)' }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-            <path d="M12 2a3 3 0 0 1 3 3v7a3 3 0 0 1-6 0V5a3 3 0 0 1 3-3z"/>
-            <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="white" strokeWidth="2" fill="none" strokeLinecap="round"/>
-            <line x1="12" y1="19" x2="12" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-            <line x1="8" y1="23" x2="16" y2="23" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-          </svg>
+          <Mic size={19} color="white" strokeWidth={2.1} />
         </div>
       </div>
     </div>

@@ -16,6 +16,7 @@ export type WhatsAppVideoProps = Pick<
   | 'useCustomTime'
   | 'bgType'
   | 'bgColor'
+  | 'bubbleColor'
   | 'bgImage'
   | 'messages'
   | 'holdMs'

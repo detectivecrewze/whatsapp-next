@@ -8,6 +8,8 @@ import ChatArea from './ChatArea';
 import PushNotificationOverlay from './PushNotificationOverlay';
 
 export default function WhatsAppCanvas() {
+  const bubbleColor = useEditorStore((state) => state.bubbleColor);
+  const bgType = useEditorStore((state) => state.bgType);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
 
@@ -82,13 +84,21 @@ export default function WhatsAppCanvas() {
             borderRadius: '44px',
             overflow: 'hidden',
             boxShadow: '0 32px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.08)',
-            background: 'var(--wa-header)',
+            background: 'var(--wa-phone-chrome)',
+            '--wa-bubble-out': bubbleColor || (bgType === 'default' ? '#d9fdd3' : '#005c4b'),
+            '--wa-bubble-in': bgType === 'default' ? '#ffffff' : '#202c33',
+            '--wa-chat-text': bgType === 'default' ? '#111b21' : '#e9edef',
+            '--wa-chat-muted': bgType === 'default' ? '#667781' : '#8696a0',
+            '--wa-chat-time': bgType === 'default' ? '#667781' : 'rgba(255,255,255,0.55)',
+            '--wa-chat-input': bgType === 'default' ? '#ffffff' : '#2a3942',
+            '--wa-input-tray': bgType === 'default' ? '#f0f2f5' : '#111b21',
+            '--wa-link-card': bgType === 'default' ? 'rgba(11,20,26,0.06)' : 'rgba(0,0,0,0.2)',
             display: 'flex',
             flexDirection: 'column',
             position: 'absolute',
             top: 0,
             left: 0,
-          }}
+          } as React.CSSProperties}
         >
           {/* Status bar */}
           <StatusBar />

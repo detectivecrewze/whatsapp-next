@@ -173,7 +173,11 @@ export default function EditorPage() {
             <p>{activeWorkspace.description}</p>
           </div>
 
-          <div className={styles.contextList}>
+          <div
+            className={`${styles.contextList} ${
+              activeWorkspace.sections.length >= 3 ? styles.contextListDense : ''
+            }`}
+          >
             {activeWorkspace.sections.map((sectionId) => {
               const section = EDITOR_SECTIONS[sectionId];
               const Icon = section.icon;

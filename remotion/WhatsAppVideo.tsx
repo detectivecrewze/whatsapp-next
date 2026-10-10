@@ -1,6 +1,6 @@
 import React from 'react';
 import { Audio } from '@remotion/media';
-import { Phone, Search, Video } from 'lucide-react';
+import { Camera, Mic, Paperclip, Phone, Search, Smile, Video } from 'lucide-react';
 import {
   AbsoluteFill,
   AnimatedImage,
@@ -18,17 +18,24 @@ import type { WhatsAppVideoProps } from './videoTypes';
 import { getMessageSoundSource, getVoiceSource } from './audio';
 
 const COLORS = {
-  header: '#202c33',
+  chrome: '#054d44',
+  header: '#075e54',
   chat: '#0b141a',
   incoming: '#202c33',
   outgoing: '#005c4b',
-  green: '#00a884',
+  green: '#128c7e',
   blue: '#53bdeb',
   text: '#e9edef',
   muted: '#8696a0',
 };
 
 const FONT = 'Inter, Arial, Helvetica, sans-serif';
+const ChatThemeContext = React.createContext({
+  outgoing: COLORS.outgoing,
+  incoming: COLORS.incoming,
+  text: COLORS.text,
+  muted: COLORS.muted,
+});
 
 function isAnimatedImage(src: string) {
   const normalized = src.toLowerCase().split('?')[0].split('#')[0];
@@ -104,6 +111,7 @@ function estimateMessageHeight(message: Message) {
 }
 
 function TimeAndTicks({ message }: { message: Message }) {
+  const theme = React.useContext(ChatThemeContext);
   return (
     <div
       style={{
@@ -112,7 +120,7 @@ function TimeAndTicks({ message }: { message: Message }) {
         alignItems: 'center',
         gap: 7,
         marginTop: 8,
-        color: 'rgba(233,237,239,0.58)',
+        color: theme.muted,
         fontSize: 23,
         lineHeight: 1,
       }}
@@ -158,6 +166,7 @@ function BubbleShell({
   padding?: string;
 }) {
   const outgoing = message.direction === 'outgoing';
+  const theme = React.useContext(ChatThemeContext);
 
   return (
     <div
@@ -165,10 +174,10 @@ function BubbleShell({
         maxWidth,
         minWidth: 190,
         padding,
-        backgroundColor: outgoing ? COLORS.outgoing : COLORS.incoming,
+        backgroundColor: outgoing ? theme.outgoing : theme.incoming,
         borderRadius: outgoing ? '28px 4px 28px 28px' : '4px 28px 28px 28px',
         boxShadow: '0 4px 12px rgba(0,0,0,0.28)',
-        color: COLORS.text,
+        color: theme.text,
         overflow: 'hidden',
       }}
     >
@@ -481,6 +490,7 @@ function ChatMessage({
 
 function TypingBubble() {
   const frame = useCurrentFrame();
+  const theme = React.useContext(ChatThemeContext);
 
   return (
     <div
@@ -490,7 +500,7 @@ function TypingBubble() {
         gap: 10,
         padding: '24px 30px',
         borderRadius: '4px 28px 28px 28px',
-        backgroundColor: COLORS.incoming,
+        backgroundColor: theme.incoming,
         boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
       }}
     >
@@ -500,7 +510,7 @@ function TypingBubble() {
         return (
           <div
             key={index}
-            style={{ width: 17, height: 17, borderRadius: 999, backgroundColor: COLORS.muted, opacity }}
+            style={{ width: 17, height: 17, borderRadius: 999, backgroundColor: theme.muted, opacity }}
           />
         );
       })}
@@ -518,7 +528,7 @@ function StatusBar({ props }: { props: WhatsAppVideoProps }) {
       style={{
         height: 92,
         flexShrink: 0,
-        backgroundColor: COLORS.header,
+        backgroundColor: COLORS.chrome,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -530,8 +540,16 @@ function StatusBar({ props }: { props: WhatsAppVideoProps }) {
     >
       <span>{displayTime}</span>
       <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
-        <span style={{ fontSize: 25 }}>▮▮▮▮</span>
-        <span style={{ fontSize: 31 }}>⌁</span>
+        <div style={{ height: 26, display: 'flex', alignItems: 'flex-end', gap: 4 }}>
+          {[10, 15, 20, 25].map((height) => (
+            <div key={height} style={{ width: 6, height, borderRadius: 2, backgroundColor: 'white' }} />
+          ))}
+        </div>
+        <svg width="36" height="28" viewBox="0 0 24 18" fill="none">
+          <path d="M2 6.5C7.8 1.3 16.2 1.3 22 6.5" stroke="white" strokeWidth="2.2" strokeLinecap="round" opacity="0.45" />
+          <path d="M6 10c3.4-3 8.6-3 12 0" stroke="white" strokeWidth="2.2" strokeLinecap="round" opacity="0.75" />
+          <path d="M10.5 14c.9-.8 2.1-.8 3 0" stroke="white" strokeWidth="2.4" strokeLinecap="round" />
+        </svg>
         <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
           <div
             style={{
@@ -579,6 +597,7 @@ function ChatHeader({ props, isTyping }: { props: WhatsAppVideoProps; isTyping: 
         alignItems: 'center',
         padding: '18px 31px 24px',
         color: 'white',
+        borderBottom: '2px solid rgba(134,150,160,0.1)',
       }}
     >
       <div style={{ color: COLORS.blue, fontSize: 62, lineHeight: 1, marginRight: 12 }}>‹</div>
@@ -590,7 +609,8 @@ function ChatHeader({ props, isTyping }: { props: WhatsAppVideoProps; isTyping: 
           width: 92,
           height: 92,
           borderRadius: 999,
-          backgroundColor: '#087f69',
+          backgroundColor: '#dfe5e7',
+          color: '#54656f',
           overflow: 'hidden',
           display: 'flex',
           alignItems: 'center',
@@ -610,14 +630,14 @@ function ChatHeader({ props, isTyping }: { props: WhatsAppVideoProps; isTyping: 
         <div style={{ fontSize: 39, lineHeight: 1.12, fontWeight: 750, whiteSpace: 'nowrap', overflow: 'hidden' }}>
           {props.name || 'Nama Kontak'}
         </div>
-        <div style={{ color: isTyping ? '#25d366' : COLORS.muted, fontSize: 27, marginTop: 8 }}>{status}</div>
+        <div style={{ color: 'rgba(255,255,255,0.74)', fontSize: 27, marginTop: 8 }}>{status}</div>
       </div>
       <div
         style={{
           display: 'flex',
           gap: 44,
           alignItems: 'center',
-          color: 'rgba(255,255,255,0.8)',
+          color: '#aebac1',
           flexShrink: 0,
         }}
       >
@@ -682,38 +702,62 @@ function NotificationOverlay({ event }: { event: TimelineEvent }) {
   );
 }
 
+function DoodlePattern({ opacity = 1 }: { opacity?: number }) {
+  const { fps } = useVideoConfig();
+  const tileSize = 660;
+  const columns = 2;
+  const rows = 4;
+
+  return (
+    <AbsoluteFill style={{ overflow: 'hidden', pointerEvents: 'none' }}>
+      {Array.from({ length: columns * rows }, (_, index) => {
+        const column = index % columns;
+        const row = Math.floor(index / columns);
+
+        return (
+          <CanvasImage
+            key={`${column}-${row}`}
+            src={staticFile('whatsapp-doodle.svg')}
+            premountFor={fps}
+            style={{
+              position: 'absolute',
+              left: column * tileSize,
+              top: row * tileSize,
+              width: tileSize,
+              height: tileSize,
+              opacity,
+            }}
+          />
+        );
+      })}
+    </AbsoluteFill>
+  );
+}
+
 function Wallpaper({ props }: { props: WhatsAppVideoProps }) {
   if (props.bgType === 'image' && props.bgImage) {
     return (
-      <CanvasImage
-        src={props.bgImage}
-        style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover', opacity: 0.72 }}
-      />
+      <AbsoluteFill>
+        <CanvasImage
+          src={props.bgImage}
+          style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover' }}
+        />
+        <AbsoluteFill style={{ backgroundColor: 'rgba(11,20,26,0.12)' }} />
+      </AbsoluteFill>
     );
   }
 
   if (props.bgType === 'color') {
-    return <AbsoluteFill style={{ backgroundColor: props.bgColor }} />;
+    return (
+      <AbsoluteFill style={{ backgroundColor: props.bgColor }}>
+        <DoodlePattern opacity={0.58} />
+      </AbsoluteFill>
+    );
   }
 
   return (
-    <AbsoluteFill style={{ backgroundColor: COLORS.chat }}>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          opacity: 0.08,
-          color: '#25d366',
-          fontSize: 55,
-          lineHeight: 1.75,
-          letterSpacing: 32,
-          overflow: 'hidden',
-          padding: 20,
-          wordBreak: 'break-all',
-        }}
-      >
-        {'☎ ✉ ☺ ◌ ✓ ♡ ☎ ✉ ◌ ☺ ✓ ♡ '.repeat(45)}
-      </div>
+    <AbsoluteFill style={{ backgroundColor: '#efeae2' }}>
+      <DoodlePattern />
     </AbsoluteFill>
   );
 }
@@ -847,17 +891,26 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
+  const isClassic = props.bgType === 'default';
 
   return (
-    <AbsoluteFill
-      style={{
-        backgroundColor: COLORS.chat,
-        color: COLORS.text,
-        fontFamily: FONT,
-        overflow: 'hidden',
-        opacity: introOpacity,
+    <ChatThemeContext.Provider
+      value={{
+        outgoing: props.bubbleColor || (isClassic ? '#d9fdd3' : COLORS.outgoing),
+        incoming: isClassic ? '#ffffff' : COLORS.incoming,
+        text: isClassic ? '#111b21' : COLORS.text,
+        muted: isClassic ? '#667781' : COLORS.muted,
       }}
     >
+      <AbsoluteFill
+        style={{
+          backgroundColor: COLORS.chat,
+          color: COLORS.text,
+          fontFamily: FONT,
+          overflow: 'hidden',
+          opacity: introOpacity,
+        }}
+      >
       <StatusBar props={props} />
       <ChatHeader props={props} isTyping={Boolean(typingEvent)} />
 
@@ -872,7 +925,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
               left: 0,
               right: 0,
               height: 96,
-              backgroundColor: 'rgba(32,44,51,0.96)',
+              backgroundColor: isClassic ? 'rgba(255,255,255,0.96)' : 'rgba(32,44,51,0.96)',
               display: 'flex',
               alignItems: 'center',
               gap: 20,
@@ -882,7 +935,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             <div style={{ width: 6, height: 62, borderRadius: 8, backgroundColor: COLORS.green }} />
             <div>
               <div style={{ color: '#25d366', fontSize: 24, fontWeight: 750 }}>📌 Pesan Disematkan</div>
-              <div style={{ color: '#c8d0d5', fontSize: 27, marginTop: 3 }}>{props.pinnedMessage}</div>
+              <div style={{ color: isClassic ? '#54656f' : '#c8d0d5', fontSize: 27, marginTop: 3 }}>{props.pinnedMessage}</div>
             </div>
           </div>
         ) : null}
@@ -914,8 +967,8 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
                   alignSelf: 'center',
                   padding: '12px 30px',
                   borderRadius: 16,
-                  backgroundColor: 'rgba(18,27,33,0.92)',
-                  color: '#c7d0d5',
+                  backgroundColor: isClassic ? 'rgba(225,243,251,0.95)' : 'rgba(18,27,33,0.92)',
+                  color: isClassic ? '#54656f' : '#c7d0d5',
                   fontSize: 25,
                   flexShrink: 0,
                 }}
@@ -954,11 +1007,12 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
         style={{
           height: 128,
           flexShrink: 0,
-          backgroundColor: COLORS.header,
+          backgroundColor: isClassic ? '#f0f2f5' : '#111b21',
           display: 'flex',
           alignItems: 'center',
           gap: 18,
           padding: '18px 26px',
+          borderTop: '2px solid rgba(134,150,160,0.1)',
         }}
       >
         <div
@@ -966,15 +1020,19 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             flex: 1,
             height: 82,
             borderRadius: 999,
-            backgroundColor: '#2a3942',
-            color: COLORS.muted,
+            backgroundColor: isClassic ? '#ffffff' : '#2a3942',
+            color: isClassic ? '#667781' : COLORS.muted,
             display: 'flex',
             alignItems: 'center',
-            padding: '0 35px',
+            gap: 24,
+            padding: '0 27px',
             fontSize: 31,
           }}
         >
-          Pesan
+          <Smile size={43} strokeWidth={1.8} />
+          <span style={{ flex: 1 }}>Pesan</span>
+          <Paperclip size={42} strokeWidth={1.8} />
+          <Camera size={42} strokeWidth={1.8} />
         </div>
         <div
           style={{
@@ -985,16 +1043,16 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            fontSize: 38,
           }}
         >
-          ●
+          <Mic size={45} color="white" strokeWidth={2.1} />
         </div>
       </div>
 
       {activeNotification ? <NotificationOverlay event={activeNotification} /> : null}
-      <MessageAudioTracks props={props} timeline={timeline} />
-    </AbsoluteFill>
+        <MessageAudioTracks props={props} timeline={timeline} />
+      </AbsoluteFill>
+    </ChatThemeContext.Provider>
   );
 };
 

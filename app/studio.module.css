@@ -424,6 +424,23 @@
   .contextButtonCopy small { max-width: 130px; white-space: normal; }
   .contextChevron { display: none; }
 
+  .contextListDense {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
+  }
+
+  .contextListDense .contextButton {
+    width: 100%;
+    min-width: 0;
+    padding: 7px;
+  }
+
+  .contextListDense .contextButtonCopy small { display: none; }
+  .contextListDense .contextIcon { width: 27px; height: 27px; }
+  .contextListDense .contextButtonCopy strong { font-size: 10.5px; white-space: normal; line-height: 1.2; }
+
   .previewArea,
   .inspector {
     grid-column: 1;
@@ -470,6 +487,7 @@
   .railButton span { font-size: 9px; }
   .workspace { grid-template-rows: 62px 86px minmax(0, 1fr); }
   .contextButton { min-width: 158px; height: 64px; padding: 7px; }
+  .contextListDense .contextButton { min-width: 0; }
   .canvasStage { padding: 6px; }
   .previewArea { grid-template-rows: 42px minmax(0, 1fr) 70px; }
 }

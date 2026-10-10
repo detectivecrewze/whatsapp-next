@@ -32,6 +32,7 @@ export default function ShareLinkButton() {
       useCustomTime: state.useCustomTime,
       bgType: state.bgType,
       bgColor: state.bgColor,
+      bubbleColor: state.bubbleColor,
       bgImage: state.bgImage,
       messages: state.messages,
       holdMs: state.holdMs,

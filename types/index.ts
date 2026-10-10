@@ -61,6 +61,7 @@ export interface EditorState {
   // Wallpaper / Background
   bgType: BgType;
   bgColor: string;
+  bubbleColor: string;
   bgImage: string | null;
 
   // Messages
@@ -160,7 +161,8 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   customTime: '09:41',
   useCustomTime: false,
   bgType: 'default',
-  bgColor: '#0a1014',
+  bgColor: '#efeae2',
+  bubbleColor: '#d9fdd3',
   bgImage: null,
   messages: [
     {

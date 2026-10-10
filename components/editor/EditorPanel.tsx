@@ -90,9 +90,9 @@ export const EDITOR_SECTIONS: Record<EditorSectionId, EditorSectionMeta> = {
   },
   'auto-zoom': {
     id: 'auto-zoom',
-    title: 'Auto Zoom',
+    title: 'Auto Zoom Global',
     shortTitle: 'Auto zoom',
-    description: 'Atur zoom kamera otomatis untuk menjaga fokus pada pesan.',
+    description: 'Atur zoom otomatis untuk seluruh pesan, dengan override per-pesan.',
     icon: ZoomIn,
   },
   'cloud-presets': {

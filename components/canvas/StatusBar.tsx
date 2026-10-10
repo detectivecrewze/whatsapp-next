@@ -12,7 +12,7 @@ export default function StatusBar() {
 
   if (phoneOs === 'ios') {
     return (
-      <div className="relative flex items-center justify-between px-6 pt-3 pb-1 h-[52px] shrink-0" style={{ background: 'var(--wa-header)' }}>
+      <div className="relative flex items-center justify-between px-6 pt-3 pb-1 h-[52px] shrink-0" style={{ background: 'var(--wa-phone-chrome)' }}>
         {/* Dynamic Island */}
         <div className="absolute left-1/2 top-[10px] -translate-x-1/2 w-[120px] h-[30px] bg-black rounded-full z-10" />
 
@@ -57,7 +57,7 @@ export default function StatusBar() {
 
   // Android
   return (
-    <div className="flex items-center justify-between px-4 h-[24px]" style={{ background: 'var(--wa-header)' }}>
+    <div className="flex items-center justify-between px-4 h-[24px]" style={{ background: 'var(--wa-phone-chrome)' }}>
       <span className="text-[12px] font-medium text-white" style={{ fontFeatureSettings: '"tnum"' }}>
         {displayTime}
       </span>

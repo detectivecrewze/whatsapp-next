@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useCloudStore } from '@/store/useCloudStore';
+import { usePlayerStore } from '@/store/usePlayerStore';
 import type { CloudPreset, EditorState } from '@/types';
 import { newId } from '@/lib/utils';
 import { persistAudioMapForCloud } from '@/lib/tts';
@@ -37,6 +38,7 @@ function collectEditorData(state: ReturnType<typeof useEditorStore.getState>): P
     useCustomTime: state.useCustomTime,
     bgType: state.bgType,
     bgColor: state.bgColor,
+    bubbleColor: state.bubbleColor,
     bgImage: state.bgImage,
     messages: state.messages,
     holdMs: state.holdMs,
@@ -127,6 +129,9 @@ export default function CloudSection() {
   }
 
   function handleLoad(preset: CloudPreset) {
+    // A cloud project can replace message and audio sources while an old
+    // preview is still active. Stop that run before applying the new payload.
+    usePlayerStore.getState().stop();
     useEditorStore.getState().applyPayload(preset.data);
     setActiveId(preset.id);
     showToast(`Project “${preset.name}” dimuat.`);
