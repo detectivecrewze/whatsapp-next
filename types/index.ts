@@ -28,6 +28,7 @@ export interface Message {
   text?: string;
   caption?: string;
   imageData?: string;       // base64 or CDN URL
+  imageHint?: string;       // AI suggestion describing which visual the user should upload
   linkUrl?: string;         // The URL e.g. https://anniv.for-you-always.my.id/...
   linkTitle?: string;       // Page title e.g. Surprise Nadin 🎁
   linkDescription?: string; // Description e.g. Kirim satu pesan rahasia...

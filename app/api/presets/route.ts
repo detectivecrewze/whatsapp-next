@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { CloudPreset } from '@/types';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -6,103 +7,118 @@ export const dynamic = 'force-dynamic';
 const TEAM_PASSCODE = process.env.TEAM_PASSCODE ?? 'loves2026';
 const WORKER_URL = process.env.CLOUDFLARE_WORKER_URL ?? 'https://wa-templates-worker.aldoramadhan16.workers.dev';
 
-// In-memory local cache/fallback
-const localTemplatesCache: Record<string, any> = {};
+const localTemplatesCache: Record<string, CloudPreset> = {};
+
+const workerHeaders = {
+  'X-Passcode': TEAM_PASSCODE,
+  'X-Team-Passcode': TEAM_PASSCODE,
+};
+
+function replaceLocalCache(templates: Record<string, CloudPreset>) {
+  for (const id of Object.keys(localTemplatesCache)) delete localTemplatesCache[id];
+  Object.assign(localTemplatesCache, templates);
+}
+
+async function readWorkerTemplates(): Promise<Record<string, CloudPreset>> {
+  const response = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
+    headers: workerHeaders,
+    cache: 'no-store',
+  });
+
+  if (!response.ok) throw new Error(`Cloudflare Worker GET ${response.status}`);
+
+  const data = await response.json();
+  return data.templates ?? data ?? {};
+}
+
+async function writeWorkerTemplates(templates: Record<string, CloudPreset>) {
+  // Worker versi lama menimpa satu nilai KV. Kirim koleksi lengkap supaya
+  // menambah satu project tidak pernah menghapus project sebelumnya.
+  const response = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
+    method: 'POST',
+    headers: {
+      ...workerHeaders,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ templates, replace: true }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Cloudflare Worker POST ${response.status}: ${detail.slice(0, 200)}`);
+  }
+}
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const requestedId = searchParams.get('id');
+  const requestedId = new URL(req.url).searchParams.get('id');
 
   try {
-    // Call existing Cloudflare Worker with X-Team-Passcode header & passcode param
-    const workerRes = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
-      headers: {
-        'X-Team-Passcode': TEAM_PASSCODE,
-      },
-      cache: 'no-store',
-    });
-
-    if (workerRes.ok) {
-      const data = await workerRes.json();
-      // Worker returns { templates: { [id]: preset, ... } } or { [id]: preset }
-      const remoteTemplates = data.templates ?? data ?? {};
-
-      // Sync into local cache
-      Object.assign(localTemplatesCache, remoteTemplates);
-
-      if (requestedId) {
-        const single = localTemplatesCache[requestedId];
-        if (!single) {
-          return NextResponse.json({ error: 'Preset tidak ditemukan' }, { status: 404 });
-        }
-        return NextResponse.json({ preset: single });
-      }
-
-      return NextResponse.json({ templates: localTemplatesCache });
-    } else {
-      console.warn('[GET /api/presets] Worker returned HTTP status:', workerRes.status);
-    }
-  } catch (e) {
-    console.warn('[GET /api/presets] Cloudflare Worker fetch failed, using local cache:', e);
+    replaceLocalCache(await readWorkerTemplates());
+  } catch (error) {
+    console.warn('[GET /api/presets] Cloud unavailable, using server cache:', error);
   }
 
-  // Fallback to local cache
   if (requestedId) {
-    const single = localTemplatesCache[requestedId];
-    if (!single) {
-      return NextResponse.json({ error: 'Preset tidak ditemukan' }, { status: 404 });
-    }
-    return NextResponse.json({ preset: single });
+    const preset = localTemplatesCache[requestedId];
+    if (!preset) return NextResponse.json({ error: 'Preset tidak ditemukan' }, { status: 404 });
+    return NextResponse.json({ preset });
   }
 
-  return NextResponse.json({ templates: localTemplatesCache });
+  return NextResponse.json({ templates: { ...localTemplatesCache } });
 }
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    let remoteTemplates: Record<string, CloudPreset>;
 
-    // Body can be { templates: { [id]: preset } } or { id, name, data }
-    let updatedTemplates = { ...localTemplatesCache };
-
-    if (body.templates) {
-      updatedTemplates = { ...updatedTemplates, ...body.templates };
-    } else if (body.id) {
-      updatedTemplates[body.id] = body;
-    }
-
-    // Save to local cache
-    Object.assign(localTemplatesCache, updatedTemplates);
-
-    // Save to existing Cloudflare Worker KV using X-Team-Passcode header
     try {
-      // Send ONLY the newly added/updated templates to Worker to keep request payload lightweight (< 100KB)
-      const payloadToSend = body.templates || (body.id ? { [body.id]: body } : updatedTemplates);
-      const workerRes = await fetch(`${WORKER_URL}/templates?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Team-Passcode': TEAM_PASSCODE,
-        },
-        body: JSON.stringify({ templates: payloadToSend }),
-      });
-
-      if (!workerRes.ok) {
-        const errText = await workerRes.text();
-        console.warn('[POST /api/presets] Worker update failed:', workerRes.status, errText);
-      } else {
-        console.log('✅ Preset saved to Cloudflare Worker KV successfully!');
-      }
-    } catch (err) {
-      console.warn('[POST /api/presets] Failed connecting to Worker, saved to local cache:', err);
+      remoteTemplates = await readWorkerTemplates();
+    } catch (error) {
+      console.warn('[POST /api/presets] Could not hydrate remote collection:', error);
+      remoteTemplates = { ...localTemplatesCache };
     }
+
+    const incoming: Record<string, CloudPreset> = body.templates
+      ?? (body.id ? { [body.id]: body as CloudPreset } : {});
+    const updatedTemplates = { ...remoteTemplates, ...incoming };
+
+    await writeWorkerTemplates(updatedTemplates);
+    replaceLocalCache(updatedTemplates);
 
     return NextResponse.json({ success: true, templates: updatedTemplates });
-  } catch (e) {
-    console.error('[POST /api/presets] Error:', e);
+  } catch (error) {
+    console.error('[POST /api/presets] Cloud save failed:', error);
     return NextResponse.json(
-      { error: 'Gagal menyimpan preset' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'Gagal menyimpan preset' },
+      { status: 502 },
+    );
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const id = String(body.id ?? new URL(req.url).searchParams.get('id') ?? '');
+    if (!id) return NextResponse.json({ error: 'ID preset wajib diisi' }, { status: 400 });
+
+    let remoteTemplates: Record<string, CloudPreset>;
+    try {
+      remoteTemplates = await readWorkerTemplates();
+    } catch {
+      remoteTemplates = { ...localTemplatesCache };
+    }
+
+    delete remoteTemplates[id];
+    await writeWorkerTemplates(remoteTemplates);
+    replaceLocalCache(remoteTemplates);
+
+    return NextResponse.json({ success: true, templates: remoteTemplates });
+  } catch (error) {
+    console.error('[DELETE /api/presets] Cloud delete failed:', error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Gagal menghapus preset' },
+      { status: 502 },
     );
   }
 }

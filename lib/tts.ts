@@ -45,5 +45,41 @@ export async function uploadAudioBlob(blob: Blob): Promise<string> {
   }
 
   const data = await res.json();
+  if (!data.url) throw new Error('Cloud tidak mengembalikan URL audio.');
   return data.url as string;
+}
+
+export function isTemporaryAudioUrl(url: string): boolean {
+  return url.startsWith('blob:') || url.startsWith('data:');
+}
+
+/**
+ * Upload URL audio browser sementara sebelum project disimpan ke cloud.
+ * Entri ID dan index yang menunjuk MP3 sama hanya akan diunggah satu kali.
+ */
+export async function persistAudioMapForCloud(
+  audioMap: Record<string | number, string> = {},
+): Promise<Record<string, string>> {
+  const persisted: Record<string, string> = {};
+  const uploadedBySource = new Map<string, string>();
+
+  for (const [key, source] of Object.entries(audioMap)) {
+    if (!source || !isTemporaryAudioUrl(source)) {
+      if (source) persisted[key] = source;
+      continue;
+    }
+
+    let cloudUrl = uploadedBySource.get(source);
+    if (!cloudUrl) {
+      const response = await fetch(source);
+      if (!response.ok) {
+        throw new Error('Audio sementara sudah kedaluwarsa. Buat ulang voice over lalu simpan lagi.');
+      }
+      cloudUrl = await uploadAudioBlob(await response.blob());
+      uploadedBySource.set(source, cloudUrl);
+    }
+    persisted[key] = cloudUrl;
+  }
+
+  return persisted;
 }

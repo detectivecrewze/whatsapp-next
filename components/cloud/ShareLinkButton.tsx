@@ -5,6 +5,7 @@ import { Play, Eye, Plus, Loader2 } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useCloudStore } from '@/store/useCloudStore';
 import { newId } from '@/lib/utils';
+import { persistAudioMapForCloud } from '@/lib/tts';
 import Toast from '@/components/ui/Toast';
 
 const LOCAL_PREVIEW_KEY = 'wa_local_preview';
@@ -82,6 +83,9 @@ export default function ShareLinkButton() {
       const state = useEditorStore.getState();
       const presetId = newId('cloud');
       const data = collectState();
+      const ttsAudioMap = await persistAudioMapForCloud(data.ttsAudioMap);
+      data.ttsAudioMap = ttsAudioMap;
+      state.applyPayload({ ttsAudioMap });
 
       const preset = {
         id: presetId,

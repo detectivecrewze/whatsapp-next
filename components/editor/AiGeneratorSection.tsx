@@ -1,8 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CheckCircle,
+  Eye,
+  EyeOff,
+  KeyRound,
   Loader2,
   RefreshCw,
   Wand2,
@@ -39,6 +42,7 @@ interface RawAiMessage {
   linkDescription?: string;
   linkImage?: string;
   imageData?: string;
+  imageHint?: string;
 }
 
 const MESSAGE_LENGTHS = [
@@ -134,6 +138,26 @@ export default function AiGeneratorSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [generated, setGenerated] = useState(false);
+  const [geminiKey, setGeminiKey] = useState('');
+  const [showGeminiKey, setShowGeminiKey] = useState(false);
+
+  useEffect(() => {
+    let savedKey = '';
+    try {
+      savedKey = localStorage.getItem('wa_gemini_api_key') || '';
+    } catch {}
+    const timer = window.setTimeout(() => setGeminiKey(savedKey), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  function updateGeminiKey(value: string) {
+    setGeminiKey(value);
+    try {
+      if (value) localStorage.setItem('wa_gemini_api_key', value);
+      else localStorage.removeItem('wa_gemini_api_key');
+    } catch {}
+    setError(null);
+  }
 
   const visiblePresets = STORY_PRESETS.filter((preset) => preset.goal === contentGoal);
 
@@ -158,11 +182,11 @@ export default function AiGeneratorSection() {
   }
 
   async function generate() {
-    if (contentGoal === 'drama_product' && productReveal === 'link' && !productUrl.trim()) {
+    if (generatorMode === 'create' && contentGoal === 'drama_product' && productReveal === 'link' && !productUrl.trim()) {
       setError('Isi link produk dulu agar AI bisa membuat reveal yang benar.');
       return;
     }
-    if (contentGoal === 'drama_product' && productReveal === 'image' && !productImage) {
+    if (generatorMode === 'create' && contentGoal === 'drama_product' && productReveal === 'image' && !productImage) {
       setError('Upload foto atau barcode dulu agar bisa dipakai sebagai reveal terakhir.');
       return;
     }
@@ -173,7 +197,9 @@ export default function AiGeneratorSection() {
 
     try {
       const topic = promptText.trim() ||
-        (contentGoal === 'horror'
+        (generatorMode === 'improvise'
+          ? 'Lanjutkan percakapan secara natural tanpa harus menambahkan link atau foto.'
+          : contentGoal === 'horror'
           ? 'Buat fake chat horror realistis dengan hook cepat dan plot twist.'
           : 'Buat drama pasangan yang berakhir dengan reveal produk secara natural.');
       const currentMessages = messages;
@@ -187,11 +213,12 @@ export default function AiGeneratorSection() {
           count: msgCount,
           voiceStyle: 'normal',
           provider: 'google',
+          geminiKeyCustom: geminiKey.trim(),
           mode: generatorMode,
           storyType: contentGoal,
           revealType: productReveal,
           presetId: selectedPreset,
-          product: contentGoal === 'drama_product'
+          product: generatorMode === 'create' && contentGoal === 'drama_product'
             ? {
                 url: productUrl.trim(),
                 name: productName.trim() || FALLBACK_PRODUCT.name,
@@ -274,10 +301,11 @@ export default function AiGeneratorSection() {
           type,
           direction: item.direction === 'outgoing' ? 'outgoing' : 'incoming',
           text: item.text ?? (type === 'text' ? '' : undefined),
-          caption: item.caption ?? (type === 'image' ? item.text?.trim() : undefined),
+          caption: item.caption ?? (['image', 'view_once'].includes(type) ? item.text?.trim() : undefined),
           notifSender: item.notifSender,
           notifTitle: item.notifTitle,
           imageData: item.imageData,
+          imageHint: item.imageHint,
           linkUrl: item.linkUrl,
           linkTitle: item.linkTitle,
           linkDescription: item.linkDescription,
@@ -286,7 +314,7 @@ export default function AiGeneratorSection() {
         };
       });
 
-      if (contentGoal === 'drama_product') {
+      if (generatorMode === 'create' && contentGoal === 'drama_product') {
         const revealDirection = selectedPreset === 'digital-surprise' ? 'outgoing' : 'incoming';
         const fallbackRevealText = selectedPreset === 'digital-surprise'
           ? 'Aku udah siapin ini buat kamu.'
@@ -377,7 +405,12 @@ export default function AiGeneratorSection() {
       );
       setGenerated(true);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : 'Gagal memproses AI.');
+      const message = caughtError instanceof Error ? caughtError.message : 'Gagal memproses AI.';
+      setError(
+        /signal timed out|timeout|timed out/i.test(message)
+          ? 'Permintaan AI melewati batas waktu. Jika kuota Google habis, buka “Ganti Gemini API key” lalu masukkan key dari akun lain.'
+          : message,
+      );
     } finally {
       setLoading(false);
     }
@@ -399,6 +432,12 @@ export default function AiGeneratorSection() {
               type="button"
               onClick={() => {
                 setGeneratorMode(mode);
+                if (mode === 'improvise') {
+                  setPromptText('');
+                } else {
+                  const activePreset = STORY_PRESETS.find((preset) => preset.id === selectedPreset);
+                  setPromptText(activePreset?.prompt ?? '');
+                }
                 setGenerated(false);
                 setError(null);
               }}
@@ -505,12 +544,13 @@ export default function AiGeneratorSection() {
           <span className="mt-0.5 shrink-0 text-[16px]">💬</span>
           <p className="text-[11px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
             AI akan membaca <strong style={{ color: 'var(--wa-text)' }}>{messages.length} pesan</strong> yang sudah ada,
-            lalu menambahkan kelanjutan tanpa menghapus chat lama.
+            lalu menambahkan kelanjutan tanpa menghapus chat lama. Link dan foto tidak diwajibkan;
+            AI hanya memilih foto jika alurnya memang membutuhkan bukti visual.
           </p>
         </div>
       )}
 
-      {contentGoal === 'drama_product' && (
+      {generatorMode === 'create' && contentGoal === 'drama_product' && (
         <section
           className="rounded-xl border p-3"
           style={{ background: 'rgba(56,189,248,0.05)', borderColor: 'rgba(56,189,248,0.22)' }}
@@ -651,7 +691,7 @@ export default function AiGeneratorSection() {
           value={promptText}
           onChange={(event) => setPromptText(event.target.value)}
           placeholder={generatorMode === 'improvise'
-            ? 'Contoh: lanjutkan sampai cowok mengirim kejutan permintaan maaf...'
+            ? 'Opsional: contoh “lanjutkan makin tegang” atau “cukup obrolan biasa, tanpa foto/link”...'
             : 'Ubah detail tokoh, konflik, atau ending di sini...'}
           onKeyDown={(event) => {
             if (event.key === 'Enter' && event.ctrlKey) generate();
@@ -682,6 +722,66 @@ export default function AiGeneratorSection() {
           ))}
         </div>
       </section>
+
+      <details
+        className="rounded-xl border"
+        style={{ background: 'var(--ui-card)', borderColor: geminiKey ? 'rgba(37,211,102,0.35)' : 'var(--ui-border)' }}
+      >
+        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-3 py-2.5">
+          <span className="flex min-w-0 items-center gap-2">
+            <KeyRound size={14} style={{ color: geminiKey ? 'var(--wa-green)' : 'var(--wa-text-muted)' }} />
+            <span className="text-[11px] font-semibold" style={{ color: 'var(--wa-text)' }}>
+              Ganti Gemini API key
+            </span>
+          </span>
+          <span
+            className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold"
+            style={{
+              background: geminiKey ? 'rgba(37,211,102,0.12)' : 'rgba(255,255,255,0.05)',
+              color: geminiKey ? 'var(--wa-green)' : 'var(--wa-text-muted)',
+            }}
+          >
+            {geminiKey ? 'KEY MANUAL AKTIF' : 'OPSIONAL'}
+          </span>
+        </summary>
+
+        <div className="border-t px-3 pb-3 pt-2.5" style={{ borderColor: 'var(--ui-border)' }}>
+          <div className="relative flex items-center">
+            <input
+              type={showGeminiKey ? 'text' : 'password'}
+              className="input pr-9 font-mono text-[10.5px]"
+              value={geminiKey}
+              onChange={(event) => updateGeminiKey(event.target.value.trim())}
+              placeholder="Masukkan Google Gemini API key"
+              autoComplete="off"
+              spellCheck={false}
+            />
+            <button
+              type="button"
+              onClick={() => setShowGeminiKey((current) => !current)}
+              className="absolute right-2 transition-opacity hover:opacity-70"
+              style={{ color: 'var(--wa-text-muted)' }}
+              title={showGeminiKey ? 'Sembunyikan API key' : 'Tampilkan API key'}
+            >
+              {showGeminiKey ? <EyeOff size={14} /> : <Eye size={14} />}
+            </button>
+          </div>
+          <div className="mt-2 flex items-start justify-between gap-3">
+            <p className="text-[9.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+              Disimpan lokal di browser ini dan hanya dikirim saat kamu membuat naskah.
+            </p>
+            {geminiKey ? (
+              <button
+                type="button"
+                onClick={() => updateGeminiKey('')}
+                className="shrink-0 text-[9.5px] font-semibold text-red-300 transition-opacity hover:opacity-70"
+              >
+                Pakai bawaan
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </details>
 
       {error && (
         <div

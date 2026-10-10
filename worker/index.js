@@ -17,7 +17,7 @@ export default {
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, X-Passcode, Authorization',
+      'Access-Control-Allow-Headers': 'Content-Type, X-Passcode, X-Team-Passcode, Authorization',
     };
 
     if (method === 'OPTIONS') {
@@ -36,7 +36,7 @@ export default {
 
       // ── POST /templates ─────────────────────────────────────────────────
       if (path === '/templates' && method === 'POST') {
-        const passcode = request.headers.get('X-Passcode');
+        const passcode = request.headers.get('X-Passcode') || request.headers.get('X-Team-Passcode') || url.searchParams.get('passcode');
         if (passcode !== PASSCODE) {
           return new Response(JSON.stringify({ error: 'Unauthorized' }), {
             status: 401,
@@ -45,7 +45,11 @@ export default {
         }
 
         const body = await request.json();
-        const templates = body.templates ?? {};
+        const raw = await env.WA_TEMPLATES_KV.get('templates_data');
+        const currentTemplates = raw ? JSON.parse(raw) : {};
+        const templates = body.replace === true
+          ? (body.templates ?? {})
+          : { ...currentTemplates, ...(body.templates ?? {}) };
         await env.WA_TEMPLATES_KV.put('templates_data', JSON.stringify(templates));
 
         return new Response(JSON.stringify({ success: true }), {
@@ -55,6 +59,14 @@ export default {
 
       // ── POST /upload-audio (Upload MP3 to R2) ───────────────────────────
       if (path === '/upload-audio' && method === 'POST') {
+        const passcode = request.headers.get('X-Passcode') || request.headers.get('X-Team-Passcode') || url.searchParams.get('passcode');
+        if (passcode !== PASSCODE) {
+          return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
         const audioBuffer = await request.arrayBuffer();
         if (!audioBuffer || audioBuffer.byteLength === 0) {
           return new Response(JSON.stringify({ error: 'Audio data is empty' }), {
@@ -65,12 +77,16 @@ export default {
 
         const filename = `audio_${Date.now()}_${Math.random().toString(36).substring(2, 7)}.mp3`;
 
-        // Store in Cloudflare R2 bucket
-        if (env.AUDIO_BUCKET) {
-          await env.AUDIO_BUCKET.put(filename, audioBuffer, {
-            httpMetadata: { contentType: 'audio/mpeg' },
+        if (!env.AUDIO_BUCKET) {
+          return new Response(JSON.stringify({ error: 'AUDIO_BUCKET R2 belum dikonfigurasi' }), {
+            status: 503,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
+
+        await env.AUDIO_BUCKET.put(filename, audioBuffer, {
+          httpMetadata: { contentType: 'audio/mpeg' },
+        });
 
         // Return CDN URL
         const cdnUrl = `${url.origin}/audio/${filename}`;

@@ -276,6 +276,20 @@ function MessageRow({
           {['image', 'view_once'].includes(message.type) && (
             <div className="flex flex-col gap-2">
               <label className="section-label">Gambar / GIF</label>
+
+              {message.imageHint && !message.imageData && (
+                <div
+                  className="rounded-lg border px-3 py-2 text-[10.5px] leading-relaxed"
+                  style={{
+                    background: 'rgba(59,130,246,0.07)',
+                    borderColor: 'rgba(59,130,246,0.24)',
+                    color: 'var(--wa-text-muted)',
+                  }}
+                >
+                  <strong style={{ color: '#93c5fd' }}>Saran visual dari AI:</strong>{' '}
+                  {message.imageHint}
+                </div>
+              )}
               
               {/* File upload picker (PNG, JPG, WEBP, GIF supported with auto-compression) */}
               <input

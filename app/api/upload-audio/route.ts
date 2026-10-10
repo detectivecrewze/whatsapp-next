@@ -19,6 +19,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'audio/mpeg',
+        'X-Passcode': TEAM_PASSCODE,
         'X-Team-Passcode': TEAM_PASSCODE,
         'Content-Length': String(audioBuffer.byteLength),
       },

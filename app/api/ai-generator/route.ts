@@ -43,6 +43,7 @@ interface ExistingMessageBrief {
   text?: string;
   caption?: string;
   type?: string;
+  imageHint?: string;
 }
 
 function buildStoryDirective(
@@ -55,7 +56,10 @@ function buildStoryDirective(
 - Mulai dengan kejadian biasa yang langsung memancing rasa penasaran dalam 1-2 bubble pertama.
 - Naikkan ketegangan secara bertahap lewat detail kecil yang realistis, bukan narasi panjang.
 - Pesan terakhir harus menjadi plot twist yang jelas dan pendek.
-- Jangan gunakan link produk, promosi, komedi, tag suara, atau kalimat narator.`;
+- Jangan gunakan link produk, promosi, komedi, tag suara, atau kalimat narator.
+- Kamu BOLEH memakai maksimal satu bubble type "image" atau "view_once" jika bukti visual benar-benar membuat cerita lebih menyeramkan (contoh: foto lorong, tangkapan layar CCTV, atau sosok di jendela). Ini pilihan, bukan kewajiban.
+- Jangan selalu menaruh gambar sebagai pesan terakhir. Setelah gambar, percakapan boleh berlanjut agar tokoh bereaksi dan plot twist terasa hidup.
+- Jika memakai image/view_once, isi "imageHint" dengan deskripsi visual singkat dan konkret untuk membantu user memilih foto. Caption harus tetap berupa ucapan natural dari pengirim, bukan deskripsi gambar. Jangan mengarang URL gambar.`;
   }
 
   const safeProduct = {
@@ -110,7 +114,7 @@ ATURAN CERITA:
 7. Utamakan ketikan jempol yang spontan: respons pendek, sedikit tidak sempurna, dan sesuai emosi. Jangan membuat setiap bubble menjadi kalimat lengkap yang rapi.
 8. Jangan memakai tag ElevenLabs seperti [scared], [whispers], atau teks narasi dalam tanda kurung.
 9. Jangan memakai voice_note. Tipe yang diizinkan: text, link, image, view_once, notification, transfer, location, deleted.
-10. Gunakan image/notifikasi hanya jika benar-benar membantu alur. Untuk image, taruh keterangannya di field caption.
+10. Gunakan image/view_once/notifikasi hanya jika benar-benar membantu alur. Untuk media visual, caption adalah ucapan pengirim dan imageHint adalah petunjuk foto yang perlu disiapkan user.
 11. Jam harus maju secara wajar dengan format HH:MM.
 12. Sebelum mengeluarkan JSON, lakukan pengecekan diam-diam: siapa pemilik HP, siapa kontak, siapa yang mengalami masalah, siapa yang menawarkan solusi, dan apa yang sudah diketahui masing-masing. Perbaiki setiap kata ganti atau respons yang tertukar.
 
@@ -128,7 +132,9 @@ Jika memakai type "link", formatnya:
 { "type": "link", "direction": "incoming", "time": "21:35", "text": "Kalimat pengantar singkat", "linkUrl": "https://...", "linkTitle": "Judul", "linkDescription": "Deskripsi", "linkImage": "https://... atau kosong" }
 
 Jika memakai type "image", formatnya:
-{ "type": "image", "direction": "incoming", "time": "21:35", "caption": "Kalimat pendek yang menyertai gambar" }
+{ "type": "image", "direction": "incoming", "time": "21:35", "caption": "Kalimat pendek yang menyertai gambar", "imageHint": "Deskripsi singkat isi foto yang dibutuhkan" }
+
+Jika memakai type "view_once", gunakan format yang sama dengan image dan ubah type menjadi "view_once".
 
 Kembalikan hanya JSON valid.`;
 }
@@ -137,9 +143,6 @@ Kembalikan hanya JSON valid.`;
 function buildImproviseSystemPrompt(
   targetLength: number,
   existingMessagesText: string,
-  storyType: StoryType,
-  product?: ProductBrief | null,
-  revealType: RevealType = 'link',
 ): string {
   return `Kamu adalah penulis naskah fake chat WhatsApp untuk video TikTok dan Reels Indonesia.
 Tugasmu adalah MELANJUTKAN percakapan yang sudah ada tanpa mengulang atau mengubah pesan lama.
@@ -148,13 +151,15 @@ Tugasmu adalah MELANJUTKAN percakapan yang sudah ada tanpa mengulang atau mengub
 ${existingMessagesText}
 =============================
 
-${buildStoryDirective(storyType, product, revealType)}
-
 ATURAN LANJUTAN:
 - Tambahkan TEPAT ${targetLength} bubble BARU.
 - Bubble pertama harus langsung merespons pesan terakhir percakapan lama.
 - Jaga identitas dan arah incoming/outgoing secara konsisten.
-- Gunakan bahasa Indonesia sehari-hari, satu pikiran per bubble, tanpa tag emosi ElevenLabs dan tanpa narasi.
+- Ikuti suasana, hubungan tokoh, dan konflik yang sudah terbentuk. Jangan mengubahnya menjadi promosi atau genre lain tanpa diminta user.
+- Gunakan bahasa Indonesia sehari-hari yang spontan, satu pikiran per bubble, tanpa tag emosi ElevenLabs dan tanpa narasi.
+- Secara default gunakan type "text". Tidak ada kewajiban mengakhiri chat dengan foto, link, produk, CTA, atau plot twist.
+- DILARANG menambahkan kartu link secara otomatis. Gunakan type "link" hanya jika arahan user secara eksplisit meminta link dan memberikan konteks link yang jelas.
+- Kamu BOLEH memakai maksimal satu type "image" atau "view_once" hanya jika arahan user atau alur percakapan benar-benar membutuhkan bukti visual. Jika dipakai, isi caption dengan ucapan natural dan imageHint dengan deskripsi singkat foto yang perlu diunggah user. Jangan mengarang URL gambar.
 - Jangan memakai voice_note.
 - Jam harus melanjutkan waktu percakapan lama secara wajar.
 
@@ -165,6 +170,10 @@ FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
     { "type": "text", "direction": "outgoing", "time": "21:35", "text": "Pesan baru yang menyambung" }
   ]
 }
+
+Format media opsional:
+{ "type": "image", "direction": "incoming", "time": "21:36", "caption": "Coba lihat ini deh", "imageHint": "Foto lorong rumah yang gelap dengan bayangan samar di ujung" }
+
 Kembalikan hanya JSON valid.`;
 }
 
@@ -197,14 +206,19 @@ Format Output WAJIB JSON Murni:
 Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
 }
 
-async function requestGemini(systemInstruction: string, userPrompt: string): Promise<string> {
-  if (!GEMINI_KEY) throw new Error('GEMINI_API_KEY tidak dikonfigurasi.');
+async function requestGemini(
+  systemInstruction: string,
+  userPrompt: string,
+  customKey = '',
+): Promise<string> {
+  const activeGeminiKey = customKey.trim() || GEMINI_KEY;
+  if (!activeGeminiKey) throw new Error('GEMINI_API_KEY tidak dikonfigurasi.');
 
   const fullPrompt = `${systemInstruction}\n\n${userPrompt}`;
   let lastError = '';
 
   for (const model of GEMINI_MODEL_CHAIN) {
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${activeGeminiKey}`;
     const startedAt = Date.now();
     console.log(`[AI/Gemini] → Trying model: ${model}...`);
     try {
@@ -295,6 +309,7 @@ export async function POST(req: NextRequest) {
       prompt,
       count = 8,
       provider = 'google', // Gemini is the primary writer; Qwen remains available as a fallback provider.
+      geminiKeyCustom = '',
       qwenKeyCustom = '',
       mode = 'create', // 'create' | 'improvise' | 'enhance_emotion'
       storyType = 'drama_product',
@@ -331,20 +346,18 @@ export async function POST(req: NextRequest) {
           const dir = m.direction === 'incoming' ? '[Masuk]' : '[Keluar]';
           const sender = m.senderName ? `(${m.senderName})` : '';
           const content = m.text || m.caption || `[Tipe: ${m.type}]`;
-          return `${idx + 1}. ${dir}${sender}: ${content}`;
+          const mediaContext = m.imageHint ? ` [Isi visual: ${m.imageHint}]` : '';
+          return `${idx + 1}. ${dir}${sender}: ${content}${mediaContext}`;
         })
         .join('\n');
 
       systemInstruction = buildImproviseSystemPrompt(
         Number(count),
         formattedHistory,
-        normalizedStoryType,
-        product,
-        normalizedRevealType,
       );
       userPrompt = prompt?.trim()
         ? `Arahan Khusus Improvisasi:\n${prompt.trim()}`
-        : `Tolong lanjutkan obrolan di atas menjadi lebih seru, ada plot twist dan ending punchline menarik!`;
+        : `Lanjutkan obrolan di atas secara natural. Tidak perlu menambahkan foto, link, produk, CTA, atau ending khusus.`;
     } else {
       systemInstruction = buildSystemPrompt(Number(count), normalizedStoryType, product, normalizedRevealType);
       userPrompt = `Ide Cerita & Spesifikasi User:\n${prompt?.trim() || 'Drama percakapan WhatsApp viral'}`;
@@ -358,7 +371,7 @@ export async function POST(req: NextRequest) {
     for (const candidate of providerOrder) {
       try {
         rawText = candidate === 'google'
-          ? await requestGemini(systemInstruction, userPrompt)
+          ? await requestGemini(systemInstruction, userPrompt, geminiKeyCustom)
           : await requestQwen(systemInstruction, userPrompt, qwenKeyCustom);
         activeProvider = candidate;
         break;

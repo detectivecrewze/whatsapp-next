@@ -84,6 +84,7 @@ export default function TtsSection() {
 
     try {
       let completed = 0;
+      let cloudUploadFailures = 0;
       for (let index = 0; index < messages.length; index++) {
         const message = messages[index];
         const text = getMessageSpeakableText(message);
@@ -134,8 +135,12 @@ export default function TtsSection() {
               setAudioMapEntry(message.id, upload.url);
               setAudioMapEntry(index, upload.url);
             }
+          } else {
+            cloudUploadFailures += 1;
+            console.warn('Audio cloud upload failed:', await uploadResponse.text());
           }
         } catch (uploadError) {
+          cloudUploadFailures += 1;
           console.warn('Audio cloud upload fallback:', uploadError);
         }
         await new Promise((resolve) => setTimeout(resolve, 150));
@@ -143,6 +148,9 @@ export default function TtsSection() {
 
       setProgress(null);
       setDone(true);
+      if (cloudUploadFailures > 0) {
+        setError(`${cloudUploadFailures} audio siap untuk preview lokal, tetapi belum tersimpan ke cloud. Aplikasi akan mencoba upload lagi saat project disimpan.`);
+      }
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : 'Voice over gagal dibuat.');
       setProgress(null);
