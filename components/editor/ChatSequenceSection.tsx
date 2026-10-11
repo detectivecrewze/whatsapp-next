@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Plus, Trash2, ArrowUpDown, GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, ArrowUpDown, GripVertical, ChevronDown, ChevronRight, Clock3, MessageCirclePlus, Play, Volume2 } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { newId, getCurrentTime, compressImageFile, extractDomain } from '@/lib/utils';
+import { addMinutesToTime, newId, getCurrentTime, compressImageFile, extractDomain } from '@/lib/utils';
 import { Message, MessageType } from '@/types';
+import { getSfxDefinition, getSfxVolume, SFX_LIBRARY } from '@/lib/sfx';
 
 const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
   text: '💬 Teks',
@@ -24,16 +25,36 @@ function MessageRow({
   index,
   onUpdate,
   onDelete,
+  initiallyOpen = false,
 }: {
   message: Message;
   index: number;
   onUpdate: (updates: Partial<Message>) => void;
   onDelete: () => void;
+  initiallyOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const activeSfx = getSfxDefinition(message.sfxId);
+
+  useEffect(() => {
+    if (!initiallyOpen) return;
+    const frame = window.requestAnimationFrame(() => {
+      rowRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [initiallyOpen]);
+
+  function previewSfx() {
+    if (!activeSfx) return;
+    const audio = new Audio(`/${activeSfx.file}`);
+    audio.volume = getSfxVolume(message.sfxVolume);
+    void audio.play().catch(() => {});
+  }
 
   return (
     <div
+      ref={rowRef}
       className="rounded-lg border overflow-hidden"
       style={{ borderColor: 'var(--ui-border)', background: 'var(--ui-card)' }}
     >
@@ -87,6 +108,12 @@ function MessageRow({
           {message.enableZoom && (
             <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-amber-500/20 text-amber-400 shrink-0">
               🔍 {message.customScale ? `${message.customScale}x` : 'Zoom'}
+            </span>
+          )}
+
+          {activeSfx && (
+            <span className="px-1 py-0.5 rounded text-[9px] font-bold bg-violet-500/15 text-violet-300 shrink-0">
+              🔊 {activeSfx.label}
             </span>
           )}
 
@@ -371,6 +398,66 @@ function MessageRow({
           )}
 
           {/* Waktu & Hold Duration */}
+          <div className="flex flex-col gap-2 rounded-lg border border-violet-500/20 bg-violet-500/5 p-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <label className="section-label mb-0 flex items-center gap-1.5 text-violet-300">
+                  <Volume2 size={12} /> SFX khusus pesan ini
+                </label>
+                <p className="mt-1 text-[9.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+                  Diputar tepat saat bubble muncul. Terpisah dari bunyi notifikasi WA.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={previewSfx}
+                disabled={!activeSfx}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border disabled:cursor-not-allowed disabled:opacity-35"
+                style={{ borderColor: 'rgba(196,181,253,0.3)', color: '#c4b5fd' }}
+                title="Dengarkan SFX"
+              >
+                <Play size={12} fill="currentColor" />
+              </button>
+            </div>
+
+            <select
+              className="select text-[11.5px]"
+              value={message.sfxId ?? ''}
+              onChange={(event) => onUpdate({
+                sfxId: (event.target.value || undefined) as Message['sfxId'],
+                sfxVolume: event.target.value ? (message.sfxVolume ?? 0.22) : undefined,
+              })}
+            >
+              <option value="">Tanpa SFX khusus</option>
+              {(['Horror & tegang', 'Komedi', 'Drama & transisi'] as const).map((category) => (
+                <optgroup key={category} label={category}>
+                  {SFX_LIBRARY.filter((item) => item.category === category).map((item) => (
+                    <option key={item.id} value={item.id}>{item.label} — {item.description}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+
+            {activeSfx && (
+              <div>
+                <div className="mb-1 flex items-center justify-between text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+                  <span>Volume SFX</span>
+                  <span className="font-semibold text-violet-300">{Math.round(getSfxVolume(message.sfxVolume) * 100)}%</span>
+                </div>
+                <input
+                  type="range"
+                  className="slider w-full"
+                  min={0.1}
+                  max={1}
+                  step={0.05}
+                  value={getSfxVolume(message.sfxVolume)}
+                  onChange={(event) => onUpdate({ sfxVolume: Number(event.target.value) })}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Waktu & Hold Duration */}
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className="section-label">Waktu Pesan</label>
@@ -450,6 +537,10 @@ function MessageRow({
 
 export default function ChatSequenceSection() {
   const { messages, addMessage, updateMessage, deleteMessage, reverseAllDirections } = useEditorStore();
+  const [lastAddedMessageId, setLastAddedMessageId] = useState<string | null>(null);
+  const nextMessageTime = messages.length > 0
+    ? addMinutesToTime(messages[messages.length - 1]?.time)
+    : getCurrentTime();
 
   function handleAdd() {
     const newMsg: Message = {
@@ -457,24 +548,33 @@ export default function ChatSequenceSection() {
       type: 'text',
       direction: messages.length % 2 === 0 ? 'incoming' : 'outgoing',
       text: '',
-      time: getCurrentTime(),
+      time: nextMessageTime,
     };
+    setLastAddedMessageId(newMsg.id);
     addMessage(newMsg);
   }
 
   return (
-    <div className="flex flex-col gap-2.5">
-      {/* Actions */}
-      <div className="flex gap-2">
-        <button className="btn btn-primary flex-1" onClick={handleAdd}>
-          <Plus size={14} /> Tambah Pesan
-        </button>
+    <div className="flex flex-col gap-2.5 pb-1">
+      {/* Compact sequence overview */}
+      <div
+        className="flex items-center justify-between gap-3 rounded-xl border px-3 py-2.5"
+        style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
+      >
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold" style={{ color: 'var(--wa-text)' }}>
+            {messages.length} pesan dalam urutan
+          </p>
+          <p className="mt-0.5 flex items-center gap-1 text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+            <Clock3 size={10} /> Pesan berikutnya otomatis pukul {nextMessageTime}
+          </p>
+        </div>
         <button
-          className="btn btn-ghost"
+          className="btn btn-ghost shrink-0"
           onClick={reverseAllDirections}
           title="Balik semua arah pesan In ↔ Out"
         >
-          <ArrowUpDown size={13} />
+          <ArrowUpDown size={13} /> Balik arah
         </button>
       </div>
 
@@ -498,9 +598,39 @@ export default function ChatSequenceSection() {
             index={idx}
             onUpdate={(updates) => updateMessage(msg.id, updates)}
             onDelete={() => deleteMessage(msg.id)}
+            initiallyOpen={msg.id === lastAddedMessageId}
           />
         ))}
       </div>
+
+      {messages.length > 0 && (
+        <button
+          type="button"
+          onClick={handleAdd}
+          className="group mt-1 flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all hover:-translate-y-0.5"
+          style={{
+            background: 'linear-gradient(135deg, rgba(37,211,102,0.13), rgba(37,211,102,0.055))',
+            borderColor: 'rgba(37,211,102,0.38)',
+            boxShadow: '0 8px 22px rgba(0,0,0,0.12)',
+          }}
+        >
+          <span
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105"
+            style={{ background: 'var(--wa-green)', color: '#06130b' }}
+          >
+            <MessageCirclePlus size={17} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <strong className="block text-[11.5px]" style={{ color: 'var(--wa-text)' }}>Tambah pesan di bawah</strong>
+            <span className="mt-0.5 flex items-center gap-1.5 text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+              Pesan #{messages.length + 1}
+              <span aria-hidden="true">•</span>
+              <Clock3 size={10} /> {nextMessageTime} (+1 menit)
+            </span>
+          </span>
+          <Plus size={17} className="shrink-0 transition-transform group-hover:rotate-90" style={{ color: 'var(--wa-green)' }} />
+        </button>
+      )}
     </div>
   );
 }

@@ -2,6 +2,23 @@
 
 import { create } from 'zustand';
 import { EditorState, Message, TtsProvider, DEFAULT_EDITOR_STATE } from '@/types';
+import { getMessageSpeakableText } from '@/lib/speech';
+
+function normalizeTtsAudioMap(
+  messages: Message[],
+  audioMap: Record<string | number, string> = {},
+) {
+  const normalized: Record<string, string> = {};
+
+  // Keep only audio belonging to current bubbles, and migrate old cloud
+  // presets that stored audio by array index.
+  messages.forEach((message, index) => {
+    const source = audioMap[message.id] || audioMap[index] || audioMap[String(index)];
+    if (source) normalized[message.id] = source;
+  });
+
+  return normalized;
+}
 
 interface EditorStore extends EditorState {
   // Contact / profile actions
@@ -51,6 +68,7 @@ interface EditorStore extends EditorState {
   setTtsStyle: (v: number) => void;
   setTtsSpeed: (v: number) => void;
   setAudioMapEntry: (key: string | number, url: string) => void;
+  removeAudioMapEntry: (messageId: string) => void;
   clearAudioMap: () => void;
 
   // Header
@@ -89,18 +107,42 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   addMessage: (msg) =>
     set((state) => ({ messages: [...state.messages, msg] })),
   updateMessage: (id, updates) =>
-    set((state) => ({
-      messages: state.messages.map((m) => (m.id === id ? { ...m, ...updates } : m)),
-    })),
+    set((state) => {
+      const current = state.messages.find((message) => message.id === id);
+      if (!current) return state;
+
+      const nextMessage = { ...current, ...updates };
+      const messages = state.messages.map((message) => (message.id === id ? nextMessage : message));
+      const speechChanged =
+        getMessageSpeakableText(current) !== getMessageSpeakableText(nextMessage) ||
+        current.direction !== nextMessage.direction;
+
+      if (!speechChanged) return { messages };
+
+      const ttsAudioMap = normalizeTtsAudioMap(state.messages, state.ttsAudioMap);
+      delete ttsAudioMap[id];
+      return { messages, ttsAudioMap };
+    }),
   deleteMessage: (id) =>
-    set((state) => ({ messages: state.messages.filter((m) => m.id !== id) })),
-  reorderMessages: (messages) => set({ messages }),
+    set((state) => {
+      const ttsAudioMap = normalizeTtsAudioMap(state.messages, state.ttsAudioMap);
+      delete ttsAudioMap[id];
+      return { messages: state.messages.filter((message) => message.id !== id), ttsAudioMap };
+    }),
+  reorderMessages: (messages) =>
+    set((state) => ({
+      messages,
+      ttsAudioMap: normalizeTtsAudioMap(state.messages, state.ttsAudioMap),
+    })),
   reverseAllDirections: () =>
     set((state) => ({
       messages: state.messages.map((m) => ({
         ...m,
         direction: m.direction === 'incoming' ? 'outgoing' : 'incoming',
       })),
+      // Incoming/outgoing may use different voices, so every swapped bubble
+      // needs new audio.
+      ttsAudioMap: {},
     })),
 
   // Video settings
@@ -127,7 +169,15 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setTtsStyle: (ttsStyle) => set({ ttsStyle }),
   setTtsSpeed: (ttsSpeed) => set({ ttsSpeed }),
   setAudioMapEntry: (key: string | number, url: string) =>
-    set((state) => ({ ttsAudioMap: { ...state.ttsAudioMap, [key]: url } })),
+    set((state) => ({
+      ttsAudioMap: { ...normalizeTtsAudioMap(state.messages, state.ttsAudioMap), [key]: url },
+    })),
+  removeAudioMapEntry: (messageId) =>
+    set((state) => {
+      const ttsAudioMap = normalizeTtsAudioMap(state.messages, state.ttsAudioMap);
+      delete ttsAudioMap[messageId];
+      return { ttsAudioMap };
+    }),
   clearAudioMap: () => set({ ttsAudioMap: {} }),
 
   // Header
@@ -139,6 +189,15 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setDateBadge: (dateBadge) => set({ dateBadge }),
 
   // Bulk
-  applyPayload: (payload) => set((state) => ({ ...state, ...payload })),
+  applyPayload: (payload) =>
+    set((state) => {
+      const messages = payload.messages ?? state.messages;
+      const sourceAudioMap = payload.ttsAudioMap ?? state.ttsAudioMap;
+      return {
+        ...state,
+        ...payload,
+        ttsAudioMap: normalizeTtsAudioMap(messages, sourceAudioMap),
+      };
+    }),
   resetToDefault: () => set(DEFAULT_EDITOR_STATE),
 }));

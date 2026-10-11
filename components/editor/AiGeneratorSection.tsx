@@ -13,10 +13,11 @@ import {
 import { useEditorStore } from '@/store/useEditorStore';
 import { Message } from '@/types';
 import { compressImageFile, newId } from '@/lib/utils';
+import { normalizeSfxId } from '@/lib/sfx';
 
 type GeneratorMode = 'create' | 'improvise';
 type ContentGoal = 'drama_product' | 'horror';
-type ProductReveal = 'link' | 'image';
+type ProductReveal = 'none' | 'link' | 'image';
 
 interface StoryPreset {
   id: string;
@@ -43,6 +44,9 @@ interface RawAiMessage {
   linkImage?: string;
   imageData?: string;
   imageHint?: string;
+  sfxId?: string;
+  sfx?: string;
+  sfxVolume?: number;
 }
 
 const MESSAGE_LENGTHS = [
@@ -128,7 +132,7 @@ export default function AiGeneratorSection() {
   const [selectedPreset, setSelectedPreset] = useState('cold-war-apology');
   const [promptText, setPromptText] = useState(STORY_PRESETS[0].prompt);
   const [msgCount, setMsgCount] = useState(8);
-  const [productReveal, setProductReveal] = useState<ProductReveal>('link');
+  const [productReveal, setProductReveal] = useState<ProductReveal>(existingLink?.linkUrl ? 'link' : 'none');
   const [productUrl, setProductUrl] = useState(existingLink?.linkUrl ?? '');
   const [productName, setProductName] = useState(existingLink?.linkTitle ?? FALLBACK_PRODUCT.name);
   const [productDescription, setProductDescription] = useState(
@@ -182,14 +186,12 @@ export default function AiGeneratorSection() {
   }
 
   async function generate() {
-    if (generatorMode === 'create' && contentGoal === 'drama_product' && productReveal === 'link' && !productUrl.trim()) {
-      setError('Isi link produk dulu agar AI bisa membuat reveal yang benar.');
-      return;
-    }
-    if (generatorMode === 'create' && contentGoal === 'drama_product' && productReveal === 'image' && !productImage) {
-      setError('Upload foto atau barcode dulu agar bisa dipakai sebagai reveal terakhir.');
-      return;
-    }
+    const effectiveProductReveal: ProductReveal =
+      productReveal === 'link' && !productUrl.trim()
+        ? 'none'
+        : productReveal === 'image' && !productImage
+          ? 'none'
+          : productReveal;
 
     setLoading(true);
     setError(null);
@@ -201,7 +203,9 @@ export default function AiGeneratorSection() {
           ? 'Lanjutkan percakapan secara natural tanpa harus menambahkan link atau foto.'
           : contentGoal === 'horror'
           ? 'Buat fake chat horror realistis dengan hook cepat dan plot twist.'
-          : 'Buat drama pasangan yang berakhir dengan reveal produk secara natural.');
+          : effectiveProductReveal === 'none'
+            ? 'Buat drama pasangan yang natural dan selesai melalui percakapan, tanpa link atau foto wajib.'
+            : 'Buat drama pasangan yang berakhir dengan reveal produk secara natural.');
       const currentMessages = messages;
 
       const res = await fetch('/api/ai-generator', {
@@ -216,9 +220,9 @@ export default function AiGeneratorSection() {
           geminiKeyCustom: geminiKey.trim(),
           mode: generatorMode,
           storyType: contentGoal,
-          revealType: productReveal,
+          revealType: effectiveProductReveal,
           presetId: selectedPreset,
-          product: generatorMode === 'create' && contentGoal === 'drama_product'
+          product: generatorMode === 'create' && contentGoal === 'drama_product' && effectiveProductReveal !== 'none'
             ? {
                 url: productUrl.trim(),
                 name: productName.trim() || FALLBACK_PRODUCT.name,
@@ -310,11 +314,30 @@ export default function AiGeneratorSection() {
           linkTitle: item.linkTitle,
           linkDescription: item.linkDescription,
           linkImage: item.linkImage,
+          sfxId: normalizeSfxId(item.sfxId ?? item.sfx),
+          sfxVolume: typeof item.sfxVolume === 'number'
+            ? Math.max(0, Math.min(1, item.sfxVolume))
+            : undefined,
           time: timeStr,
         };
       });
 
-      if (generatorMode === 'create' && contentGoal === 'drama_product') {
+      if (generatorMode === 'create' && contentGoal === 'drama_product' && effectiveProductReveal === 'none') {
+        newMessages.forEach((message) => {
+          if (!['link', 'image', 'view_once'].includes(message.type)) return;
+          message.type = 'text';
+          message.text = message.text || message.caption || 'Aku cuma pengin ngomong langsung aja.';
+          message.caption = undefined;
+          message.imageData = undefined;
+          message.imageHint = undefined;
+          message.linkUrl = undefined;
+          message.linkTitle = undefined;
+          message.linkDescription = undefined;
+          message.linkImage = undefined;
+        });
+      }
+
+      if (generatorMode === 'create' && contentGoal === 'drama_product' && effectiveProductReveal !== 'none') {
         const revealDirection = selectedPreset === 'digital-surprise' ? 'outgoing' : 'incoming';
         const fallbackRevealText = selectedPreset === 'digital-surprise'
           ? 'Aku udah siapin ini buat kamu.'
@@ -322,7 +345,7 @@ export default function AiGeneratorSection() {
             ? 'Aku susah ngomong langsung. Jadi aku bikin ini.'
             : 'Aku bikin ini buat minta maaf.';
 
-        if (productReveal === 'image') {
+        if (effectiveProductReveal === 'image') {
           const imageIndex = newMessages.findIndex((message) => message.type === 'image');
           let productPhoto: Message;
 
@@ -558,16 +581,17 @@ export default function AiGeneratorSection() {
           <div className="mb-3 flex items-start gap-2">
             <span className="mt-0.5 shrink-0 text-[15px]">🎁</span>
             <div>
-              <p className="text-[11.5px] font-semibold text-sky-300">Reveal produk di akhir chat</p>
+              <p className="text-[11.5px] font-semibold text-sky-300">Reveal produk (opsional)</p>
               <p className="mt-0.5 text-[10px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
-                Pilih bagaimana produk muncul pada bubble terakhir.
+                Naskah tetap bisa dibuat tanpa link, foto, barcode, atau QR.
               </p>
             </div>
           </div>
 
           <div className="flex flex-col gap-2.5">
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               {([
+                ['none', '💬 Tanpa media', 'Percakapan saja'],
                 ['link', '🔗 Kartu link', 'Thumbnail + tautan'],
                 ['image', '▣ Foto / QR', 'Gambar saja'],
               ] as const).map(([value, label, description]) => (
@@ -595,7 +619,7 @@ export default function AiGeneratorSection() {
             {productReveal === 'link' && (
               <>
             <div>
-              <label className="section-label">Link produk *</label>
+              <label className="section-label">Link produk (opsional)</label>
               <input
                 type="url"
                 className="input font-mono text-[11px]"
@@ -624,9 +648,10 @@ export default function AiGeneratorSection() {
             </div>
               </>
             )}
+            {productReveal !== 'none' && (
             <div>
               <label className="section-label">
-                {productReveal === 'image' ? 'Foto produk / barcode / QR *' : 'Thumbnail produk (opsional)'}
+                {productReveal === 'image' ? 'Foto produk / barcode / QR (opsional)' : 'Thumbnail produk (opsional)'}
               </label>
               {productImage ? (
                 <div
@@ -673,10 +698,11 @@ export default function AiGeneratorSection() {
                 />
               )}
             </div>
+            )}
           </div>
 
           <p className="mt-2 text-[9.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
-            Hasil reveal masih bisa disesuaikan setelah generate di menu <strong>Urutan Pesan</strong>.
+            Pilih media hanya jika dibutuhkan. Hasilnya tetap bisa disesuaikan setelah generate di menu <strong>Urutan Pesan</strong>.
           </p>
         </section>
       )}

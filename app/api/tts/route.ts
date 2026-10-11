@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { cleanSpeechText } from '@/lib/speech';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -20,7 +21,9 @@ export async function POST(req: NextRequest) {
       speed = 1.0,
     } = body;
 
-    if (!text?.trim()) {
+    const speechText = cleanSpeechText(text);
+
+    if (!speechText) {
       return NextResponse.json({ error: 'Teks kosong' }, { status: 400 });
     }
 
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
           Accept: 'audio/mpeg',
         },
         body: JSON.stringify({
-          text,
+          text: speechText,
           model_id: model,
           language_code: 'id',
           voice_settings: voiceSettings,
@@ -90,7 +93,7 @@ export async function POST(req: NextRequest) {
     // ── Free Neural (Google TTS Proxy) ───────────────────────────
     if (provider === 'free_neural') {
       const lang = 'id';
-      const truncated = text.slice(0, 200); // Google TTS limit
+      const truncated = speechText.slice(0, 200); // Google TTS limit
       const url = new URL(GOOGLE_TTS_BASE);
       url.searchParams.set('ie', 'UTF-8');
       url.searchParams.set('q', truncated);
@@ -150,7 +153,7 @@ export async function POST(req: NextRequest) {
             body: JSON.stringify({
               model: targetModel,
               input: {
-                text,
+                text: speechText,
               },
               parameters: {
                 voice: voiceId || 'cherry',
@@ -199,7 +202,7 @@ export async function POST(req: NextRequest) {
       console.warn('[TTS/Qwen] Qwen API call failed, falling back to Free Neural TTS:', lastError);
       
       // Seamless Fallback to Free Neural TTS
-      const truncated = text.slice(0, 200);
+      const truncated = speechText.slice(0, 200);
       const url = new URL(GOOGLE_TTS_BASE);
       url.searchParams.set('ie', 'UTF-8');
       url.searchParams.set('q', truncated);

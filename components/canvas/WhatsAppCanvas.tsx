@@ -87,6 +87,9 @@ export default function WhatsAppCanvas() {
             background: 'var(--wa-phone-chrome)',
             '--wa-bubble-out': bubbleColor || (bgType === 'default' ? '#d9fdd3' : '#005c4b'),
             '--wa-bubble-in': bgType === 'default' ? '#ffffff' : '#202c33',
+            '--wa-bubble-shadow': bgType === 'default'
+              ? '0 1px 0.5px rgba(11,20,26,0.10)'
+              : '0 1px 1px rgba(0,0,0,0.18)',
             '--wa-chat-text': bgType === 'default' ? '#111b21' : '#e9edef',
             '--wa-chat-muted': bgType === 'default' ? '#667781' : '#8696a0',
             '--wa-chat-time': bgType === 'default' ? '#667781' : 'rgba(255,255,255,0.55)',

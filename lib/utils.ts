@@ -65,6 +65,20 @@ export function getCurrentTime(): string {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 }
 
+/** Add minutes to a 24-hour HH:MM value and wrap cleanly after midnight. */
+export function addMinutesToTime(time: string | undefined, minutes = 1): string {
+  const match = time?.match(/^([01]\d|2[0-3]):([0-5]\d)$/);
+  if (!match) return getCurrentTime();
+
+  const minutesInDay = 24 * 60;
+  const currentMinutes = Number(match[1]) * 60 + Number(match[2]);
+  const nextMinutes = ((currentMinutes + minutes) % minutesInDay + minutesInDay) % minutesInDay;
+  const hours = Math.floor(nextMinutes / 60);
+  const minute = nextMinutes % 60;
+
+  return `${hours.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+}
+
 /** Get initials from name */
 export function getInitials(name: string): string {
   return name

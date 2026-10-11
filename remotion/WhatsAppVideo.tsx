@@ -15,7 +15,7 @@ import type { Message } from '@/types';
 import { extractDomain, getInitials, getSenderColor, stripAudioTags } from '@/lib/utils';
 import { buildVideoTimeline, getTimelineState, type TimelineEvent } from './timeline';
 import type { WhatsAppVideoProps } from './videoTypes';
-import { getMessageSoundSource, getVoiceSource } from './audio';
+import { getMessageCustomSfx, getMessageSoundSource, getVoiceSource } from './audio';
 
 const COLORS = {
   chrome: '#054d44',
@@ -35,6 +35,9 @@ const ChatThemeContext = React.createContext({
   incoming: COLORS.incoming,
   text: COLORS.text,
   muted: COLORS.muted,
+  shadow: '0 4px 12px rgba(0,0,0,0.28)',
+  linkCard: 'rgba(0,0,0,0.2)',
+  linkBorder: 'rgba(134,150,160,0.14)',
 });
 
 function isAnimatedImage(src: string) {
@@ -176,7 +179,7 @@ function BubbleShell({
         padding,
         backgroundColor: outgoing ? theme.outgoing : theme.incoming,
         borderRadius: outgoing ? '28px 4px 28px 28px' : '4px 28px 28px 28px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.28)',
+        boxShadow: theme.shadow,
         color: theme.text,
         overflow: 'hidden',
       }}
@@ -274,11 +277,19 @@ function LinkMessage({ message, showSenderName }: { message: Message; showSender
   const url = message.linkUrl || message.text || '';
   const domain = extractDomain(url);
   const commentary = message.text && !message.text.startsWith('http') ? stripAudioTags(message.text) : '';
+  const theme = React.useContext(ChatThemeContext);
 
   return (
     <BubbleShell message={message} showSenderName={showSenderName} maxWidth={800}>
       {commentary ? <div style={{ fontSize: 34, lineHeight: 1.3, marginBottom: 15 }}>{commentary}</div> : null}
-      <div style={{ backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 20, overflow: 'hidden' }}>
+      <div
+        style={{
+          backgroundColor: theme.linkCard,
+          border: `2px solid ${theme.linkBorder}`,
+          borderRadius: 20,
+          overflow: 'hidden',
+        }}
+      >
         <div
           style={{
             // Match the preview card's 125:274 thumbnail ratio at Remotion's width.
@@ -301,11 +312,11 @@ function LinkMessage({ message, showSenderName }: { message: Message; showSender
           )}
         </div>
         <div style={{ padding: '18px 22px 20px' }}>
-          <div style={{ fontSize: 34, fontWeight: 750 }}>{message.linkTitle || domain || 'Tautan Web'}</div>
-          <div style={{ color: COLORS.muted, fontSize: 27, lineHeight: 1.35, marginTop: 8 }}>
+          <div style={{ color: theme.text, fontSize: 34, fontWeight: 750 }}>{message.linkTitle || domain || 'Tautan Web'}</div>
+          <div style={{ color: theme.muted, fontSize: 27, lineHeight: 1.35, marginTop: 8 }}>
             {message.linkDescription || 'Klik untuk membuka tautan halaman web'}
           </div>
-          <div style={{ color: 'rgba(233,237,239,0.45)', fontSize: 23, marginTop: 10 }}>{domain}</div>
+          <div style={{ color: theme.muted, fontSize: 23, marginTop: 10 }}>{domain}</div>
         </div>
       </div>
       <div style={{ color: COLORS.blue, fontSize: 29, marginTop: 13, overflowWrap: 'anywhere' }}>{url}</div>
@@ -437,6 +448,9 @@ function DeletedMessage({ message, showSenderName }: { message: Message; showSen
 }
 
 function MessageContent({ message, showSenderName }: { message: Message; showSenderName: boolean }) {
+  // Keep unfinished empty drafts out of the exported frame as well.
+  if (message.type === 'text' && !stripAudioTags(message.text || '').trim()) return null;
+
   switch (message.type) {
     case 'image':
       return <ImageMessage message={message} showSenderName={showSenderName} />;
@@ -462,16 +476,19 @@ function ChatMessage({
   event,
   frame,
   showSenderName,
+  focusProgress,
 }: {
   message: Message;
   event: TimelineEvent;
   frame: number;
   showSenderName: boolean;
+  focusProgress: number;
 }) {
   const entry = interpolate(frame, [event.revealFrame, event.revealFrame + 7], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
+  const isMediaCard = message.type === 'link' || message.type === 'image';
   return (
     <div
       style={{
@@ -480,6 +497,9 @@ function ChatMessage({
         width: '100%',
         opacity: entry,
         translate: `${message.direction === 'outgoing' ? 32 * (1 - entry) : -32 * (1 - entry)}px 0px`,
+        scale: 1 + (isMediaCard ? 0.015 : 0.035) * focusProgress,
+        transformOrigin: message.direction === 'outgoing' ? 'right center' : 'left center',
+        zIndex: focusProgress > 0 ? 2 : 1,
         flexShrink: 0,
       }}
     >
@@ -501,7 +521,7 @@ function TypingBubble() {
         padding: '24px 30px',
         borderRadius: '4px 28px 28px 28px',
         backgroundColor: theme.incoming,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+        boxShadow: theme.shadow,
       }}
     >
       {[0, 1, 2].map((index) => {
@@ -776,6 +796,7 @@ function MessageAudioTracks({
     <>
       {timeline.map((event) => {
         const soundSource = getMessageSoundSource(props, event.message);
+        const customSfx = getMessageCustomSfx(event.message);
         const voiceSource = getVoiceSource(props, event.message, event.index);
 
         return (
@@ -786,6 +807,16 @@ function MessageAudioTracks({
                 src={staticFile(soundSource)}
                 from={event.revealFrame}
                 volume={0.85}
+                premountFor={fps}
+              />
+            ) : null}
+            {customSfx ? (
+              <Audio
+                name={`${customSfx.label} · pesan ${event.index + 1}`}
+                src={staticFile(customSfx.source)}
+                from={event.revealFrame}
+                durationInFrames={Math.max(1, Math.min(3 * fps, event.endFrame - event.revealFrame))}
+                volume={customSfx.volume}
                 premountFor={fps}
               />
             ) : null}
@@ -886,7 +917,10 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     : 0;
   const cameraTranslateY = scrollOffset + mediaFocusShiftY;
 
-  const zoomOriginX = activeEvent?.message.direction === 'outgoing' ? 88 : 12;
+  // Anchor the camera to the bubble's own edge. Using an inset origin caused
+  // the rounded bubble edge to move outside the viewport during zoom, making
+  // it look as if only the text was enlarged.
+  const zoomOriginX = activeEvent?.message.direction === 'outgoing' ? 100 : 0;
   const introOpacity = interpolate(frame, [0, Math.round(fps * 0.35)], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
@@ -900,6 +934,9 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
         incoming: isClassic ? '#ffffff' : COLORS.incoming,
         text: isClassic ? '#111b21' : COLORS.text,
         muted: isClassic ? '#667781' : COLORS.muted,
+        shadow: isClassic ? '0 2px 4px rgba(11,20,26,0.10)' : '0 4px 12px rgba(0,0,0,0.28)',
+        linkCard: isClassic ? 'rgba(11,20,26,0.06)' : 'rgba(0,0,0,0.2)',
+        linkBorder: isClassic ? 'rgba(102,119,129,0.12)' : 'rgba(134,150,160,0.14)',
       }}
     >
       <AbsoluteFill
@@ -994,6 +1031,11 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
                   event={event}
                   frame={frame}
                   showSenderName={showSenderName}
+                  focusProgress={
+                    zoomEnabled && event.message.id === activeEvent?.message.id
+                      ? zoomProgress
+                      : 0
+                  }
                 />
               );
             })}

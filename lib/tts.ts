@@ -1,5 +1,5 @@
 import { TtsRequest } from '@/types';
-import { stripAudioTags } from './utils';
+import { cleanSpeechText } from './speech';
 
 const WORKER_URL = process.env.CLOUDFLARE_WORKER_URL ?? 'https://wa-templates-worker.aldoramadhan16.workers.dev';
 
@@ -8,7 +8,7 @@ const WORKER_URL = process.env.CLOUDFLARE_WORKER_URL ?? 'https://wa-templates-wo
  * Returns a Blob URL for playback.
  */
 export async function generateTtsBlob(req: TtsRequest): Promise<string> {
-  const cleanText = stripAudioTags(req.text);
+  const cleanText = cleanSpeechText(req.text);
   if (!cleanText.trim()) throw new Error('Teks kosong, tidak bisa generate audio');
 
   const res = await fetch('/api/tts', {

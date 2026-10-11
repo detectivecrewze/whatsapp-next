@@ -89,7 +89,7 @@ function ImageBubble({ message, showSenderName }: { message: Message; showSender
         borderRadius: br,
         maxWidth: '260px',
         width: '100%',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        boxShadow: 'var(--wa-bubble-shadow)',
         padding: captionText || showSenderName ? '3px 3px 0 3px' : '0',
       }}
     >
@@ -378,7 +378,7 @@ function LinkBubble({ message, showSenderName }: { message: Message; showSenderN
         borderRadius: br,
         maxWidth: '280px',
         width: '100%',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+        boxShadow: 'var(--wa-bubble-shadow)',
         padding: '3px 3px 2px 3px',
       }}
     >
@@ -525,6 +525,9 @@ export default function MessageBubble({
   const isOut = message.direction === 'outgoing';
 
   if (!isVisible) return null;
+  // A newly added text message is an editor draft. Do not render its timestamp
+  // inside a zero-width bubble before the user has typed any content.
+  if (message.type === 'text' && !stripAudioTags(message.text || '').trim()) return null;
 
   const renderBubble = () => {
     switch (message.type) {

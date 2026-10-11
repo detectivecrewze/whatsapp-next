@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { CheckCircle, Download, Film, Loader2, TriangleAlert } from 'lucide-react';
+import { CheckCircle, Download, Film, Loader2, TriangleAlert, Volume2 } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { WhatsAppVideo } from '@/remotion/WhatsAppVideo';
 import { getVoiceSource } from '@/remotion/audio';
@@ -104,6 +104,8 @@ export default function VideoExportButton() {
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const messageCount = useEditorStore((state) => state.messages.length);
+  const ttsSpeed = useEditorStore((state) => state.ttsSpeed);
+  const setTtsSpeed = useEditorStore((state) => state.setTtsSpeed);
 
   async function handleExport() {
     setStatus('checking');
@@ -195,6 +197,39 @@ export default function VideoExportButton() {
       className="rounded-xl border p-2.5"
       style={{ background: 'rgba(83,189,235,0.06)', borderColor: 'rgba(83,189,235,0.25)' }}
     >
+      <div
+        className="mb-2.5 rounded-lg border p-2.5"
+        style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
+      >
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Volume2 size={14} className="shrink-0" style={{ color: 'var(--wa-green)' }} />
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-semibold" style={{ color: 'var(--wa-text)' }}>Kecepatan voice</p>
+              <p className="text-[8.5px]" style={{ color: 'var(--wa-text-muted)' }}>Preview, play bubble, dan hasil MP4</p>
+            </div>
+          </div>
+          <span className="shrink-0 text-[11px] font-bold" style={{ color: 'var(--wa-green)' }}>{ttsSpeed.toFixed(2)}×</span>
+        </div>
+        <input
+          type="range"
+          className="slider w-full"
+          min={0.8}
+          max={2}
+          step={0.05}
+          value={ttsSpeed}
+          disabled={busy}
+          onChange={(event) => setTtsSpeed(Number(event.target.value))}
+          aria-label="Kecepatan voice untuk preview dan video MP4"
+        />
+        <div className="mt-1 flex justify-between text-[8.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+          <span>0.80×</span><span>Normal 1.00×</span><span>2.00×</span>
+        </div>
+        <p className="mt-1.5 text-[8.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+          Bisa diubah kapan saja tanpa membuat ulang audio.
+        </p>
+      </div>
+
       <button
         onClick={handleExport}
         disabled={busy || messageCount === 0}

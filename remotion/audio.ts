@@ -1,12 +1,14 @@
 import type { Message } from '@/types';
 import type { WhatsAppVideoProps } from './videoTypes';
+import { getSfxDefinition, getSfxVolume } from '@/lib/sfx';
+import { getMessageSpeakableText } from '@/lib/speech';
 
 export function getVoiceSource(
   props: Pick<WhatsAppVideoProps, 'enableTts' | 'ttsAudioMap'>,
   message: Message,
   index: number
 ) {
-  if (!props.enableTts) return null;
+  if (!props.enableTts || !getMessageSpeakableText(message)) return null;
 
   return (
     message.audioDataUrl ||
@@ -26,4 +28,15 @@ export function getMessageSoundSource(
   }
 
   return props.useSoundOut ? 'sounds/sfx-out.mp3' : null;
+}
+
+export function getMessageCustomSfx(message: Message) {
+  const definition = getSfxDefinition(message.sfxId);
+  if (!definition) return null;
+
+  return {
+    source: definition.file,
+    label: definition.label,
+    volume: getSfxVolume(message.sfxVolume),
+  };
 }

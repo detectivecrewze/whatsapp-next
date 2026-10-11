@@ -64,7 +64,7 @@ export const EDITOR_SECTIONS: Record<EditorSectionId, EditorSectionMeta> = {
     id: 'ai-script',
     title: 'AI Naskah Generator',
     shortTitle: 'Generator naskah',
-    description: 'Buat drama dengan product reveal atau horror chat melalui alur yang fokus.',
+    description: 'Buat drama atau horror chat; link, foto, dan barcode sepenuhnya opsional.',
     icon: Zap,
   },
   'voice-over': {

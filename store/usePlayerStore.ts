@@ -2,6 +2,9 @@
 
 import { create } from 'zustand';
 import { useEditorStore } from './useEditorStore';
+import type { Message } from '@/types';
+import { getSfxDefinition, getSfxVolume } from '@/lib/sfx';
+import { getMessageSpeakableText } from '@/lib/speech';
 
 interface PlayerState {
   isPlaying: boolean;
@@ -22,6 +25,7 @@ let animationTimer: ReturnType<typeof setTimeout> | null = null;
 let resolveAnimationWait: (() => void) | null = null;
 let playbackRunId = 0;
 let cancelActiveTts: (() => void) | null = null;
+let customSfxStopTimer: ReturnType<typeof setTimeout> | null = null;
 
 function clearTimer() {
   if (animationTimer) {
@@ -50,9 +54,22 @@ function waitForDelay(duration: number): Promise<void> {
 function cancelCurrentPlayback() {
   clearTimer();
 
+  if (customSfxStopTimer) {
+    clearTimeout(customSfxStopTimer);
+    customSfxStopTimer = null;
+  }
+
   const cancelTts = cancelActiveTts;
   cancelActiveTts = null;
   cancelTts?.();
+
+  for (const audio of [_sfxInAudioEl, _sfxOutAudioEl, _customSfxAudioEl]) {
+    if (!audio) continue;
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch {}
+  }
 }
 
 // ── iOS Safari Audio Unlock ─────────────────────────────────────────────────
@@ -62,6 +79,7 @@ function cancelCurrentPlayback() {
 let _ttsAudioEl: HTMLAudioElement | null = null;
 let _sfxInAudioEl: HTMLAudioElement | null = null;
 let _sfxOutAudioEl: HTMLAudioElement | null = null;
+let _customSfxAudioEl: HTMLAudioElement | null = null;
 
 /**
  * Call this ONCE during a user gesture (e.g. Start button click) to
@@ -118,16 +136,32 @@ export function initTtsAudio(): void {
       })
       .catch(() => {});
   }
+
+  // 4. Story SFX Singleton Audio
+  if (!_customSfxAudioEl) {
+    _customSfxAudioEl = new Audio('/sounds/sfx/ding.wav');
+    _customSfxAudioEl.preload = 'auto';
+    _customSfxAudioEl.volume = 0.001;
+    const unlockAudio = _customSfxAudioEl;
+    const unlockSource = unlockAudio.src;
+    unlockAudio.play()
+      .then(() => {
+        if (unlockAudio.src === unlockSource) {
+          unlockAudio.pause();
+          unlockAudio.currentTime = 0;
+        }
+        unlockAudio.volume = 0.22;
+      })
+      .catch(() => {});
+  }
 }
 
 // ── Sound Effects Playback ──────────────────────────────────────────────────
-function playSfx(direction: 'incoming' | 'outgoing') {
+function playSfx(direction: 'incoming' | 'outgoing', message: Message) {
   const state = useEditorStore.getState();
+  const playDefaultSound = direction === 'incoming' ? state.useSoundIn !== false : state.useSoundOut !== false;
 
-  if (direction === 'incoming' && state.useSoundIn === false) return;
-  if (direction === 'outgoing' && state.useSoundOut === false) return;
-
-  try {
+  if (playDefaultSound) try {
     const sfxAudio = direction === 'incoming' ? _sfxInAudioEl : _sfxOutAudioEl;
     if (sfxAudio) {
       sfxAudio.currentTime = 0;
@@ -148,19 +182,50 @@ function playSfx(direction: 'incoming' | 'outgoing') {
   } catch (e) {
     console.warn('[SFX] Audio play error:', e);
   }
+
+  const customSfx = getSfxDefinition(message.sfxId);
+  if (!customSfx) return;
+
+  try {
+    const source = `/${customSfx.file}`;
+    const volume = getSfxVolume(message.sfxVolume);
+    const audio = _customSfxAudioEl ?? new Audio(source);
+    audio.pause();
+    audio.currentTime = 0;
+    audio.volume = volume;
+    if (audio.src !== new URL(source, window.location.origin).href) {
+      audio.src = source;
+      audio.load();
+    }
+    audio.play().catch(() => {
+      const fallback = new Audio(source);
+      fallback.volume = volume;
+      fallback.play().catch(() => {});
+    });
+    if (customSfxStopTimer) clearTimeout(customSfxStopTimer);
+    customSfxStopTimer = setTimeout(() => {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {}
+      customSfxStopTimer = null;
+    }, 3000);
+  } catch (error) {
+    console.warn('[Story SFX] Audio play error:', error);
+  }
 }
 
 // ── TTS Voiceover Playback ──────────────────────────────────────────────────
 // Uses the singleton audio element so iOS Safari keeps audio unlocked.
 // Resolves when audio ends, errors, or stalls too long.
-function playTtsAudio(msgId: string, msgIndex?: number): Promise<void> {
+function playTtsAudio(message: Message, msgIndex?: number): Promise<void> {
   return new Promise((resolve) => {
     const state = useEditorStore.getState();
-    if (!state.enableTts) return resolve();
+    if (!state.enableTts || !getMessageSpeakableText(message)) return resolve();
 
     const audioMap = state.ttsAudioMap as Record<string, string> | undefined;
     const audioUrl =
-      audioMap?.[msgId] ??
+      audioMap?.[message.id] ??
       (msgIndex !== undefined
         ? (audioMap?.[msgIndex] ?? audioMap?.[String(msgIndex)])
         : undefined);
@@ -259,6 +324,13 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         _ttsAudioEl.currentTime = 0;
       } catch {}
     }
+    for (const audio of [_sfxInAudioEl, _sfxOutAudioEl, _customSfxAudioEl]) {
+      if (!audio) continue;
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {}
+    }
 
     set({
       isPlaying: false,
@@ -329,10 +401,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         state.setActiveHeaderStatusOverride(null);
 
         // SFX fires immediately (non-blocking)
-        playSfx(msg.direction);
+        playSfx(msg.direction, msg);
 
         // TTS: wait for voice to finish before proceeding
-        await playTtsAudio(msg.id, currentIdx - 1);
+        await playTtsAudio(msg, currentIdx - 1);
         if (runId !== playbackRunId) return;
 
         // Hold pause after audio ends (configured per-message or global)
@@ -343,10 +415,10 @@ export const usePlayerStore = create<PlayerState>()((set, get) => ({
         set({ visibleCount: currentIdx, isTyping: false, activeMsgId: msg.id });
 
         // SFX fires immediately (non-blocking)
-        playSfx(msg.direction);
+        playSfx(msg.direction, msg);
 
         // TTS: wait for voice to finish before proceeding
-        await playTtsAudio(msg.id, currentIdx - 1);
+        await playTtsAudio(msg, currentIdx - 1);
         if (runId !== playbackRunId) return;
 
         // Hold pause after audio ends

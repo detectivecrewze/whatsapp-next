@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { SFX_AI_IDS } from '@/lib/sfx';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ const QWEN_ENDPOINTS = [
 const QWEN_MODEL_CHAIN = ['qwen-max', 'qwen-plus', 'qwen-turbo'];
 
 type StoryType = 'drama_product' | 'horror';
-type RevealType = 'link' | 'image';
+type RevealType = 'none' | 'link' | 'image';
 
 interface ProductBrief {
   url?: string;
@@ -44,12 +45,27 @@ interface ExistingMessageBrief {
   caption?: string;
   type?: string;
   imageHint?: string;
+  sfxId?: string;
+}
+
+function buildSfxDirective(storyType?: StoryType): string {
+  const genreRule = storyType === 'horror'
+    ? '- Untuk horror, pasang 1-3 SFX pada momen paling tegang atau plot twist. Pilih efek yang paling cocok dari horror-sting, eerie-hit, tension-boom, bone-crack, whip-hit, light-switch, horror-scream, creepy-notification, mystery-reveal, panic-triggered, glitch-loading, atau efek kamera.'
+    : storyType === 'drama_product'
+      ? '- Untuk drama, pakai maksimal 2 SFX hanya jika memperkuat reveal. Untuk adegan komedi yang diminta user, pilih efek reaction/punchline seperti ding, bruh, comedy-fail, record-scratch, xp-error, hell-nah, oh-my-god, game-hurt, quack, atau skedaddle.'
+      : '- Ikuti genre percakapan lama: horror memakai 1-3 efek tegang; komedi memakai 1-3 efek punchline; drama memakai maksimal 2 efek halus.';
+
+  return `EFEK SUARA PER BUBBLE:
+- Field opsional bernama "sfxId". Nilai yang valid HANYA: ${SFX_AI_IDS}.
+${genreRule}
+- Jangan memberi SFX pada setiap bubble. Pilih momen penting saja agar hasil tidak berisik.
+- SFX berbunyi tepat saat bubble muncul. Jangan menulis nama efek atau arahan suara di dalam teks chat.`;
 }
 
 function buildStoryDirective(
   storyType: StoryType,
   product?: ProductBrief | null,
-  revealType: RevealType = 'link',
+  revealType: RevealType = 'none',
 ): string {
   if (storyType === 'horror') {
     return `JENIS KONTEN: FAKE CHAT HORROR
@@ -60,6 +76,14 @@ function buildStoryDirective(
 - Kamu BOLEH memakai maksimal satu bubble type "image" atau "view_once" jika bukti visual benar-benar membuat cerita lebih menyeramkan (contoh: foto lorong, tangkapan layar CCTV, atau sosok di jendela). Ini pilihan, bukan kewajiban.
 - Jangan selalu menaruh gambar sebagai pesan terakhir. Setelah gambar, percakapan boleh berlanjut agar tokoh bereaksi dan plot twist terasa hidup.
 - Jika memakai image/view_once, isi "imageHint" dengan deskripsi visual singkat dan konkret untuk membantu user memilih foto. Caption harus tetap berupa ucapan natural dari pengirim, bukan deskripsi gambar. Jangan mengarang URL gambar.`;
+  }
+
+  if (revealType === 'none') {
+    return `JENIS KONTEN: FAKE CHAT DRAMA TANPA MEDIA WAJIB
+- Buat drama singkat yang utuh melalui percakapan saja: hook konflik → respons emosional → eskalasi → ending yang memuaskan atau menggantung sesuai ide user.
+- Jangan menambahkan link, kartu web, foto, barcode, QR, produk, atau ajakan membuka sesuatu.
+- Jangan membuat tokoh berkata akan mengirim sesuatu jika tidak benar-benar ada media setelahnya.
+- Ending terakhir harus tetap terasa kuat sebagai chat teks natural, bukan kalimat narator.`;
   }
 
   const safeProduct = {
@@ -98,11 +122,13 @@ function buildSystemPrompt(
   targetLength: number,
   storyType: StoryType,
   product?: ProductBrief | null,
-  revealType: RevealType = 'link',
+  revealType: RevealType = 'none',
 ): string {
   return `Kamu adalah penulis naskah fake chat WhatsApp untuk video TikTok dan Reels Indonesia.
 
 ${buildStoryDirective(storyType, product, revealType)}
+
+${buildSfxDirective(storyType)}
 
 ATURAN CERITA:
 1. Buat TEPAT ${targetLength} bubble chat dari awal sampai ending. Tidak boleh kurang atau lebih.
@@ -136,6 +162,9 @@ Jika memakai type "image", formatnya:
 
 Jika memakai type "view_once", gunakan format yang sama dengan image dan ubah type menjadi "view_once".
 
+Untuk bubble yang membutuhkan efek, tambahkan field opsional seperti:
+{ "type": "text", "direction": "incoming", "time": "21:36", "text": "Jangan nengok belakang.", "sfxId": "horror-sting" }
+
 Kembalikan hanya JSON valid.`;
 }
 
@@ -150,6 +179,8 @@ Tugasmu adalah MELANJUTKAN percakapan yang sudah ada tanpa mengulang atau mengub
 === PERCAKAPAN SEBELUMNYA ===
 ${existingMessagesText}
 =============================
+
+${buildSfxDirective()}
 
 ATURAN LANJUTAN:
 - Tambahkan TEPAT ${targetLength} bubble BARU.
@@ -173,6 +204,8 @@ FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
 
 Format media opsional:
 { "type": "image", "direction": "incoming", "time": "21:36", "caption": "Coba lihat ini deh", "imageHint": "Foto lorong rumah yang gelap dengan bayangan samar di ujung" }
+
+Field sfxId juga boleh ditambahkan pada bubble baru jika benar-benar mendukung momen cerita.
 
 Kembalikan hanya JSON valid.`;
 }
@@ -313,13 +346,14 @@ export async function POST(req: NextRequest) {
       qwenKeyCustom = '',
       mode = 'create', // 'create' | 'improvise' | 'enhance_emotion'
       storyType = 'drama_product',
-      revealType = 'link',
+      revealType = 'none',
       product = null,
       existingMessages = [],
     } = await req.json();
 
     const normalizedStoryType: StoryType = storyType === 'horror' ? 'horror' : 'drama_product';
-    const normalizedRevealType: RevealType = revealType === 'image' ? 'image' : 'link';
+    const normalizedRevealType: RevealType =
+      revealType === 'image' ? 'image' : revealType === 'link' ? 'link' : 'none';
 
     if (!prompt?.trim() && mode === 'create') {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
@@ -347,7 +381,8 @@ export async function POST(req: NextRequest) {
           const sender = m.senderName ? `(${m.senderName})` : '';
           const content = m.text || m.caption || `[Tipe: ${m.type}]`;
           const mediaContext = m.imageHint ? ` [Isi visual: ${m.imageHint}]` : '';
-          return `${idx + 1}. ${dir}${sender}: ${content}${mediaContext}`;
+          const sfxContext = m.sfxId ? ` [SFX: ${m.sfxId}]` : '';
+          return `${idx + 1}. ${dir}${sender}: ${content}${mediaContext}${sfxContext}`;
         })
         .join('\n');
 

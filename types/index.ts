@@ -20,6 +20,39 @@ export type ChatType = 'personal' | 'group';
 export type BgType = 'default' | 'color' | 'image';
 export type TtsProvider = 'elevenlabs' | 'free_neural' | 'qwen_cosyvoice';
 export type HeaderStatus = 'online' | 'typing' | 'custom';
+export type SfxId =
+  | 'horror-sting'
+  | 'eerie-hit'
+  | 'bone-crack'
+  | 'tension-boom'
+  | 'camera-shutter'
+  | 'whip-hit'
+  | 'light-switch'
+  | 'modern-shutter'
+  | 'horror-scream'
+  | 'creepy-notification'
+  | 'mystery-reveal'
+  | 'panic-triggered'
+  | 'glitch-loading'
+  | 'record-scratch'
+  | 'ding'
+  | 'bruh'
+  | 'comedy-fail'
+  | 'anime-wow'
+  | 'yippee'
+  | 'xp-error'
+  | 'hell-nah'
+  | 'price-fail'
+  | 'oh-my-god'
+  | 'game-hurt'
+  | 'quack'
+  | 'skedaddle'
+  | 'confused-what'
+  | 'nelly-ahh'
+  | 'whoosh'
+  | 'page-turn'
+  | 'mouse-click'
+  | 'romance';
 
 export interface Message {
   id: string;
@@ -45,6 +78,8 @@ export interface Message {
   customScale?: number;     // Custom scale multiplier (1.15, 1.3, 1.5, 1.8, 2.2)
   waveform?: number[];      // Array 0-100 for VN waveform
   duration?: string;        // Voice note duration display
+  sfxId?: SfxId;            // Optional story accent played when this bubble appears
+  sfxVolume?: number;       // 0..1, defaults to 0.22
 }
 
 export interface EditorState {
