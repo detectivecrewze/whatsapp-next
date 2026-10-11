@@ -1098,21 +1098,30 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             translate: usePhoneLayout ? '-50% 0' : 'none',
             scale: usePhoneLayout ? REELS_PHONE_SCALE : 1,
             transformOrigin: 'top center',
-            borderRadius: usePhoneLayout ? 92 : 0,
-            border: usePhoneLayout ? '5px solid rgba(233,237,239,0.16)' : 'none',
-            padding: usePhoneLayout ? 18 : 0,
-            boxSizing: 'border-box',
-            overflow: 'hidden',
-            background: usePhoneLayout
-              ? 'linear-gradient(145deg, #181d20 0%, #050708 42%, #111619 100%)'
-              : COLORS.chat,
-            boxShadow: usePhoneLayout
-              ? 'inset 0 0 0 2px rgba(255,255,255,0.05)'
-              : 'none',
+            borderRadius: usePhoneLayout ? 108 : 0,
+            overflow: usePhoneLayout ? 'visible' : 'hidden',
+            background: 'transparent',
             opacity: introOpacity,
           }}
         >
           <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: usePhoneLayout ? 108 : 0,
+              border: usePhoneLayout ? '3px solid #45494d' : 'none',
+              padding: usePhoneLayout ? 11 : 0,
+              boxSizing: 'border-box',
+              overflow: 'hidden',
+              background: usePhoneLayout
+                ? 'linear-gradient(90deg, #090a0b 0%, #6b7074 2%, #34383c 4.5%, #151719 8%, #070809 50%, #151719 92%, #34383c 95.5%, #6b7074 98%, #090a0b 100%)'
+                : COLORS.chat,
+              boxShadow: usePhoneLayout
+                ? 'inset 0 0 0 2px rgba(255,255,255,0.16), inset 0 0 0 6px rgba(0,0,0,0.42)'
+                : 'none',
+            }}
+          >
+            <div
             style={{
               width: '100%',
               height: '100%',
@@ -1120,7 +1129,12 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
               flexDirection: 'column',
               overflow: 'hidden',
               backgroundColor: COLORS.chat,
-              borderRadius: usePhoneLayout ? 69 : 0,
+              borderRadius: usePhoneLayout ? 96 : 0,
+              border: usePhoneLayout ? '15px solid #0b0b0c' : 'none',
+              boxSizing: 'border-box',
+              boxShadow: usePhoneLayout
+                ? 'inset 0 0 0 2px rgba(255,255,255,0.025)'
+                : 'none',
               position: 'relative',
             }}
           >
@@ -1268,46 +1282,93 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
       </div>
 
       {activeNotification ? <NotificationOverlay event={activeNotification} /> : null}
+            </div>
           </div>
           {usePhoneLayout ? (
             <>
               <div
                 style={{
                   position: 'absolute',
+                  left: -15,
+                  top: 262,
+                  width: 15,
+                  height: 78,
+                  borderRadius: '6px 0 0 6px',
+                  background: 'linear-gradient(90deg, #070809, #4d5256 72%, #17191b)',
+                  border: '2px solid rgba(0,0,0,0.78)',
+                  boxSizing: 'border-box',
+                  zIndex: 4,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: -16,
+                  top: 386,
+                  width: 16,
+                  height: 142,
+                  borderRadius: '7px 0 0 7px',
+                  background: 'linear-gradient(90deg, #070809, #4d5256 72%, #17191b)',
+                  border: '2px solid rgba(0,0,0,0.78)',
+                  boxSizing: 'border-box',
+                  zIndex: 4,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  left: -16,
+                  top: 559,
+                  width: 16,
+                  height: 142,
+                  borderRadius: '7px 0 0 7px',
+                  background: 'linear-gradient(90deg, #070809, #4d5256 72%, #17191b)',
+                  border: '2px solid rgba(0,0,0,0.78)',
+                  boxSizing: 'border-box',
+                  zIndex: 4,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  right: -16,
+                  top: 452,
+                  width: 16,
+                  height: 190,
+                  borderRadius: '0 7px 7px 0',
+                  background: 'linear-gradient(90deg, #17191b, #4d5256 28%, #070809)',
+                  border: '2px solid rgba(0,0,0,0.78)',
+                  boxSizing: 'border-box',
+                  zIndex: 4,
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
                   left: '50%',
-                  top: 31,
-                  width: 252,
-                  height: 65,
+                  top: 38,
+                  width: 238,
+                  height: 61,
                   translate: '-50% 0',
                   borderRadius: 999,
-                  backgroundColor: '#000000',
-                  boxShadow: '0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.35)',
+                  background: 'linear-gradient(180deg, #080909 0%, #000000 100%)',
+                  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.055)',
                   zIndex: 20,
                 }}
               >
                 <div
                   style={{
                     position: 'absolute',
-                    right: 24,
-                    top: 20,
-                    width: 25,
-                    height: 25,
+                    right: 19,
+                    top: 18,
+                    width: 24,
+                    height: 24,
                     borderRadius: 999,
                     background: 'radial-gradient(circle at 36% 34%, #273b4e 0%, #101a24 38%, #020405 72%)',
                     boxShadow: 'inset 0 0 0 3px rgba(73,102,130,0.22)',
                   }}
                 />
               </div>
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  borderRadius: 88,
-                  boxShadow: 'inset 0 0 0 3px rgba(255,255,255,0.035)',
-                  pointerEvents: 'none',
-                  zIndex: 21,
-                }}
-              />
             </>
           ) : null}
         </div>
