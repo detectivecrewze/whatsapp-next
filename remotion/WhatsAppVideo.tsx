@@ -13,6 +13,7 @@ import {
 } from 'remotion';
 import type { Message } from '@/types';
 import { extractDomain, getInitials, getSenderColor, stripAudioTags } from '@/lib/utils';
+import { getEndTransitionSfx } from '@/lib/endTransitions';
 import { buildVideoTimeline, getTimelineState, type TimelineEvent } from './timeline';
 import type { WhatsAppVideoProps } from './videoTypes';
 import { getMessageCustomSfx, getMessageSoundSource, getVoiceSource } from './audio';
@@ -30,6 +31,10 @@ const COLORS = {
 };
 
 const FONT = 'Inter, Arial, Helvetica, sans-serif';
+// Large enough for readable chat, while retaining the right/bottom safe area
+// used by Reels and TikTok controls.
+const REELS_PHONE_SCALE = 0.78;
+const REELS_PHONE_TOP = 150;
 const ChatThemeContext = React.createContext({
   outgoing: COLORS.outgoing,
   incoming: COLORS.incoming,
@@ -754,6 +759,41 @@ function DoodlePattern({ opacity = 1 }: { opacity?: number }) {
   );
 }
 
+function ReelsBackground({ image }: { image?: string | null }) {
+  const { fps } = useVideoConfig();
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: '#061712',
+        backgroundImage: [
+          'radial-gradient(circle at 50% 17%, rgba(37,211,102,0.18), transparent 31%)',
+          'radial-gradient(circle at 50% 72%, rgba(18,140,126,0.2), transparent 38%)',
+          'linear-gradient(180deg, #08251f 0%, #061712 54%, #04100d 100%)',
+        ].join(', '),
+        overflow: 'hidden',
+      }}
+    >
+      {image ? (
+        <>
+          <CanvasImage
+            src={image}
+            premountFor={fps}
+            style={{ position: 'absolute', width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+          <AbsoluteFill
+            style={{
+              background: 'linear-gradient(180deg, rgba(2,14,11,0.30), rgba(2,14,11,0.58))',
+            }}
+          />
+        </>
+      ) : (
+        <DoodlePattern opacity={0.23} />
+      )}
+    </AbsoluteFill>
+  );
+}
+
 function Wallpaper({ props }: { props: WhatsAppVideoProps }) {
   if (props.bgType === 'image' && props.bgImage) {
     return (
@@ -833,6 +873,104 @@ function MessageAudioTracks({
           </React.Fragment>
         );
       })}
+    </>
+  );
+}
+
+function EndTransitionLayer({ props }: { props: WhatsAppVideoProps }) {
+  const frame = useCurrentFrame();
+  const { durationInFrames, fps } = useVideoConfig();
+  const transition = props.endTransition || 'none';
+  const transitionFrames = Math.max(1, Math.round(fps * 0.75));
+  const startFrame = Math.max(0, durationInFrames - transitionFrames);
+  const progress = interpolate(frame, [startFrame, durationInFrames - 1], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: Easing.bezier(0.4, 0, 0.2, 1),
+  });
+  const sfx = getEndTransitionSfx(props.endTransitionSfx);
+
+  if (transition === 'none') return null;
+
+  return (
+    <>
+      {sfx?.file ? (
+        <Audio
+          name={`SFX transisi · ${sfx.label}`}
+          src={staticFile(sfx.file)}
+          from={startFrame}
+          durationInFrames={transitionFrames}
+          volume={0.22}
+          premountFor={fps}
+        />
+      ) : null}
+
+      {transition === 'fade' ? (
+        <AbsoluteFill
+          style={{
+            zIndex: 100,
+            pointerEvents: 'none',
+            backgroundColor: '#020807',
+            opacity: progress,
+          }}
+        />
+      ) : null}
+
+      {transition === 'wipe' ? (
+        <AbsoluteFill style={{ zIndex: 100, pointerEvents: 'none', overflow: 'hidden' }}>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '112%',
+              background: 'linear-gradient(110deg, #25d366 0%, #128c7e 42%, #054d44 78%, #020807 100%)',
+              translate: `${(1 - progress) * 102}% 0`,
+              boxShadow: '-48px 0 90px rgba(37,211,102,0.24)',
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
+
+      {transition === 'iris' ? (
+        <AbsoluteFill style={{ zIndex: 100, pointerEvents: 'none', overflow: 'hidden' }}>
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: 2400,
+              height: 2400,
+              borderRadius: 9999,
+              backgroundColor: '#020807',
+              translate: '-50% -50%',
+              scale: progress,
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
+
+      {transition === 'flash' ? (
+        <AbsoluteFill style={{ zIndex: 100, pointerEvents: 'none' }}>
+          <AbsoluteFill
+            style={{
+              backgroundColor: '#ffffff',
+              opacity: interpolate(progress, [0, 0.34, 0.55], [0, 1, 0], {
+                extrapolateLeft: 'clamp',
+                extrapolateRight: 'clamp',
+              }),
+            }}
+          />
+          <AbsoluteFill
+            style={{
+              backgroundColor: '#020807',
+              opacity: interpolate(progress, [0.48, 1], [0, 1], {
+                extrapolateLeft: 'clamp',
+                extrapolateRight: 'clamp',
+              }),
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
     </>
   );
 }
@@ -926,6 +1064,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     extrapolateRight: 'clamp',
   });
   const isClassic = props.bgType === 'default';
+  const usePhoneLayout = props.exportLayout !== 'normal';
 
   return (
     <ChatThemeContext.Provider
@@ -941,13 +1080,50 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     >
       <AbsoluteFill
         style={{
-          backgroundColor: COLORS.chat,
+          backgroundColor: usePhoneLayout ? '#061712' : COLORS.chat,
           color: COLORS.text,
           fontFamily: FONT,
           overflow: 'hidden',
-          opacity: introOpacity,
         }}
       >
+        {usePhoneLayout ? <ReelsBackground image={props.exportLayoutBgImage} /> : null}
+
+        <div
+          style={{
+            position: 'absolute',
+            left: usePhoneLayout ? '50%' : 0,
+            top: usePhoneLayout ? REELS_PHONE_TOP : 0,
+            width: usePhoneLayout ? 1080 : '100%',
+            height: usePhoneLayout ? 1920 : '100%',
+            translate: usePhoneLayout ? '-50% 0' : 'none',
+            scale: usePhoneLayout ? REELS_PHONE_SCALE : 1,
+            transformOrigin: 'top center',
+            borderRadius: usePhoneLayout ? 92 : 0,
+            border: usePhoneLayout ? '5px solid rgba(233,237,239,0.16)' : 'none',
+            padding: usePhoneLayout ? 18 : 0,
+            boxSizing: 'border-box',
+            overflow: 'hidden',
+            background: usePhoneLayout
+              ? 'linear-gradient(145deg, #181d20 0%, #050708 42%, #111619 100%)'
+              : COLORS.chat,
+            boxShadow: usePhoneLayout
+              ? 'inset 0 0 0 2px rgba(255,255,255,0.05)'
+              : 'none',
+            opacity: introOpacity,
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              backgroundColor: COLORS.chat,
+              borderRadius: usePhoneLayout ? 69 : 0,
+              position: 'relative',
+            }}
+          >
       <StatusBar props={props} />
       <ChatHeader props={props} isTyping={Boolean(typingEvent)} />
 
@@ -1092,7 +1268,51 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
       </div>
 
       {activeNotification ? <NotificationOverlay event={activeNotification} /> : null}
+          </div>
+          {usePhoneLayout ? (
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: 31,
+                  width: 252,
+                  height: 65,
+                  translate: '-50% 0',
+                  borderRadius: 999,
+                  backgroundColor: '#000000',
+                  boxShadow: '0 1px 0 rgba(255,255,255,0.08), 0 4px 16px rgba(0,0,0,0.35)',
+                  zIndex: 20,
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute',
+                    right: 24,
+                    top: 20,
+                    width: 25,
+                    height: 25,
+                    borderRadius: 999,
+                    background: 'radial-gradient(circle at 36% 34%, #273b4e 0%, #101a24 38%, #020405 72%)',
+                    boxShadow: 'inset 0 0 0 3px rgba(73,102,130,0.22)',
+                  }}
+                />
+              </div>
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: 88,
+                  boxShadow: 'inset 0 0 0 3px rgba(255,255,255,0.035)',
+                  pointerEvents: 'none',
+                  zIndex: 21,
+                }}
+              />
+            </>
+          ) : null}
+        </div>
         <MessageAudioTracks props={props} timeline={timeline} />
+        <EndTransitionLayer props={props} />
       </AbsoluteFill>
     </ChatThemeContext.Provider>
   );

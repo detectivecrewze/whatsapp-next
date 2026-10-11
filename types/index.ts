@@ -20,6 +20,9 @@ export type ChatType = 'personal' | 'group';
 export type BgType = 'default' | 'color' | 'image';
 export type TtsProvider = 'elevenlabs' | 'free_neural' | 'qwen_cosyvoice';
 export type HeaderStatus = 'online' | 'typing' | 'custom';
+export type ExportLayout = 'normal' | 'phone';
+export type EndTransition = 'none' | 'fade' | 'wipe' | 'iris' | 'flash';
+export type EndTransitionSfx = 'none' | 'whoosh' | 'page-turn' | 'mouse-click' | 'tension-boom';
 export type SfxId =
   | 'horror-sting'
   | 'eerie-hit'
@@ -113,6 +116,12 @@ export interface EditorState {
   autoZoom: boolean;
   zoomScale: number;
   zoomSpeed: number;
+
+  // Export presentation
+  exportLayout: ExportLayout;
+  exportLayoutBgImage: string | null;
+  endTransition: EndTransition;
+  endTransitionSfx: EndTransitionSfx;
 
   // TTS / Voice Over
   enableTts: boolean;
@@ -223,6 +232,10 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   autoZoom: false,
   zoomScale: 1.08,
   zoomSpeed: 400,
+  exportLayout: 'phone',
+  exportLayoutBgImage: null,
+  endTransition: 'none',
+  endTransitionSfx: 'whoosh',
   enableTts: false,
   ttsProvider: 'elevenlabs',
   elevenKey: 'sk_a0156fb3be716832cafb958b953d7a09d641be1ae3acbaa5',

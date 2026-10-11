@@ -1,7 +1,15 @@
 'use client';
 
 import { create } from 'zustand';
-import { EditorState, Message, TtsProvider, DEFAULT_EDITOR_STATE } from '@/types';
+import {
+  EditorState,
+  EndTransition,
+  EndTransitionSfx,
+  ExportLayout,
+  Message,
+  TtsProvider,
+  DEFAULT_EDITOR_STATE,
+} from '@/types';
 import { getMessageSpeakableText } from '@/lib/speech';
 
 function normalizeTtsAudioMap(
@@ -55,6 +63,12 @@ interface EditorStore extends EditorState {
   setAutoZoom: (v: boolean) => void;
   setZoomScale: (v: number) => void;
   setZoomSpeed: (v: number) => void;
+
+  // Export presentation
+  setExportLayout: (layout: ExportLayout) => void;
+  setExportLayoutBgImage: (image: string | null) => void;
+  setEndTransition: (transition: EndTransition) => void;
+  setEndTransitionSfx: (sfx: EndTransitionSfx) => void;
 
   // TTS
   setEnableTts: (v: boolean) => void;
@@ -156,6 +170,12 @@ export const useEditorStore = create<EditorStore>()((set) => ({
   setAutoZoom: (autoZoom) => set({ autoZoom }),
   setZoomScale: (zoomScale) => set({ zoomScale }),
   setZoomSpeed: (zoomSpeed) => set({ zoomSpeed }),
+
+  // Export presentation
+  setExportLayout: (exportLayout) => set({ exportLayout }),
+  setExportLayoutBgImage: (exportLayoutBgImage) => set({ exportLayoutBgImage }),
+  setEndTransition: (endTransition) => set({ endTransition }),
+  setEndTransitionSfx: (endTransitionSfx) => set({ endTransitionSfx }),
 
   // TTS
   setEnableTts: (enableTts) => set({ enableTts }),

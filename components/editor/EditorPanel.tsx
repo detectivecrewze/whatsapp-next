@@ -24,6 +24,7 @@ import AiGeneratorSection from './AiGeneratorSection';
 import CloudSection from '@/components/cloud/CloudSection';
 import ShareLinkButton from '@/components/cloud/ShareLinkButton';
 import VideoExportButton from '@/components/video/VideoExportButton';
+import { useEditorStore } from '@/store/useEditorStore';
 
 export type EditorSectionId =
   | 'contact'
@@ -113,12 +114,14 @@ export const EDITOR_SECTIONS: Record<EditorSectionId, EditorSectionMeta> = {
     id: 'export-video',
     title: 'Export Video',
     shortTitle: 'Render MP4',
-    description: 'Render video vertikal HD 1080×1920 lengkap dengan audio.',
+    description: 'Render video HD dengan layout aman untuk Reels dan TikTok.',
     icon: Film,
   },
 };
 
 function ExportSummary() {
+  const exportLayout = useEditorStore((state) => state.exportLayout);
+
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -133,7 +136,13 @@ function ExportSummary() {
           <span>Format</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>MP4 · H.264</strong>
           <span>Audio</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>AAC</strong>
           <span>Rasio</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>9:16</strong>
+          <span>Layout</span><strong className="text-right font-medium" style={{ color: 'var(--wa-green)' }}>{exportLayout === 'phone' ? 'HP di Tengah' : 'Normal Penuh'}</strong>
         </div>
+        <p className="mt-2 border-t pt-2 text-[9.5px] leading-relaxed" style={{ borderColor: 'var(--ui-border)', color: 'var(--wa-text-muted)' }}>
+          {exportLayout === 'phone'
+            ? 'WhatsApp diposisikan tepat di tengah dalam bingkai HP, dengan ruang aman untuk tombol dan caption platform.'
+            : 'Tampilan chat memenuhi kanvas vertikal seperti hasil render normal sebelumnya.'}
+        </p>
       </div>
       <VideoExportButton />
     </div>
