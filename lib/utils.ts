@@ -65,6 +65,34 @@ export function getCurrentTime(): string {
   return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
 }
 
+/**
+ * Resolve the phone status-bar clock from the chat playback position.
+ * Before playback it shows the last message time; when playback starts it
+ * begins at the first message and advances whenever a new bubble is revealed.
+ */
+export function getChatTimelineTime(
+  messages: readonly { time?: string }[],
+  visibleCount = -1,
+  fallback = '09:41',
+): string {
+  const isValidTime = (time?: string): time is string =>
+    Boolean(time && /^([01]\d|2[0-3]):[0-5]\d$/.test(time));
+
+  const firstMessageTime = messages.find((message) => isValidTime(message.time))?.time;
+  if (visibleCount === 0) return firstMessageTime ?? fallback;
+
+  const endIndex = visibleCount < 0
+    ? messages.length
+    : Math.min(visibleCount, messages.length);
+
+  for (let index = endIndex - 1; index >= 0; index -= 1) {
+    const time = messages[index]?.time;
+    if (isValidTime(time)) return time;
+  }
+
+  return firstMessageTime ?? fallback;
+}
+
 /** Add minutes to a 24-hour HH:MM value and wrap cleanly after midnight. */
 export function addMinutesToTime(time: string | undefined, minutes = 1): string {
   const match = time?.match(/^([01]\d|2[0-3]):([0-5]\d)$/);

@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { useCloudStore } from '@/store/useCloudStore';
 import { newId } from '@/lib/utils';
 import { persistAudioMapForCloud } from '@/lib/tts';
+import { CURRENT_CLOUD_PRESET_VERSION } from '@/lib/presetMigration';
 import Toast from '@/components/ui/Toast';
 
 const LOCAL_PREVIEW_KEY = 'wa_local_preview';
@@ -96,6 +97,7 @@ export default function ShareLinkButton() {
         id: presetId,
         name: `Preview — ${state.name} (${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})`,
         updatedAt: Date.now(),
+        schemaVersion: CURRENT_CLOUD_PRESET_VERSION,
         data,
       };
 

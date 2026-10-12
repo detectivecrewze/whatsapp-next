@@ -23,6 +23,11 @@ import { usePlayerStore } from '@/store/usePlayerStore';
 import type { CloudPreset, EditorState } from '@/types';
 import { newId } from '@/lib/utils';
 import { persistAudioMapForCloud } from '@/lib/tts';
+import {
+  CURRENT_CLOUD_PRESET_VERSION,
+  isLegacyCloudPreset,
+  migrateCloudPresetData,
+} from '@/lib/presetMigration';
 
 const LOCAL_PREVIEW_KEY = 'wa_local_preview';
 
@@ -121,6 +126,7 @@ export default function CloudSection() {
         id,
         name: label,
         updatedAt: Date.now(),
+        schemaVersion: CURRENT_CLOUD_PRESET_VERSION,
         data: { ...collectEditorData(useEditorStore.getState()), ttsAudioMap },
       };
 
@@ -136,9 +142,15 @@ export default function CloudSection() {
     // A cloud project can replace message and audio sources while an old
     // preview is still active. Stop that run before applying the new payload.
     usePlayerStore.getState().stop();
-    useEditorStore.getState().applyPayload(preset.data);
+    useEditorStore.getState().applyPayload(
+      migrateCloudPresetData(preset.data, preset.schemaVersion),
+    );
     setActiveId(preset.id);
-    showToast(`Project “${preset.name}” dimuat.`);
+    showToast(
+      isLegacyCloudPreset(preset)
+        ? `Project “${preset.name}” dimuat · jam otomatis mengikuti bubble.`
+        : `Project “${preset.name}” dimuat.`,
+    );
   }
 
   async function handleRename(id: string) {
@@ -166,7 +178,8 @@ export default function CloudSection() {
 
   function openPreview(preset: CloudPreset) {
     try {
-      sessionStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify(preset.data));
+      const previewData = migrateCloudPresetData(preset.data, preset.schemaVersion);
+      sessionStorage.setItem(LOCAL_PREVIEW_KEY, JSON.stringify(previewData));
       window.open(`${window.location.origin}/preview/local`, '_blank');
     } catch {
       showToast('Gagal membuka preview.', 'err');

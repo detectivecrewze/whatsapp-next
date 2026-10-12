@@ -12,7 +12,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 import type { Message } from '@/types';
-import { extractDomain, getInitials, getSenderColor, stripAudioTags } from '@/lib/utils';
+import { extractDomain, getChatTimelineTime, getInitials, getSenderColor, stripAudioTags } from '@/lib/utils';
 import { getEndTransitionSfx } from '@/lib/endTransitions';
 import { buildVideoTimeline, getTimelineState, type TimelineEvent } from './timeline';
 import type { WhatsAppVideoProps } from './videoTypes';
@@ -543,10 +543,10 @@ function TypingBubble() {
   );
 }
 
-function StatusBar({ props }: { props: WhatsAppVideoProps }) {
+function StatusBar({ props, visibleCount }: { props: WhatsAppVideoProps; visibleCount: number }) {
   const displayTime = props.useCustomTime
     ? props.customTime
-    : props.messages[0]?.time || '09:41';
+    : getChatTimelineTime(props.messages, visibleCount);
 
   return (
     <div
@@ -1138,7 +1138,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
               position: 'relative',
             }}
           >
-      <StatusBar props={props} />
+      <StatusBar props={props} visibleCount={visibleCount} />
       <ChatHeader props={props} isTyping={Boolean(typingEvent)} />
 
       <div style={{ position: 'relative', flex: 1, overflow: 'hidden' }}>

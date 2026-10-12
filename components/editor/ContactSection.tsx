@@ -132,6 +132,11 @@ export default function ContactSection() {
           <span className="toggle-thumb" />
         </label>
       </div>
+      {!useCustomTime && (
+        <p className="-mt-2 text-[10px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+          Otomatis mengikuti waktu bubble dari pesan pertama hingga terakhir.
+        </p>
+      )}
       {useCustomTime && (
         <input
           type="time"

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { RotateCcw, Play, Pause } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { usePlayerStore, initTtsAudio } from '@/store/usePlayerStore';
+import { migrateCloudPresetData } from '@/lib/presetMigration';
 import dynamic from 'next/dynamic';
 
 const WhatsAppCanvas = dynamic(
@@ -33,6 +34,7 @@ export default function PreviewClient({ presetId }: Props) {
     async function load() {
       try {
         let presetData = null;
+        let presetSchemaVersion: number | undefined;
 
         // ── Local preview (no cloud) ──────────────────────────────────────────
         if (presetId === 'local') {
@@ -47,7 +49,9 @@ export default function PreviewClient({ presetId }: Props) {
 
           if (res.ok) {
             const json = await res.json();
-            presetData = json?.preset?.data ?? json?.templates?.[presetId]?.data;
+            const preset = json?.preset ?? json?.templates?.[presetId];
+            presetData = preset?.data;
+            presetSchemaVersion = preset?.schemaVersion;
           }
 
           if (!presetData) {
@@ -55,7 +59,9 @@ export default function PreviewClient({ presetId }: Props) {
             const resAll = await fetch('/api/presets', { cache: 'no-store' });
             if (resAll.ok) {
               const dataAll = await resAll.json();
-              presetData = dataAll?.templates?.[presetId]?.data;
+              const preset = dataAll?.templates?.[presetId];
+              presetData = preset?.data;
+              presetSchemaVersion = preset?.schemaVersion;
             }
           }
 
@@ -67,7 +73,9 @@ export default function PreviewClient({ presetId }: Props) {
               if (workerRes.ok) {
                 const wData = await workerRes.json();
                 const wTemplates = wData?.templates ?? wData ?? {};
-                presetData = wTemplates?.[presetId]?.data;
+                const preset = wTemplates?.[presetId];
+                presetData = preset?.data;
+                presetSchemaVersion = preset?.schemaVersion;
               }
             } catch {}
           }
@@ -78,7 +86,9 @@ export default function PreviewClient({ presetId }: Props) {
               const localSaved = localStorage.getItem('wa_cloud_presets');
               if (localSaved) {
                 const parsed = JSON.parse(localSaved);
-                presetData = parsed?.[presetId]?.data;
+                const preset = parsed?.[presetId];
+                presetData = preset?.data;
+                presetSchemaVersion = preset?.schemaVersion;
               }
             } catch {}
           }
@@ -88,7 +98,11 @@ export default function PreviewClient({ presetId }: Props) {
           throw new Error('Preset tidak ditemukan atau telah dihapus.');
         }
 
-        applyPayload(presetData);
+        applyPayload(
+          presetId === 'local'
+            ? presetData
+            : migrateCloudPresetData(presetData, presetSchemaVersion),
+        );
 
         // Show Start button overlay so user gesture unlocks iOS Audio
         setStatus('ready');

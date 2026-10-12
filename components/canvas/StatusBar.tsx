@@ -2,12 +2,16 @@
 
 import React from 'react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { getCurrentTime } from '@/lib/utils';
+import { usePlayerStore } from '@/store/usePlayerStore';
+import { getChatTimelineTime } from '@/lib/utils';
 
 export default function StatusBar() {
-  const { phoneOs, batteryLevel, customTime, useCustomTime } = useEditorStore();
+  const { phoneOs, batteryLevel, customTime, useCustomTime, messages } = useEditorStore();
+  const visibleCount = usePlayerStore((state) => state.visibleCount);
 
-  const displayTime = useCustomTime ? customTime : getCurrentTime();
+  const displayTime = useCustomTime
+    ? customTime
+    : getChatTimelineTime(messages, visibleCount);
   const isLowBattery = batteryLevel <= 20;
 
   if (phoneOs === 'ios') {

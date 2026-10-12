@@ -149,6 +149,7 @@ export interface CloudPreset {
   id: string;
   name: string;
   updatedAt: number;
+  schemaVersion?: number;
   data: Partial<EditorState>;
 }
 
