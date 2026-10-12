@@ -28,7 +28,7 @@ const QWEN_ENDPOINTS = [
 ];
 const QWEN_MODEL_CHAIN = ['qwen-max', 'qwen-plus', 'qwen-turbo'];
 
-type StoryType = 'drama_product' | 'horror';
+type StoryType = 'drama_product' | 'comedy_product' | 'horror';
 type RevealType = 'none' | 'link' | 'image';
 
 interface ProductBrief {
@@ -36,6 +36,7 @@ interface ProductBrief {
   name?: string;
   description?: string;
   image?: string;
+  kind?: 'digital_gift';
 }
 
 interface ExistingMessageBrief {
@@ -51,8 +52,10 @@ interface ExistingMessageBrief {
 function buildSfxDirective(storyType?: StoryType): string {
   const genreRule = storyType === 'horror'
     ? '- Untuk horror, pasang 1-3 SFX pada momen paling tegang atau plot twist. Pilih efek yang paling cocok dari horror-sting, eerie-hit, tension-boom, bone-crack, whip-hit, light-switch, horror-scream, creepy-notification, mystery-reveal, panic-triggered, glitch-loading, atau efek kamera.'
+    : storyType === 'comedy_product'
+      ? '- Untuk komedi, pakai 1-3 SFX hanya pada salah paham utama, reaksi paling lucu, atau punchline. Pilih efek seperti ding, bruh, comedy-fail, record-scratch, xp-error, hell-nah, oh-my-god, game-hurt, quack, skedaddle, atau efek reaction lain yang tersedia.'
     : storyType === 'drama_product'
-      ? '- Untuk drama, pakai maksimal 2 SFX hanya jika memperkuat reveal. Untuk adegan komedi yang diminta user, pilih efek reaction/punchline seperti ding, bruh, comedy-fail, record-scratch, xp-error, hell-nah, oh-my-god, game-hurt, quack, atau skedaddle.'
+      ? '- Untuk drama, pakai maksimal 2 SFX hanya jika benar-benar memperkuat konflik atau reveal.'
       : '- Ikuti genre percakapan lama: horror memakai 1-3 efek tegang; komedi memakai 1-3 efek punchline; drama memakai maksimal 2 efek halus.';
 
   return `EFEK SUARA PER BUBBLE:
@@ -78,9 +81,25 @@ function buildStoryDirective(
 - Jika memakai image/view_once, isi "imageHint" dengan deskripsi visual singkat dan konkret untuk membantu user memilih foto. Caption harus tetap berupa ucapan natural dari pengirim, bukan deskripsi gambar. Jangan mengarang URL gambar.`;
   }
 
+  const genreRules = storyType === 'comedy_product'
+    ? `- Ini komedi pasangan/bucin yang absurd tetapi masih masuk akal sebagai chat asli.
+- Bangun satu premis yang jelas: penyebab konkret → salah paham makin besar → usaha memperbaiki → payoff/punchline → reaksi penutup.
+- Dalam dua bubble pertama, jelaskan kejadian pemicu secara konkret: siapa melakukan apa, janji apa yang dilanggar, atau kalimat apa yang membuat salah paham. Jangan mulai dari "terserah", ngambek, marah, atau sindiran sebelum penyebabnya diketahui pembaca.
+- Kelucuan harus datang dari karakter, timing balasan, gengsi, atau logika yang terlalu harfiah. Jangan membuat kalimat random hanya supaya terlihat lucu.
+- Jangan menjadikan setiap bubble sebagai punchline. Sisakan respons pendek seperti "hah?", "serius?", atau "ya ampun" agar ritmenya natural.
+- Produk, jika dipakai, harus menjadi jawaban tak terduga, alat berdamai, atau bukti bucin—bukan iklan yang ditempel.
+- Setelah punchline/reveal, akhiri dengan satu reaksi yang menunjukkan nasib konflik: dimaafkan sedikit, masih digoda, atau sepakat membicarakannya. Jangan memaksakan perubahan emosi total.`
+    : `- Buat drama pasangan yang emosional tetapi tetap terasa seperti chat sehari-hari.
+- Dalam dua bubble pertama, jelaskan kejadian pemicu secara konkret: siapa melakukan apa dan kenapa itu membuat tokoh lain kecewa. Jangan membuka dengan kemarahan atau ngambek tanpa sebab yang bisa dipahami pembaca.
+- Produk, jika dipakai, harus masuk sebagai usaha memperbaiki konflik—bukan iklan yang ditempel.
+- Setelah reveal, akhiri dengan satu reaksi yang jelas dari penerima: menerima usahanya, belum sepenuhnya memaafkan, atau menyepakati langkah berikutnya. Closure harus terasa wajar, bukan mendadak kembali mesra.`;
+
+  const contentLabel = storyType === 'comedy_product' ? 'KOMEDI BUCIN ABSURD' : 'DRAMA PASANGAN';
+
   if (revealType === 'none') {
-    return `JENIS KONTEN: FAKE CHAT DRAMA TANPA MEDIA WAJIB
-- Buat drama singkat yang utuh melalui percakapan saja: hook konflik → respons emosional → eskalasi → ending yang memuaskan atau menggantung sesuai ide user.
+    return `JENIS KONTEN: FAKE CHAT ${contentLabel} TANPA MEDIA WAJIB
+${genreRules}
+- Buat cerita singkat yang utuh melalui percakapan saja dan akhiri dengan closure teks yang menjawab konflik utama.
 - Jangan menambahkan link, kartu web, foto, barcode, QR, produk, atau ajakan membuka sesuatu.
 - Jangan membuat tokoh berkata akan mengirim sesuatu jika tidak benar-benar ada media setelahnya.
 - Ending terakhir harus tetap terasa kuat sebagai chat teks natural, bukan kalimat narator.`;
@@ -88,33 +107,44 @@ function buildStoryDirective(
 
   const safeProduct = {
     url: product?.url?.trim() || 'https://produk-kamu.com',
-    name: product?.name?.trim() || 'Produk Digital',
+    name: product?.name?.trim() || 'Digital Gift untuk Kamu',
     description: product?.description?.trim() || 'Klik untuk membuka',
   };
 
+  const digitalGiftRules = `KONTEKS PRODUK — WAJIB DIPATUHI:
+- Produk user adalah DIGITAL GIFT personal berupa halaman web berisi pesan/kejutan untuk pasangan. Ini BUKAN barang fisik.
+- Tokoh membuat atau menyiapkan halaman digital tersebut untuk menyampaikan perasaan yang sulit diucapkan lewat chat biasa.
+- Jangan membuat adegan mengantar barang, datang ke rumah/kosan, menunggu di depan, mengirim paket, membungkus hadiah, membeli barang, atau menyerahkan benda.
+- Jangan menyebutnya "barang", "paket", "pesanan", atau "barang yang kamu pengen". Di dalam chat gunakan ungkapan natural seperti "aku bikinin sesuatu", "aku tulis semuanya di sini", atau "coba buka sebentar".
+- Reveal harus terasa seperti kelanjutan emosi percakapan: penerima membuka halaman personal itu untuk membaca pesan atau kejutan, bukan untuk melihat katalog produk.`;
+
   if (revealType === 'image') {
-    return `JENIS KONTEN: DRAMA + PRODUCT REVEAL
-- Ini adalah cerita drama singkat, bukan iklan. Produk harus masuk sebagai penyelesaian emosi atau kejutan di akhir.
-- Bangun pola: hook konflik → respons emosional → rasa penasaran → satu kalimat pengantar → foto/barcode.
-- Pesan TERAKHIR wajib type "image". Aplikasi akan memasang foto/barcode asli milik user, jadi jangan mengarang URL atau isi gambar.
+    return `JENIS KONTEN: ${contentLabel} + PRODUCT REVEAL
+${genreRules}
+${digitalGiftRules}
+- Bangun pola sesuai genre → usaha memperbaiki → satu kalimat pengantar → preview/QR → reaksi penutup.
+- Pesan KEDUA TERAKHIR wajib type "image". Aplikasi akan memasang preview halaman digital, barcode, atau QR asli milik user, jadi jangan mengarang URL atau isi gambar.
+- Pesan TERAKHIR wajib type "text" dari penerima digital gift. Reaksinya harus menjawab konflik awal secara singkat dan natural; tidak harus langsung memaafkan sepenuhnya.
 - Untuk pesan image terakhir, isi field caption dengan satu kalimat pendek yang natural sesuai konteks. Kosongkan caption jika bubble sebelumnya sudah menjadi pengantar yang jelas.
-- Gambar dikirim oleh pihak yang menawarkan solusi/kejutan.
-- Jangan menyebut istilah produk digital, soft selling, CTA, penonton, konten, iklan, atau menjelaskan bahwa gambar tersebut adalah barcode kecuali ide user memang memerlukannya.`;
+- Gambar dikirim oleh pihak yang membuat digital gift. Gambar adalah akses/preview hadiah digital, bukan foto sebuah benda.
+- Jangan menyebut istilah soft selling, CTA, penonton, konten, atau iklan, dan jangan menjelaskan bahwa gambar tersebut adalah barcode kecuali konteks chat memang memerlukannya.`;
   }
 
-  return `JENIS KONTEN: DRAMA + PRODUCT REVEAL
-- Ini adalah cerita drama singkat, bukan iklan. Produk harus masuk sebagai penyelesaian emosi atau kejutan di akhir.
-- Bangun pola: hook konflik → respons emosional → rasa penasaran → satu kalimat pengantar → kartu link.
-- Tema produk dan kalimat pengantar link WAJIB mengikuti ide user. Jangan memakai kalimat tentang minta maaf atau "sedikit tenang" jika ceritanya ulang tahun, hadiah, atau tema lain.
+  return `JENIS KONTEN: ${contentLabel} + PRODUCT REVEAL
+${genreRules}
+${digitalGiftRules}
+- Bangun pola sesuai genre → usaha memperbaiki → satu kalimat pengantar → kartu link → reaksi penutup.
+- Tema digital gift dan kalimat pengantar link WAJIB mengikuti ide user. Jangan memakai kalimat tentang minta maaf atau "sedikit tenang" jika ceritanya ulang tahun, hadiah, atau tema lain.
 - Hanya boleh ada SATU ajakan membuka link: pilih salah satu antara bubble sebelum kartu ATAU field text pada kartu link. Jangan menulis dua ajakan yang maknanya sama.
-- Pesan TERAKHIR wajib type "link" dan gunakan data produk berikut PERSIS, jangan mengarang URL/judul baru:
+- Pesan KEDUA TERAKHIR wajib type "link" dan gunakan data produk berikut PERSIS, jangan mengarang URL/judul baru:
   linkUrl: ${JSON.stringify(safeProduct.url)}
   linkTitle: ${JSON.stringify(safeProduct.name)}
   linkDescription: ${JSON.stringify(safeProduct.description)}
   linkImage: ""
 - Kartu link dikirim oleh pihak yang menawarkan solusi/kejutan. Isi field text dengan kalimat pendek yang sesuai konteks, atau kosongkan jika bubble sebelumnya sudah mengajak membuka link.
+- Pesan TERAKHIR wajib type "text" dari penerima digital gift. Reaksinya harus memberi closure terhadap konflik awal secara singkat dan tidak berlebihan.
 - Thumbnail asli dipasang otomatis oleh aplikasi setelah AI selesai; jangan mengarang URL gambar.
-- Jangan menyebut istilah produk digital, soft selling, CTA, penonton, konten, atau iklan di dalam percakapan.`;
+- Jangan menyebut istilah soft selling, CTA, penonton, konten, atau iklan di dalam percakapan.`;
 }
 
 // ── Build system prompt ───────────────────────────────────────────────────────
@@ -143,6 +173,7 @@ ATURAN CERITA:
 10. Gunakan image/view_once/notifikasi hanya jika benar-benar membantu alur. Untuk media visual, caption adalah ucapan pengirim dan imageHint adalah petunjuk foto yang perlu disiapkan user.
 11. Jam harus maju secara wajar dengan format HH:MM.
 12. Sebelum mengeluarkan JSON, lakukan pengecekan diam-diam: siapa pemilik HP, siapa kontak, siapa yang mengalami masalah, siapa yang menawarkan solusi, dan apa yang sudah diketahui masing-masing. Perbaiki setiap kata ganti atau respons yang tertukar.
+13. Jika ada product reveal, cek ulang bahwa tidak ada dialog yang menggambarkan produk sebagai barang fisik, paket, pesanan, atau sesuatu yang diantar ke rumah.
 
 FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
 {
@@ -351,7 +382,11 @@ export async function POST(req: NextRequest) {
       existingMessages = [],
     } = await req.json();
 
-    const normalizedStoryType: StoryType = storyType === 'horror' ? 'horror' : 'drama_product';
+    const normalizedStoryType: StoryType = storyType === 'horror'
+      ? 'horror'
+      : storyType === 'comedy_product'
+        ? 'comedy_product'
+        : 'drama_product';
     const normalizedRevealType: RevealType =
       revealType === 'image' ? 'image' : revealType === 'link' ? 'link' : 'none';
 

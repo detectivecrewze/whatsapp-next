@@ -16,7 +16,7 @@ import { compressImageFile, newId } from '@/lib/utils';
 import { normalizeSfxId } from '@/lib/sfx';
 
 type GeneratorMode = 'create' | 'improvise';
-type ContentGoal = 'drama_product' | 'horror';
+type ContentGoal = 'drama_product' | 'comedy_product' | 'horror';
 type ProductReveal = 'none' | 'link' | 'image';
 
 interface StoryPreset {
@@ -28,6 +28,9 @@ interface StoryPreset {
   prompt: string;
   productName?: string;
   productDescription?: string;
+  revealDirection?: Message['direction'];
+  revealText?: string;
+  closureText?: string;
 }
 
 interface RawAiMessage {
@@ -61,11 +64,14 @@ const STORY_PRESETS: StoryPreset[] = [
     goal: 'drama_product',
     name: 'Perang Dingin',
     eyebrow: 'Apology',
-    description: 'Tensi tinggi di awal, minta maaf, lalu reveal produk.',
+    description: 'Tensi tinggi di awal, minta maaf, lalu reveal digital gift.',
     prompt:
-      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Cewek membuka dengan "Gak usah hubungin aku dulu. Aku capek debat terus." Cowok merespons singkat dan tulus. Akhiri dengan cowok (incoming) mengirim sesuatu sebagai bentuk permintaan maaf. Jangan terasa seperti iklan.',
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Konflik utamanya: cowok berjanji akan mengabari setelah pulang kerja, tetapi menghilang sampai malam sementara statusnya terlihat online. Dalam dua bubble pertama, cewek menyebut janji yang dilanggar itu dengan jelas; jangan langsung membuka dengan kalimat ngambek tanpa sebab. Cowok awalnya memberi alasan, lalu mengakui bahwa ia salah karena membuat cewek menunggu. Cowok (incoming) mengirim digital gift sebagai cara menyampaikan permintaan maaf yang sudah ia pikirkan. Setelah reveal, beri satu reaksi cewek yang menunjukkan masalahnya mereda tetapi tetap natural. Jangan terasa seperti iklan.',
     productName: "I'm Sorry, Love",
     productDescription: 'Pesan yang sulit aku ucapkan langsung buat kamu',
+    revealDirection: 'incoming',
+    revealText: 'Aku bikin ini buat minta maaf.',
+    closureText: 'Yaudah, aku baca dulu. Makasih udah mau usaha.',
   },
   {
     id: 'proud-but-caring',
@@ -74,9 +80,12 @@ const STORY_PRESETS: StoryPreset[] = [
     eyebrow: 'Soft selling',
     description: 'Sulit bicara langsung, akhirnya mengirim sesuatu yang personal.',
     prompt:
-      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Cewek menyindir karena cowok terlihat tidak merasa bersalah. Cowok mengaku tidak pandai merangkai kata, lalu cowok (incoming) mengirim sesuatu yang sudah ia siapkan. Buat percakapan natural, emosional, dan tidak menjual secara terang-terangan.',
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Konflik utamanya: cowok membatalkan video call yang sudah dijanjikan, tetapi tidak memberi kabar sampai cewek menunggu lama. Dalam dua bubble pertama, sebutkan kejadian itu secara konkret sebelum cewek menyindir. Cowok sempat defensif, lalu mengaku tidak pandai merangkai kata dan sudah membuat digital gift untuk menjelaskan perasaannya. Setelah reveal, beri satu balasan cewek yang menerima usahanya tanpa langsung menjadi terlalu romantis. Buat percakapan natural dan tidak menjual secara terang-terangan.',
     productName: 'A Little Note for You',
     productDescription: 'Ada sesuatu yang ingin aku sampaikan lewat halaman ini',
+    revealDirection: 'incoming',
+    revealText: 'Aku susah ngomong langsung. Jadi aku bikin ini.',
+    closureText: 'Aku masih kesel, tapi aku hargai kamu bikin ini.',
   },
   {
     id: 'digital-surprise',
@@ -85,9 +94,68 @@ const STORY_PRESETS: StoryPreset[] = [
     eyebrow: 'Product reveal',
     description: 'Bangun rasa penasaran sebelum hadiah digital dibuka.',
     prompt:
-      'KONTAK / incoming adalah orang yang sedang ulang tahun. PEMILIK HP / outgoing adalah pasangannya yang sebenarnya sudah menyiapkan kejutan. Alur naturalnya: incoming bertanya "Kamu lupa hari ini hari apa?", outgoing menjawab santai "Hari apa emang?", incoming kecewa singkat "Oh, gapapa", lalu outgoing mengaku cuma bercanda dan sudah menyiapkan sesuatu. Akhiri dengan outgoing mengirim kejutan tersebut. Buat variasi dari alur ini, jangan salin kaku. Jangan menukar peran, jangan membuat orang yang ulang tahun mengirim hadiah untuk dirinya sendiri, dan jangan menulis kalimat aneh seperti "Hari ulang tahunku, deh".',
+      'KONTAK / incoming adalah orang yang sedang ulang tahun. PEMILIK HP / outgoing adalah pasangannya yang sebenarnya sudah menyiapkan kejutan. Konfliknya harus langsung terbaca: incoming menyinggung bahwa sejak pagi outgoing belum mengucapkan selamat, sehingga incoming mengira tanggal ulang tahunnya dilupakan. Outgoing sempat berpura-pura tidak ingat, lalu mengaku hanya menggoda dan sudah membuat digital gift. Setelah reveal, beri satu reaksi incoming yang lega atau terharu. Buat variasi natural, jangan menukar peran, jangan membuat orang yang ulang tahun mengirim hadiah untuk dirinya sendiri, dan jangan menulis kalimat aneh seperti "Hari ulang tahunku, deh".',
     productName: 'A Birthday Surprise',
     productDescription: 'Kejutan kecil yang aku siapkan khusus buat kamu',
+    revealDirection: 'outgoing',
+    revealText: 'Aku udah siapin ini buat kamu.',
+    closureText: 'Kirain kamu beneran lupa. Makasih ya 😭',
+  },
+  {
+    id: 'ngambek-karena-mimpi',
+    goal: 'comedy_product',
+    name: 'Ngambek karena Mimpi',
+    eyebrow: 'Absurd bucin',
+    description: 'Cewek marah gara-gara mimpi, cowok membela diri dari kejadian yang tidak ia lakukan.',
+    prompt:
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Dalam dua bubble pertama, jelaskan penyebabnya: cowok bertanya kenapa cewek dingin sejak bangun tidur, lalu cewek mengaku bermimpi cowok jalan dengan cewek lain. Cowok bingung karena merasa diadili atas kejadian di dalam mimpi. Buat salah pahamnya makin absurd tetapi tetap seperti chat pasangan asli. Cowok akhirnya mengirim digital gift sebagai punchline manis. Setelah reveal, cewek memberi reaksi yang masih sedikit gengsi tetapi menunjukkan ngambeknya reda. Jangan membuat semua bubble berupa lelucon dan jangan memakai bahasa formal.',
+    productName: 'Bukti Aku Cuma Sayang Kamu',
+    productDescription: 'Bukti manis untuk pacar yang ngambek karena mimpi',
+    revealDirection: 'incoming',
+    revealText: 'Biar aku gak dihukum karena mimpi kamu, nih.',
+    closureText: 'Yaudah... hukuman kamu aku kurangin dikit.',
+  },
+  {
+    id: 'tes-peka-gagal',
+    goal: 'comedy_product',
+    name: 'Tes Peka Gagal Total',
+    eyebrow: 'Salah jawab',
+    description: 'Kode cewek dibalas terlalu harfiah sampai suasananya makin kocak.',
+    prompt:
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Konflik utamanya: cowok lupa tanggal pertama kali mereka jadian, lalu cewek memberi satu kode yang konkret untuk mengetes apakah ia ingat. Jelaskan konteks tanggal itu dalam dua bubble pertama sebelum tes kepekaan dimulai. Cowok menjawab terlalu harfiah dan memilih jawaban yang salah. Cewek makin gemas, tetapi cowok ternyata sudah membuat halaman digital gift personal dan hanya salah menyebut tanggal. Cowok (incoming) mengirim preview, QR, atau link sebagai payoff. Setelah reveal, cewek memberi reaksi geli dan masalah selesai secara ringan. Gunakan humor dari timing dan salah paham, bukan kalimat random.',
+    productName: 'Ternyata Aku Peka',
+    productDescription: 'Kejutan kecil dari orang yang kelihatannya gak peka',
+    revealDirection: 'incoming',
+    revealText: 'Aku emang lemot, tapi yang ini udah aku siapin.',
+    closureText: 'Oke... ternyata kamu peka juga, walau tanggalnya salah.',
+  },
+  {
+    id: 'terserah-bukan-terserah',
+    goal: 'comedy_product',
+    name: 'Terserah Bukan Terserah',
+    eyebrow: 'Drama receh',
+    description: 'Satu kata “terserah” berubah menjadi ujian hidup untuk si cowok.',
+    prompt:
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Konflik utamanya: cowok terlambat satu jam dari janji menelepon karena ketiduran. Bubble pertama harus berupa cowok yang mengakui keterlambatan dan bertanya ingin dibujuk bagaimana; baru setelah konteks jelas cewek menjawab "terserah". Cowok menganggap itu jawaban sungguhan dan mencoba beberapa tebakan yang salah. Akhiri dengan cowok mengirim halaman digital gift personal sebagai jawaban yang akhirnya benar. Setelah reveal, cewek memberi reaksi singkat bahwa usahanya diterima, bukan langsung romantis berlebihan. Percakapan harus spontan dan relate.',
+    productName: 'Pilihan yang Gak Bisa Salah',
+    productDescription: 'Buat saat “terserah” ternyata punya jawaban benar',
+    revealDirection: 'incoming',
+    revealText: 'Oke, kali ini aku pilih yang aman.',
+    closureText: 'Nah, ini baru jawaban yang bener.',
+  },
+  {
+    id: 'salah-kirim-bucin',
+    goal: 'comedy_product',
+    name: 'Salah Kirim Bucin',
+    eyebrow: 'Malu ketahuan',
+    description: 'Pesan sok cuek gagal karena draft bucin terkirim ke orangnya langsung.',
+    prompt:
+      'PEMILIK HP / outgoing adalah cewek. KONTAK / incoming adalah cowok. Konflik pemicunya harus terlihat di awal: cowok tidak sengaja mengirim satu kalimat bucin yang jelas ditujukan kepada cewek, lalu langsung menghapus atau mengaku salah kirim. Cewek sempat membacanya dan menggoda. Cowok mencari alasan yang makin tidak masuk akal sebelum mengaku bahwa ia juga sudah membuat halaman digital gift personal untuk cewek. Cowok (incoming) mengirim preview, QR, atau link sebagai bukti. Setelah reveal, cewek menutup dengan godaan yang menunjukkan pengakuannya diterima. Humornya berasal dari rasa malu, bukan narasi.',
+    productName: 'Ya, Ini Memang Buat Kamu',
+    productDescription: 'Bukti bucin yang gagal disembunyikan',
+    revealDirection: 'incoming',
+    revealText: 'Yaudah iya, dari awal emang buat kamu.',
+    closureText: 'Makanya jangan pura-pura cuek lagi wkwk.',
   },
   {
     id: 'boarding-house',
@@ -164,6 +232,11 @@ export default function AiGeneratorSection() {
   }
 
   const visiblePresets = STORY_PRESETS.filter((preset) => preset.goal === contentGoal);
+  const presetAccent = contentGoal === 'horror'
+    ? { border: 'rgba(168,85,247,0.55)', background: 'rgba(168,85,247,0.14)', text: '#c084fc' }
+    : contentGoal === 'comedy_product'
+      ? { border: 'rgba(251,191,36,0.58)', background: 'rgba(251,191,36,0.13)', text: '#fbbf24' }
+      : { border: 'rgba(37,211,102,0.50)', background: 'rgba(37,211,102,0.12)', text: 'var(--wa-green)' };
 
   function chooseGoal(goal: ContentGoal) {
     const firstPreset = STORY_PRESETS.find((preset) => preset.goal === goal);
@@ -186,6 +259,7 @@ export default function AiGeneratorSection() {
   }
 
   async function generate() {
+    const isProductStory = contentGoal !== 'horror';
     const effectiveProductReveal: ProductReveal =
       productReveal === 'link' && !productUrl.trim()
         ? 'none'
@@ -202,10 +276,14 @@ export default function AiGeneratorSection() {
         (generatorMode === 'improvise'
           ? 'Lanjutkan percakapan secara natural tanpa harus menambahkan link atau foto.'
           : contentGoal === 'horror'
-          ? 'Buat fake chat horror realistis dengan hook cepat dan plot twist.'
-          : effectiveProductReveal === 'none'
-            ? 'Buat drama pasangan yang natural dan selesai melalui percakapan, tanpa link atau foto wajib.'
-            : 'Buat drama pasangan yang berakhir dengan reveal produk secara natural.');
+            ? 'Buat fake chat horror realistis dengan hook cepat dan plot twist.'
+            : contentGoal === 'comedy_product'
+              ? effectiveProductReveal === 'none'
+                ? 'Buat fake chat komedi absurd pasangan yang relate, dengan salah paham dan punchline kuat tanpa media wajib.'
+                : 'Buat fake chat komedi absurd pasangan; jadikan reveal halaman digital gift sebagai payoff atau punchline yang natural.'
+              : effectiveProductReveal === 'none'
+                ? 'Buat drama pasangan yang natural dan selesai melalui percakapan, tanpa link atau foto wajib.'
+                : 'Buat drama pasangan yang berakhir dengan reveal halaman digital gift secara natural.');
       const currentMessages = messages;
 
       const res = await fetch('/api/ai-generator', {
@@ -222,8 +300,9 @@ export default function AiGeneratorSection() {
           storyType: contentGoal,
           revealType: effectiveProductReveal,
           presetId: selectedPreset,
-          product: generatorMode === 'create' && contentGoal === 'drama_product' && effectiveProductReveal !== 'none'
+          product: generatorMode === 'create' && isProductStory && effectiveProductReveal !== 'none'
             ? {
+                kind: 'digital_gift',
                 url: productUrl.trim(),
                 name: productName.trim() || FALLBACK_PRODUCT.name,
                 description: productDescription.trim() || FALLBACK_PRODUCT.description,
@@ -322,7 +401,7 @@ export default function AiGeneratorSection() {
         };
       });
 
-      if (generatorMode === 'create' && contentGoal === 'drama_product' && effectiveProductReveal === 'none') {
+      if (generatorMode === 'create' && isProductStory && effectiveProductReveal === 'none') {
         newMessages.forEach((message) => {
           if (!['link', 'image', 'view_once'].includes(message.type)) return;
           message.type = 'text';
@@ -337,13 +416,57 @@ export default function AiGeneratorSection() {
         });
       }
 
-      if (generatorMode === 'create' && contentGoal === 'drama_product' && effectiveProductReveal !== 'none') {
-        const revealDirection = selectedPreset === 'digital-surprise' ? 'outgoing' : 'incoming';
-        const fallbackRevealText = selectedPreset === 'digital-surprise'
-          ? 'Aku udah siapin ini buat kamu.'
-          : selectedPreset === 'proud-but-caring'
-            ? 'Aku susah ngomong langsung. Jadi aku bikin ini.'
-            : 'Aku bikin ini buat minta maaf.';
+      if (generatorMode === 'create' && isProductStory && effectiveProductReveal !== 'none') {
+        const activePreset = STORY_PRESETS.find((preset) => preset.id === selectedPreset);
+        const revealDirection = activePreset?.revealDirection ?? 'incoming';
+        const closureDirection: Message['direction'] = revealDirection === 'incoming' ? 'outgoing' : 'incoming';
+        const fallbackRevealText = activePreset?.revealText ?? 'Aku udah siapin ini buat kamu.';
+        const fallbackClosureText = activePreset?.closureText ?? 'Aku baca dulu ya. Makasih udah bikin ini.';
+
+        const nextMinute = (time?: string) => {
+          if (!time || !/^\d{2}:\d{2}$/.test(time)) return time;
+          const [hour, minute] = time.split(':').map(Number);
+          const total = (hour * 60 + minute + 1) % (24 * 60);
+          return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+        };
+
+        const placeRevealBeforeClosure = (revealMessage: Message, sourceIndex: number) => {
+          const originalLength = newMessages.length + (sourceIndex >= 0 ? 1 : 0);
+          const mediaHadTrailingMessage = sourceIndex >= 0 && sourceIndex < originalLength - 1;
+          const closureSource = newMessages.pop();
+          const canKeepAiClosure = (
+            (mediaHadTrailingMessage || sourceIndex < 0) &&
+            closureSource?.type === 'text' &&
+            closureSource.direction === closureDirection &&
+            Boolean(closureSource.text?.trim())
+          );
+
+          let revealSlot: Message | undefined;
+          if (sourceIndex < 0) revealSlot = newMessages.pop();
+
+          revealMessage.time = revealSlot?.time ?? revealMessage.time ?? newMessages[newMessages.length - 1]?.time;
+
+          const previousText = newMessages[newMessages.length - 1]?.text ?? '';
+          const hasRevealCta = (value?: string) => /\b(buka|klik|link|tautan|lihat|cek)\b/i.test(value ?? '');
+          if (revealMessage.type === 'image' && hasRevealCta(previousText)) {
+            revealMessage.caption = undefined;
+          }
+          if (revealMessage.type === 'link' && hasRevealCta(previousText) && hasRevealCta(revealMessage.text)) {
+            revealMessage.text = undefined;
+          }
+
+          const closureMessage: Message = {
+            id: canKeepAiClosure && closureSource ? closureSource.id : newId('msg'),
+            type: 'text',
+            direction: closureDirection,
+            text: canKeepAiClosure ? closureSource?.text : fallbackClosureText,
+            time: nextMinute(revealMessage.time) ?? closureSource?.time,
+            sfxId: canKeepAiClosure ? closureSource?.sfxId : undefined,
+            sfxVolume: canKeepAiClosure ? closureSource?.sfxVolume : undefined,
+          };
+
+          newMessages.push(revealMessage, closureMessage);
+        };
 
         if (effectiveProductReveal === 'image') {
           const imageIndex = newMessages.findIndex((message) => message.type === 'image');
@@ -360,64 +483,47 @@ export default function AiGeneratorSection() {
               text: undefined,
             };
           } else {
-            const lastIndex = Math.max(0, newMessages.length - 1);
             productPhoto = {
               id: newId('msg'),
               type: 'image',
               direction: revealDirection,
               imageData: productImage,
               caption: fallbackRevealText,
-              time: newMessages[lastIndex]?.time,
+              time: newMessages[Math.max(0, newMessages.length - 2)]?.time,
             };
-            newMessages.splice(lastIndex, 1);
           }
 
-          const previousText = newMessages[newMessages.length - 1]?.text ?? '';
-          if (/\b(lihat|cek|foto|barcode|qr|ini)\b/i.test(previousText)) {
-            productPhoto.caption = undefined;
+          placeRevealBeforeClosure(productPhoto, imageIndex);
+        } else {
+          const product = {
+            linkUrl: productUrl.trim(),
+            linkTitle: productName.trim() || FALLBACK_PRODUCT.name,
+            linkDescription: productDescription.trim() || FALLBACK_PRODUCT.description,
+            linkImage: productImage || undefined,
+            imageData: productImage || undefined,
+          };
+          const linkIndex = newMessages.findIndex((message) => message.type === 'link');
+          let productLink: Message;
+
+          if (linkIndex >= 0) {
+            [productLink] = newMessages.splice(linkIndex, 1);
+            productLink = {
+              ...productLink,
+              ...product,
+              direction: revealDirection,
+            };
+          } else {
+            productLink = {
+              id: newId('msg'),
+              type: 'link',
+              direction: revealDirection,
+              text: `${fallbackRevealText} Buka deh.`,
+              time: newMessages[Math.max(0, newMessages.length - 2)]?.time,
+              ...product,
+            };
           }
-          newMessages.push(productPhoto);
-        } else {
-        const product = {
-          linkUrl: productUrl.trim(),
-          linkTitle: productName.trim() || FALLBACK_PRODUCT.name,
-          linkDescription: productDescription.trim() || FALLBACK_PRODUCT.description,
-          linkImage: productImage || undefined,
-          imageData: productImage || undefined,
-        };
-        const linkIndex = newMessages.findIndex((message) => message.type === 'link');
-        let productLink: Message;
 
-        if (linkIndex >= 0) {
-          [productLink] = newMessages.splice(linkIndex, 1);
-          productLink = {
-            ...productLink,
-            ...product,
-            direction: revealDirection,
-          };
-        } else {
-          const lastIndex = Math.max(0, newMessages.length - 1);
-          productLink = {
-            id: newId('msg'),
-            type: 'link',
-            direction: revealDirection,
-            text: selectedPreset === 'digital-surprise'
-              ? 'Aku bikinin sesuatu buat kamu. Buka ya.'
-              : selectedPreset === 'proud-but-caring'
-                ? 'Aku susah ngomong langsung. Buka ini ya.'
-                : 'Aku bikin ini buat minta maaf. Buka ya.',
-            time: newMessages[lastIndex]?.time,
-            ...product,
-          };
-          newMessages.splice(lastIndex, 1);
-        }
-
-        const previousText = newMessages[newMessages.length - 1]?.text ?? '';
-        const hasRevealCta = (value?: string) => /\b(buka|klik|link|tautan)\b/i.test(value ?? '');
-        if (hasRevealCta(previousText) && hasRevealCta(productLink.text)) {
-          productLink.text = undefined;
-        }
-        newMessages.push(productLink);
+          placeRevealBeforeClosure(productLink, linkIndex);
         }
       }
 
@@ -485,36 +591,52 @@ export default function AiGeneratorSection() {
         <>
           <section>
             <label className="section-label">1 · Tujuan konten</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => chooseGoal('drama_product')}
-                className="rounded-xl border p-3 text-left transition-all"
+                className="rounded-xl border p-2.5 text-center transition-all"
                 style={{
                   background: contentGoal === 'drama_product' ? 'rgba(37,211,102,0.09)' : 'var(--ui-card)',
                   borderColor: contentGoal === 'drama_product' ? 'rgba(37,211,102,0.55)' : 'var(--ui-border)',
                 }}
               >
                 <span className="text-[18px]">💌</span>
-                <strong className="mt-2 block text-[12px]" style={{ color: 'var(--wa-text)' }}>Drama + Produk</strong>
-                <span className="mt-1 block text-[10.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
-                  Cerita emosional dengan reveal produk yang halus.
+                <strong className="mt-1 block text-[11px]" style={{ color: 'var(--wa-text)' }}>Drama</strong>
+                <span className="mt-0.5 block text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+                  Emosional + reveal
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => chooseGoal('comedy_product')}
+                className="rounded-xl border p-2.5 text-center transition-all"
+                style={{
+                  background: contentGoal === 'comedy_product' ? 'rgba(251,191,36,0.09)' : 'var(--ui-card)',
+                  borderColor: contentGoal === 'comedy_product' ? 'rgba(251,191,36,0.60)' : 'var(--ui-border)',
+                }}
+              >
+                <span className="text-[18px]">😂</span>
+                <strong className="mt-1 block text-[11px]" style={{ color: 'var(--wa-text)' }}>Komedi Bucin</strong>
+                <span className="mt-0.5 block text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+                  Absurd + punchline
                 </span>
               </button>
 
               <button
                 type="button"
                 onClick={() => chooseGoal('horror')}
-                className="rounded-xl border p-3 text-left transition-all"
+                className="rounded-xl border p-2.5 text-center transition-all"
                 style={{
                   background: contentGoal === 'horror' ? 'rgba(168,85,247,0.10)' : 'var(--ui-card)',
                   borderColor: contentGoal === 'horror' ? 'rgba(168,85,247,0.60)' : 'var(--ui-border)',
                 }}
               >
                 <span className="text-[18px]">👻</span>
-                <strong className="mt-2 block text-[12px]" style={{ color: 'var(--wa-text)' }}>Horror Chat</strong>
-                <span className="mt-1 block text-[10.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
-                  Chat realistis, tegang, dan berakhir plot twist.
+                <strong className="mt-1 block text-[11px]" style={{ color: 'var(--wa-text)' }}>Horror</strong>
+                <span className="mt-0.5 block text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>
+                  Tegang + plot twist
                 </span>
               </button>
             </div>
@@ -533,9 +655,7 @@ export default function AiGeneratorSection() {
                     className="rounded-xl border px-3 py-2.5 text-left transition-all"
                     style={{
                       background: active ? 'rgba(255,255,255,0.045)' : 'transparent',
-                      borderColor: active
-                        ? contentGoal === 'horror' ? 'rgba(168,85,247,0.55)' : 'rgba(37,211,102,0.50)'
-                        : 'var(--ui-border)',
+                      borderColor: active ? presetAccent.border : 'var(--ui-border)',
                     }}
                   >
                     <span className="flex items-center justify-between gap-3">
@@ -543,8 +663,8 @@ export default function AiGeneratorSection() {
                       <span
                         className="shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide"
                         style={{
-                          background: contentGoal === 'horror' ? 'rgba(168,85,247,0.14)' : 'rgba(37,211,102,0.12)',
-                          color: contentGoal === 'horror' ? '#c084fc' : 'var(--wa-green)',
+                          background: presetAccent.background,
+                          color: presetAccent.text,
                         }}
                       >
                         {preset.eyebrow}
@@ -573,7 +693,7 @@ export default function AiGeneratorSection() {
         </div>
       )}
 
-      {generatorMode === 'create' && contentGoal === 'drama_product' && (
+      {generatorMode === 'create' && contentGoal !== 'horror' && (
         <section
           className="rounded-xl border p-3"
           style={{ background: 'rgba(56,189,248,0.05)', borderColor: 'rgba(56,189,248,0.22)' }}
@@ -581,9 +701,9 @@ export default function AiGeneratorSection() {
           <div className="mb-3 flex items-start gap-2">
             <span className="mt-0.5 shrink-0 text-[15px]">🎁</span>
             <div>
-              <p className="text-[11.5px] font-semibold text-sky-300">Reveal produk (opsional)</p>
+              <p className="text-[11.5px] font-semibold text-sky-300">Reveal digital gift (opsional)</p>
               <p className="mt-0.5 text-[10px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
-                Naskah tetap bisa dibuat tanpa link, foto, barcode, atau QR.
+                Hadiah berupa halaman web personal, bukan barang fisik. Naskah tetap bisa dibuat tanpa media.
               </p>
             </div>
           </div>
@@ -592,8 +712,8 @@ export default function AiGeneratorSection() {
             <div className="grid grid-cols-3 gap-2">
               {([
                 ['none', '💬 Tanpa media', 'Percakapan saja'],
-                ['link', '🔗 Kartu link', 'Thumbnail + tautan'],
-                ['image', '▣ Foto / QR', 'Gambar saja'],
+                ['link', '🔗 Kartu link', 'Halaman digital gift'],
+                ['image', '▣ Preview / QR', 'Gambar akses gift'],
               ] as const).map(([value, label, description]) => (
                 <button
                   key={value}
@@ -619,7 +739,7 @@ export default function AiGeneratorSection() {
             {productReveal === 'link' && (
               <>
             <div>
-              <label className="section-label">Link produk (opsional)</label>
+              <label className="section-label">Link digital gift (opsional)</label>
               <input
                 type="url"
                 className="input font-mono text-[11px]"
@@ -651,7 +771,7 @@ export default function AiGeneratorSection() {
             {productReveal !== 'none' && (
             <div>
               <label className="section-label">
-                {productReveal === 'image' ? 'Foto produk / barcode / QR (opsional)' : 'Thumbnail produk (opsional)'}
+                {productReveal === 'image' ? 'Preview halaman / barcode / QR (opsional)' : 'Thumbnail digital gift (opsional)'}
               </label>
               {productImage ? (
                 <div
@@ -660,7 +780,7 @@ export default function AiGeneratorSection() {
                 >
                   <img
                     src={productImage}
-                    alt="Thumbnail produk"
+                    alt="Thumbnail digital gift"
                     className="h-12 w-16 rounded-md object-cover"
                   />
                   <div className="min-w-0 flex-1">
@@ -839,7 +959,7 @@ export default function AiGeneratorSection() {
         {loading ? (
           <>
             <Loader2 size={15} className="animate-spin" />
-            Menulis alur {contentGoal === 'horror' ? 'horror' : 'drama'}…
+            Menulis alur {contentGoal === 'horror' ? 'horror' : contentGoal === 'comedy_product' ? 'komedi' : 'drama'}…
           </>
         ) : (
           <>
