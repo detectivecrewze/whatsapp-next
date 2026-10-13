@@ -11,8 +11,8 @@ import {
   Wand2,
 } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
-import { Message } from '@/types';
-import { compressImageFile, newId } from '@/lib/utils';
+import { ChatType, Message } from '@/types';
+import { compressImageFile, getSenderColor, newId } from '@/lib/utils';
 import { normalizeSfxId } from '@/lib/sfx';
 
 type GeneratorMode = 'create' | 'improvise';
@@ -22,6 +22,7 @@ type ProductReveal = 'none' | 'link' | 'image';
 interface StoryPreset {
   id: string;
   goal: ContentGoal;
+  chatType?: ChatType;
   name: string;
   eyebrow: string;
   description: string;
@@ -31,6 +32,8 @@ interface StoryPreset {
   revealDirection?: Message['direction'];
   revealText?: string;
   closureText?: string;
+  groupName?: string;
+  groupMembers?: string;
 }
 
 interface RawAiMessage {
@@ -50,6 +53,8 @@ interface RawAiMessage {
   sfxId?: string;
   sfx?: string;
   sfxVolume?: number;
+  senderName?: string;
+  senderColor?: string;
 }
 
 const MESSAGE_LENGTHS = [
@@ -158,6 +163,98 @@ const STORY_PRESETS: StoryPreset[] = [
     closureText: 'Makanya jangan pura-pura cuek lagi wkwk.',
   },
   {
+    id: 'group-graduation-circle-wishes',
+    goal: 'drama_product',
+    chatType: 'group',
+    name: 'Wisuda Circle Wishes',
+    eyebrow: 'Kado bareng',
+    description: 'Satu circle menyiapkan halaman ucapan wisuda untuk temannya. Berisik, hangat, lalu reveal.',
+    prompt:
+      'Ini grup circle pertemanan yang sedang merayakan wisuda salah satu anggotanya. Di awal, obrolan harus jelas dimulai karena si penerima mengira teman-temannya lupa atau tidak bisa hadir. Anggota lain pura-pura sibuk agar kejutan tidak bocor, sementara satu admin mengumpulkan wish dari semua anggota ke dalam satu digital gift berbentuk halaman Circle Wishes. Setiap anggota punya gaya bicara berbeda: satu cerewet, satu receh, satu paling tulus, dan penerima wisuda. Reveal dikirim oleh PEMILIK HP / outgoing sebagai link atau preview halaman digital berisi ucapan bersama. Setelah reveal, penerima memberi reaksi terharu yang natural dan anggota lain menutup dengan satu candaan kecil. Jangan menyebut hadiah fisik, paket, atau barang.',
+    productName: 'Our Graduation Wishes',
+    productDescription: 'Kumpulan ucapan dari satu circle untuk hari wisudamu',
+    revealDirection: 'outgoing',
+    revealText: 'Sebenernya dari kemarin kita nyiapin ini bareng-bareng.',
+    closureText: 'Kalian bikin aku nangis di hari wisuda 😭 makasih semuanya.',
+    groupName: 'Pejuang Gelar 🎓',
+    groupMembers: 'Naya, Dimas, Raka, Salsa',
+  },
+  {
+    id: 'group-birthday-circle-wishes',
+    goal: 'drama_product',
+    chatType: 'group',
+    name: 'Ultah Satu Circle',
+    eyebrow: 'Ucapan bersama',
+    description: 'Teman yang ulang tahun merasa dilupakan, padahal circle menyiapkan wish digital bersama.',
+    prompt:
+      'Ini grup sahabat. Penerima ulang tahun masuk ke grup dan menyindir karena sampai siang grup sepi dan belum ada yang mengucapkan. Tiga teman memberi alasan yang berbeda dan nyaris membocorkan kejutan. Konflik harus jelas dalam dua bubble pertama, lalu terungkap mereka sedang mengumpulkan tulisan, foto, dan harapan di satu halaman digital gift bersama. PEMILIK HP / outgoing mengirim reveal. Setelah dibuka, penerima bereaksi hangat, lalu satu teman menutup dengan candaan natural. Pastikan semua anggota tidak berbicara dengan gaya yang sama dan jangan menggambarkan hadiah sebagai barang fisik.',
+    productName: 'Birthday Circle Wishes',
+    productDescription: 'Ucapan, foto, dan doa dari orang-orang terdekatmu',
+    revealDirection: 'outgoing',
+    revealText: 'Kita gak lupa. Kita cuma lagi ngumpulin ini buat kamu.',
+    closureText: 'Ya ampun... pantesan kalian aneh dari pagi. Makasih 😭',
+    groupName: 'Manusia Sibuk 🎂',
+    groupMembers: 'Aurel, Bimo, Caca, Fikri',
+  },
+  {
+    id: 'group-surprise-leaked',
+    goal: 'comedy_product',
+    chatType: 'group',
+    name: 'Surprise Bocor di Grup',
+    eyebrow: 'Admin panik',
+    description: 'Salah satu teman membocorkan rencana kado digital di grup yang salah.',
+    prompt:
+      'Komedi grup circle. Konflik langsung jelas: satu anggota salah mengirim pesan tentang kejutan digital ke grup yang justru berisi target kejutannya. Semua orang mencoba menutupi kebocoran dengan alasan makin absurd, tetapi gaya bicara setiap anggota harus berbeda. Target tidak langsung percaya dan ikut mengerjai mereka. Akhirnya PEMILIK HP / outgoing menyerah dan mengirim halaman Circle Wishes yang sudah diisi bareng-bareng. Penerima menutup dengan reaksi geli tetapi menghargai usaha mereka. Jangan memakai humor random dan jangan menyebut barang atau paket.',
+    productName: 'Surprise dari Satu Circle',
+    productDescription: 'Wish rahasia yang gagal dirahasiakan oleh teman-temanmu',
+    revealDirection: 'outgoing',
+    revealText: 'Yaudah keburu bocor. Ini yang dari tadi kita rahasiain.',
+    closureText: 'Kejutannya gagal, tapi isinya lucu banget. Makasih woy 😭',
+    groupName: 'Bukan Grup Surprise',
+    groupMembers: 'Acha, Kevin, Ojan, Tia',
+  },
+  {
+    id: 'group-wish-deadline-chaos',
+    goal: 'comedy_product',
+    chatType: 'group',
+    name: 'Deadline Isi Wish',
+    eyebrow: 'Circle chaos',
+    description: 'Admin mengejar ucapan, anggota malah saling lempar alasan sampai target ikut membaca.',
+    prompt:
+      'Komedi grup sahabat tentang admin yang menagih isi Circle Wishes sebelum acara malam ini. Konflik muncul sejak bubble pertama karena dua anggota belum mengisi dan memberi alasan konyol, sementara orang yang akan diberi kejutan tiba-tiba aktif di grup. Mereka memakai kode yang terlalu kentara dan target mulai curiga. Akhiri dengan halaman digital gift tetap jadi tepat waktu, dikirim oleh PEMILIK HP / outgoing, lalu target bereaksi dan satu anggota memberi punchline penutup. Buat percakapan cepat, saling menyela, tetapi tetap mudah diikuti.',
+    productName: 'Circle Wishes Dadakan',
+    productDescription: 'Ucapan satu circle yang akhirnya terkumpul juga',
+    revealDirection: 'outgoing',
+    revealText: 'Deadline-nya selamat. Nih, hasil kerja kelompok paling chaos.',
+    closureText: 'Baru kali ini aku jadi tugas kelompok kalian wkwk. Makasih ya.',
+    groupName: 'Deadline adalah Mitos',
+    groupMembers: 'Mira, Jojo, Nabil, Wina',
+  },
+  {
+    id: 'group-unknown-member',
+    goal: 'horror',
+    chatType: 'group',
+    name: 'Anggota Kelima',
+    eyebrow: 'Group horror',
+    description: 'Grup berisi empat teman, tetapi satu nama asing ikut membalas detail yang tak diketahui siapa pun.',
+    prompt:
+      'Fake chat horror dalam grup empat teman kos. Di dua bubble pertama, mereka sedang memastikan semua anggota sudah sampai kamar setelah listrik mati. Lalu muncul satu pengirim bernama asing yang membalas seolah-olah ia anggota kelima dan mengetahui posisi setiap orang. Tiap pengirim wajib punya suara dan reaksi berbeda. Naikkan tensi bertahap; jangan langsung menjelaskan siapa sosok itu. Akhiri dengan satu pesan pendek dari anggota asing yang mengungkap bahwa salah satu nama asli di grup sebenarnya bukan orang yang sedang memegang HP.',
+    groupName: 'Anak Kos Lantai 3',
+    groupMembers: 'Aldi, Nisa, Reza, Vina',
+  },
+  {
+    id: 'group-member-left-years-ago',
+    goal: 'horror',
+    chatType: 'group',
+    name: 'Masih Ada di Grup',
+    eyebrow: 'Creepy reunion',
+    description: 'Teman lama mengirim pesan di grup reuni, padahal akunnya sudah keluar bertahun-tahun lalu.',
+    prompt:
+      'Fake chat horror grup reuni sekolah. Awalnya anggota membahas foto lama dan rencana bertemu. Salah satu anggota menyebut teman yang sudah meninggal atau hilang beberapa tahun lalu, kemudian nama teman itu tiba-tiba mengirim pesan dan mengoreksi detail foto yang hanya ia tahu. Buat respons beberapa anggota berbeda: ada yang menyangkal, ada yang panik, ada yang mencoba menelepon. Akhiri dengan pesan singkat dari akun tersebut yang menyebut lokasi reuni sebelum mereka pernah menentukan lokasinya.',
+    groupName: 'Alumni 12 IPA 2',
+    groupMembers: 'Bagas, Intan, Farel, Siska',
+  },
+  {
     id: 'boarding-house',
     goal: 'horror',
     name: 'Ada di Depan Kos',
@@ -192,19 +289,38 @@ const FALLBACK_PRODUCT = {
 };
 
 export default function AiGeneratorSection() {
-  const { setName, reorderMessages, messages } = useEditorStore();
+  const {
+    name,
+    chatType: editorChatType,
+    groupSubtitle: editorGroupSubtitle,
+    setName,
+    setChatType,
+    setGroupSubtitle,
+    reorderMessages,
+    messages,
+  } = useEditorStore();
   const existingLink = useMemo(() => messages.find((message) => message.type === 'link'), [messages]);
+  const initialPreset = STORY_PRESETS.find(
+    (preset) => preset.goal === 'drama_product' && (preset.chatType ?? 'personal') === editorChatType,
+  ) ?? STORY_PRESETS[0];
 
   const [generatorMode, setGeneratorMode] = useState<GeneratorMode>('create');
+  const [conversationType, setConversationType] = useState<ChatType>(editorChatType);
   const [contentGoal, setContentGoal] = useState<ContentGoal>('drama_product');
-  const [selectedPreset, setSelectedPreset] = useState('cold-war-apology');
-  const [promptText, setPromptText] = useState(STORY_PRESETS[0].prompt);
+  const [selectedPreset, setSelectedPreset] = useState(initialPreset.id);
+  const [promptText, setPromptText] = useState(initialPreset.prompt);
   const [msgCount, setMsgCount] = useState(8);
+  const [groupName, setGroupName] = useState(editorChatType === 'group' ? name : 'Pejuang Gelar 🎓');
+  const [groupMembers, setGroupMembers] = useState(
+    editorChatType === 'group' && editorGroupSubtitle
+      ? editorGroupSubtitle.replace(/,?\s*kamu\b/gi, '').replace(/^,|,$/g, '').trim()
+      : 'Naya, Dimas, Raka, Salsa',
+  );
   const [productReveal, setProductReveal] = useState<ProductReveal>(existingLink?.linkUrl ? 'link' : 'none');
   const [productUrl, setProductUrl] = useState(existingLink?.linkUrl ?? '');
-  const [productName, setProductName] = useState(existingLink?.linkTitle ?? FALLBACK_PRODUCT.name);
+  const [productName, setProductName] = useState(existingLink?.linkTitle ?? initialPreset.productName ?? FALLBACK_PRODUCT.name);
   const [productDescription, setProductDescription] = useState(
-    existingLink?.linkDescription ?? FALLBACK_PRODUCT.description,
+    existingLink?.linkDescription ?? initialPreset.productDescription ?? FALLBACK_PRODUCT.description,
   );
   const [productImage, setProductImage] = useState(existingLink?.linkImage ?? existingLink?.imageData ?? '');
   const [loading, setLoading] = useState(false);
@@ -231,7 +347,16 @@ export default function AiGeneratorSection() {
     setError(null);
   }
 
-  const visiblePresets = STORY_PRESETS.filter((preset) => preset.goal === contentGoal);
+  const visiblePresets = STORY_PRESETS.filter(
+    (preset) => preset.goal === contentGoal && (preset.chatType ?? 'personal') === conversationType,
+  );
+  const messageLengths = conversationType === 'group'
+    ? [
+        { count: 8, label: 'Cepat' },
+        { count: 10, label: 'Ideal' },
+        { count: 12, label: 'Detail' },
+      ]
+    : MESSAGE_LENGTHS;
   const presetAccent = contentGoal === 'horror'
     ? { border: 'rgba(168,85,247,0.55)', background: 'rgba(168,85,247,0.14)', text: '#c084fc' }
     : contentGoal === 'comedy_product'
@@ -239,7 +364,9 @@ export default function AiGeneratorSection() {
       : { border: 'rgba(37,211,102,0.50)', background: 'rgba(37,211,102,0.12)', text: 'var(--wa-green)' };
 
   function chooseGoal(goal: ContentGoal) {
-    const firstPreset = STORY_PRESETS.find((preset) => preset.goal === goal);
+    const firstPreset = STORY_PRESETS.find(
+      (preset) => preset.goal === goal && (preset.chatType ?? 'personal') === conversationType,
+    );
     setContentGoal(goal);
     setSelectedPreset(firstPreset?.id ?? '');
     setPromptText(firstPreset?.prompt ?? '');
@@ -254,6 +381,24 @@ export default function AiGeneratorSection() {
     setPromptText(preset.prompt);
     if (preset.productName) setProductName(preset.productName);
     if (preset.productDescription) setProductDescription(preset.productDescription);
+    if (preset.groupName) setGroupName(preset.groupName);
+    if (preset.groupMembers) setGroupMembers(preset.groupMembers);
+    setGenerated(false);
+    setError(null);
+  }
+
+  function chooseConversationType(nextType: ChatType) {
+    const firstPreset = STORY_PRESETS.find(
+      (preset) => preset.goal === contentGoal && (preset.chatType ?? 'personal') === nextType,
+    );
+    setConversationType(nextType);
+    setSelectedPreset(firstPreset?.id ?? '');
+    setPromptText(firstPreset?.prompt ?? '');
+    if (firstPreset?.productName) setProductName(firstPreset.productName);
+    if (firstPreset?.productDescription) setProductDescription(firstPreset.productDescription);
+    if (firstPreset?.groupName) setGroupName(firstPreset.groupName);
+    if (firstPreset?.groupMembers) setGroupMembers(firstPreset.groupMembers);
+    if (nextType === 'group' && msgCount < 8) setMsgCount(10);
     setGenerated(false);
     setError(null);
   }
@@ -298,8 +443,17 @@ export default function AiGeneratorSection() {
           geminiKeyCustom: geminiKey.trim(),
           mode: generatorMode,
           storyType: contentGoal,
+          chatType: generatorMode === 'create' ? conversationType : editorChatType,
           revealType: effectiveProductReveal,
           presetId: selectedPreset,
+          groupConfig: (generatorMode === 'create' ? conversationType : editorChatType) === 'group'
+            ? {
+                name: generatorMode === 'create' ? groupName.trim() : name,
+                members: generatorMode === 'create'
+                  ? groupMembers.split(',').map((member) => member.trim()).filter(Boolean)
+                  : editorGroupSubtitle.split(',').map((member) => member.replace(/\bkamu\b/gi, '').trim()).filter(Boolean),
+              }
+            : null,
           product: generatorMode === 'create' && isProductStory && effectiveProductReveal !== 'none'
             ? {
                 kind: 'digital_gift',
@@ -318,8 +472,31 @@ export default function AiGeneratorSection() {
       }
 
       const data = await res.json();
-      const contactName: string = data.name || data.contactName || '';
-      if (contactName && generatorMode === 'create') setName(contactName.trim());
+      const generatedChatType: ChatType = data.chatType === 'group' || (generatorMode === 'create' && conversationType === 'group')
+        ? 'group'
+        : generatorMode === 'improvise'
+          ? editorChatType
+          : 'personal';
+      const contactName: string = data.name || data.groupName || data.contactName || '';
+      const generatedParticipants = Array.isArray(data.participants)
+        ? data.participants.filter((participant: unknown): participant is string => typeof participant === 'string' && Boolean(participant.trim()))
+        : [];
+
+      if (generatorMode === 'create') {
+        setChatType(generatedChatType);
+        if (contactName) setName(contactName.trim());
+        if (generatedChatType === 'group') {
+          const subtitle = typeof data.groupSubtitle === 'string' && data.groupSubtitle.trim()
+            ? data.groupSubtitle.trim()
+            : `${(generatedParticipants.length > 0
+                ? generatedParticipants
+                : groupMembers.split(',').map((member) => member.trim()).filter(Boolean))
+              .join(', ')}, kamu`;
+          setGroupSubtitle(subtitle);
+        } else {
+          setGroupSubtitle('');
+        }
+      }
 
       let raw: RawAiMessage[] = [];
       if (Array.isArray(data.messages) && data.messages.length > 0) {
@@ -362,6 +539,11 @@ export default function AiGeneratorSection() {
         'deleted',
       ];
 
+      const fallbackGroupMembers = generatedParticipants.length > 0
+        ? generatedParticipants
+        : groupMembers.split(',').map((member) => member.trim()).filter(Boolean);
+      let fallbackSenderIndex = 0;
+
       const newMessages: Message[] = raw.map((item) => {
         let rawType = (item.type || 'text').toLowerCase();
         if (rawType === 'voice_note') rawType = 'text';
@@ -379,10 +561,15 @@ export default function AiGeneratorSection() {
           timeStr = `${String(currentHour).padStart(2, '0')}:${String(currentMin).padStart(2, '0')}`;
         }
 
+        const direction: Message['direction'] = item.direction === 'outgoing' ? 'outgoing' : 'incoming';
+        const senderName = generatedChatType === 'group' && direction === 'incoming'
+          ? item.senderName?.trim() || fallbackGroupMembers[fallbackSenderIndex++ % Math.max(1, fallbackGroupMembers.length)] || 'Anggota grup'
+          : undefined;
+
         return {
           id: newId('msg'),
           type,
-          direction: item.direction === 'outgoing' ? 'outgoing' : 'incoming',
+          direction,
           text: item.text ?? (type === 'text' ? '' : undefined),
           caption: item.caption ?? (['image', 'view_once'].includes(type) ? item.text?.trim() : undefined),
           notifSender: item.notifSender,
@@ -397,6 +584,8 @@ export default function AiGeneratorSection() {
           sfxVolume: typeof item.sfxVolume === 'number'
             ? Math.max(0, Math.min(1, item.sfxVolume))
             : undefined,
+          senderName,
+          senderColor: senderName ? item.senderColor || getSenderColor(senderName) : undefined,
           time: timeStr,
         };
       });
@@ -463,7 +652,11 @@ export default function AiGeneratorSection() {
             time: nextMinute(revealMessage.time) ?? closureSource?.time,
             sfxId: canKeepAiClosure ? closureSource?.sfxId : undefined,
             sfxVolume: canKeepAiClosure ? closureSource?.sfxVolume : undefined,
+            senderName: closureDirection === 'incoming'
+              ? closureSource?.senderName || [...newMessages].reverse().find((message) => message.direction === 'incoming' && message.senderName)?.senderName || fallbackGroupMembers[0]
+              : undefined,
           };
+          if (closureMessage.senderName) closureMessage.senderColor = getSenderColor(closureMessage.senderName);
 
           newMessages.push(revealMessage, closureMessage);
         };
@@ -478,6 +671,8 @@ export default function AiGeneratorSection() {
               ...productPhoto,
               type: 'image',
               direction: revealDirection,
+              senderName: revealDirection === 'incoming' ? productPhoto.senderName : undefined,
+              senderColor: revealDirection === 'incoming' ? productPhoto.senderColor : undefined,
               imageData: productImage,
               caption: productPhoto.caption || productPhoto.text || fallbackRevealText,
               text: undefined,
@@ -511,6 +706,8 @@ export default function AiGeneratorSection() {
               ...productLink,
               ...product,
               direction: revealDirection,
+              senderName: revealDirection === 'incoming' ? productLink.senderName : undefined,
+              senderColor: revealDirection === 'incoming' ? productLink.senderColor : undefined,
             };
           } else {
             productLink = {
@@ -590,7 +787,68 @@ export default function AiGeneratorSection() {
       {generatorMode === 'create' ? (
         <>
           <section>
-            <label className="section-label">1 · Tujuan konten</label>
+            <label className="section-label">1 · Format percakapan</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => chooseConversationType('personal')}
+                className="rounded-xl border p-3 text-left transition-all"
+                style={{
+                  background: conversationType === 'personal' ? 'rgba(37,211,102,0.09)' : 'var(--ui-card)',
+                  borderColor: conversationType === 'personal' ? 'rgba(37,211,102,0.55)' : 'var(--ui-border)',
+                }}
+              >
+                <span className="text-[18px]">👤</span>
+                <strong className="ml-2 text-[11.5px]" style={{ color: 'var(--wa-text)' }}>Personal</strong>
+                <span className="mt-1 block text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>Dua orang · chat pribadi</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseConversationType('group')}
+                className="rounded-xl border p-3 text-left transition-all"
+                style={{
+                  background: conversationType === 'group' ? 'rgba(83,189,235,0.10)' : 'var(--ui-card)',
+                  borderColor: conversationType === 'group' ? 'rgba(83,189,235,0.60)' : 'var(--ui-border)',
+                }}
+              >
+                <span className="text-[18px]">👥</span>
+                <strong className="ml-2 text-[11.5px]" style={{ color: 'var(--wa-text)' }}>Group Chat</strong>
+                <span className="mt-1 block text-[9.5px]" style={{ color: 'var(--wa-text-muted)' }}>Banyak karakter · sender berbeda</span>
+              </button>
+            </div>
+
+            {conversationType === 'group' ? (
+              <div
+                className="mt-2.5 grid gap-2 rounded-xl border p-3"
+                style={{ background: 'rgba(83,189,235,0.05)', borderColor: 'rgba(83,189,235,0.22)' }}
+              >
+                <div>
+                  <label className="section-label">Nama grup</label>
+                  <input
+                    className="input"
+                    value={groupName}
+                    onChange={(event) => setGroupName(event.target.value)}
+                    placeholder="Kosongkan jika ingin dibuat AI"
+                  />
+                </div>
+                <div>
+                  <label className="section-label">Nama anggota</label>
+                  <input
+                    className="input"
+                    value={groupMembers}
+                    onChange={(event) => setGroupMembers(event.target.value)}
+                    placeholder="Naya, Dimas, Raka, Salsa"
+                  />
+                  <p className="mt-1 text-[8.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+                    Pisahkan dengan koma. Kosongkan agar AI membuat 3–5 karakter sendiri.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          <section>
+            <label className="section-label">2 · Tujuan konten</label>
             <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
@@ -643,7 +901,7 @@ export default function AiGeneratorSection() {
           </section>
 
           <section>
-            <label className="section-label">2 · Pilih alur</label>
+            <label className="section-label">3 · Pilih alur</label>
             <div className="flex flex-col gap-2">
               {visiblePresets.map((preset) => {
                 const active = selectedPreset === preset.id;
@@ -829,7 +1087,7 @@ export default function AiGeneratorSection() {
 
       <section>
         <label className="section-label">
-          {generatorMode === 'improvise' ? 'Arahan lanjutan' : '3 · Detail cerita'}
+          {generatorMode === 'improvise' ? 'Arahan lanjutan' : '4 · Detail cerita'}
         </label>
         <textarea
           className="input resize-none text-[12px] leading-relaxed"
@@ -851,7 +1109,7 @@ export default function AiGeneratorSection() {
           className="grid grid-cols-3 gap-1 rounded-xl border p-1"
           style={{ background: 'var(--ui-card)', borderColor: 'var(--ui-border)' }}
         >
-          {MESSAGE_LENGTHS.map((option) => (
+          {messageLengths.map((option) => (
             <button
               key={option.count}
               type="button"
@@ -959,7 +1217,7 @@ export default function AiGeneratorSection() {
         {loading ? (
           <>
             <Loader2 size={15} className="animate-spin" />
-            Menulis alur {contentGoal === 'horror' ? 'horror' : contentGoal === 'comedy_product' ? 'komedi' : 'drama'}…
+            Menulis alur {conversationType === 'group' ? 'group ' : ''}{contentGoal === 'horror' ? 'horror' : contentGoal === 'comedy_product' ? 'komedi' : 'drama'}…
           </>
         ) : (
           <>

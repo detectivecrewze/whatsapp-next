@@ -107,6 +107,7 @@ export interface EditorState {
 
   // Video / Animation settings
   holdMs: number;
+  imageHoldMs: number;
   replyDelay: number;
   useTyping: boolean;
   useSoundIn: boolean;
@@ -135,6 +136,19 @@ export interface EditorState {
   ttsStyle: number;
   ttsSpeed: number;
   ttsAudioMap: Record<string | number, string>; // Audio URLs mapped by message ID or index
+
+  // Background music
+  enableBgm: boolean;
+  bgmUrl: string | null;
+  bgmName: string;
+  bgmVolume: number;          // 0..1
+  bgmPitchSemitones: number;  // -4..4, applied without changing tempo in final render
+  bgmStartAt: number;         // seconds skipped from the beginning
+  bgmFadeIn: number;          // seconds
+  bgmFadeOut: number;         // seconds
+  bgmLoop: boolean;
+  bgmDucking: boolean;
+  bgmDuckVolume: number;      // multiplier while voice-over is active
 
   // Header / UI
   headerStatus: HeaderStatus;
@@ -226,6 +240,7 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
     },
   ],
   holdMs: 2500,
+  imageHoldMs: 4000,
   replyDelay: 1200,
   useTyping: true,
   useSoundIn: true,
@@ -248,6 +263,17 @@ export const DEFAULT_EDITOR_STATE: EditorState = {
   ttsStyle: 0.5,
   ttsSpeed: 1.0,
   ttsAudioMap: {},
+  enableBgm: false,
+  bgmUrl: null,
+  bgmName: '',
+  bgmVolume: 0.18,
+  bgmPitchSemitones: 0,
+  bgmStartAt: 0,
+  bgmFadeIn: 1,
+  bgmFadeOut: 1.25,
+  bgmLoop: true,
+  bgmDucking: true,
+  bgmDuckVolume: 0.25,
   headerStatus: 'online',
   headerStatusText: '',
   pinnedMessage: '',

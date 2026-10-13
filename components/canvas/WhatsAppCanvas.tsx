@@ -6,12 +6,13 @@ import StatusBar from './StatusBar';
 import ChatHeader from './ChatHeader';
 import ChatArea from './ChatArea';
 import PushNotificationOverlay from './PushNotificationOverlay';
+import { usesLightChatTheme } from '@/lib/chatTheme';
 
 export default function WhatsAppCanvas() {
   const bubbleColor = useEditorStore((state) => state.bubbleColor);
-  const bgType = useEditorStore((state) => state.bgType);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const usesLightTheme = usesLightChatTheme(bubbleColor);
 
   const CANVAS_WIDTH = 390;
   const CANVAS_HEIGHT = 844;
@@ -85,17 +86,17 @@ export default function WhatsAppCanvas() {
             overflow: 'hidden',
             boxShadow: '0 32px 80px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.08)',
             background: 'var(--wa-phone-chrome)',
-            '--wa-bubble-out': bubbleColor || (bgType === 'default' ? '#d9fdd3' : '#005c4b'),
-            '--wa-bubble-in': bgType === 'default' ? '#ffffff' : '#202c33',
-            '--wa-bubble-shadow': bgType === 'default'
+            '--wa-bubble-out': bubbleColor || '#d9fdd3',
+            '--wa-bubble-in': usesLightTheme ? '#ffffff' : '#202c33',
+            '--wa-bubble-shadow': usesLightTheme
               ? '0 1px 0.5px rgba(11,20,26,0.10)'
               : '0 1px 1px rgba(0,0,0,0.18)',
-            '--wa-chat-text': bgType === 'default' ? '#111b21' : '#e9edef',
-            '--wa-chat-muted': bgType === 'default' ? '#667781' : '#8696a0',
-            '--wa-chat-time': bgType === 'default' ? '#667781' : 'rgba(255,255,255,0.55)',
-            '--wa-chat-input': bgType === 'default' ? '#ffffff' : '#2a3942',
-            '--wa-input-tray': bgType === 'default' ? '#f0f2f5' : '#111b21',
-            '--wa-link-card': bgType === 'default' ? 'rgba(11,20,26,0.06)' : 'rgba(0,0,0,0.2)',
+            '--wa-chat-text': usesLightTheme ? '#111b21' : '#e9edef',
+            '--wa-chat-muted': usesLightTheme ? '#667781' : '#8696a0',
+            '--wa-chat-time': usesLightTheme ? '#667781' : 'rgba(255,255,255,0.55)',
+            '--wa-chat-input': usesLightTheme ? '#ffffff' : '#2a3942',
+            '--wa-input-tray': usesLightTheme ? '#f0f2f5' : '#111b21',
+            '--wa-link-card': usesLightTheme ? 'rgba(11,20,26,0.06)' : 'rgba(0,0,0,0.2)',
             display: 'flex',
             flexDirection: 'column',
             position: 'absolute',

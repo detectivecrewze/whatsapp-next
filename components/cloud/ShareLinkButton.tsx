@@ -5,7 +5,7 @@ import { Play, Eye, Plus, Loader2 } from 'lucide-react';
 import { useEditorStore } from '@/store/useEditorStore';
 import { useCloudStore } from '@/store/useCloudStore';
 import { newId } from '@/lib/utils';
-import { persistAudioMapForCloud } from '@/lib/tts';
+import { persistAudioMapForCloud, persistAudioSourceForCloud } from '@/lib/tts';
 import { CURRENT_CLOUD_PRESET_VERSION } from '@/lib/presetMigration';
 import Toast from '@/components/ui/Toast';
 
@@ -37,6 +37,7 @@ export default function ShareLinkButton() {
       bgImage: state.bgImage,
       messages: state.messages,
       holdMs: state.holdMs,
+      imageHoldMs: state.imageHoldMs,
       replyDelay: state.replyDelay,
       useTyping: state.useTyping,
       useSoundIn: state.useSoundIn,
@@ -58,6 +59,17 @@ export default function ShareLinkButton() {
       ttsStyle: state.ttsStyle,
       ttsSpeed: state.ttsSpeed,
       ttsAudioMap: state.ttsAudioMap,
+      enableBgm: state.enableBgm,
+      bgmUrl: state.bgmUrl,
+      bgmName: state.bgmName,
+      bgmVolume: state.bgmVolume,
+      bgmPitchSemitones: state.bgmPitchSemitones,
+      bgmStartAt: state.bgmStartAt,
+      bgmFadeIn: state.bgmFadeIn,
+      bgmFadeOut: state.bgmFadeOut,
+      bgmLoop: state.bgmLoop,
+      bgmDucking: state.bgmDucking,
+      bgmDuckVolume: state.bgmDuckVolume,
       headerStatus: state.headerStatus,
       headerStatusText: state.headerStatusText,
       pinnedMessage: state.pinnedMessage,
@@ -89,9 +101,13 @@ export default function ShareLinkButton() {
       const state = useEditorStore.getState();
       const presetId = newId('cloud');
       const data = collectState();
-      const ttsAudioMap = await persistAudioMapForCloud(data.ttsAudioMap);
+      const [ttsAudioMap, bgmUrl] = await Promise.all([
+        persistAudioMapForCloud(data.ttsAudioMap),
+        persistAudioSourceForCloud(data.bgmUrl),
+      ]);
       data.ttsAudioMap = ttsAudioMap;
-      state.applyPayload({ ttsAudioMap });
+      data.bgmUrl = bgmUrl;
+      state.applyPayload({ ttsAudioMap, bgmUrl });
 
       const preset = {
         id: presetId,

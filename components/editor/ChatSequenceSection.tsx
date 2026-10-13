@@ -6,6 +6,7 @@ import { useEditorStore } from '@/store/useEditorStore';
 import { addMinutesToTime, newId, getCurrentTime, compressImageFile, extractDomain } from '@/lib/utils';
 import { Message, MessageType } from '@/types';
 import { getSfxDefinition, getSfxVolume, SFX_LIBRARY } from '@/lib/sfx';
+import { isVisualMessage } from '@/lib/messageTiming';
 
 const MESSAGE_TYPE_LABELS: Record<MessageType, string> = {
   text: '💬 Teks',
@@ -36,6 +37,9 @@ function MessageRow({
   const [open, setOpen] = useState(initiallyOpen);
   const rowRef = useRef<HTMLDivElement>(null);
   const activeSfx = getSfxDefinition(message.sfxId);
+  const holdMs = useEditorStore((state) => state.holdMs);
+  const imageHoldMs = useEditorStore((state) => state.imageHoldMs);
+  const defaultHoldMs = isVisualMessage(message) ? imageHoldMs : holdMs;
 
   useEffect(() => {
     if (!initiallyOpen) return;
@@ -481,7 +485,7 @@ function MessageRow({
                   const val = e.target.value;
                   onUpdate({ customHoldMs: val ? Math.round(Number(val) * 1000) : undefined });
                 }}
-                placeholder={message.type === 'notification' ? 'Default 4.5s' : 'Default 2.5s'}
+                placeholder={`Default ${defaultHoldMs / 1000}s`}
               />
             </div>
           </div>

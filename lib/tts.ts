@@ -1,8 +1,6 @@
 import { TtsRequest } from '@/types';
 import { cleanSpeechText } from './speech';
 
-const WORKER_URL = process.env.CLOUDFLARE_WORKER_URL ?? 'https://wa-templates-worker.aldoramadhan16.workers.dev';
-
 /**
  * Generate TTS audio via Next.js API Route (server-side, no CORS issues).
  * Returns a Blob URL for playback.
@@ -35,7 +33,7 @@ export async function uploadAudioBlob(blob: Blob): Promise<string> {
 
   const res = await fetch('/api/upload-audio', {
     method: 'POST',
-    headers: { 'Content-Type': 'audio/mpeg' },
+    headers: { 'Content-Type': blob.type || 'audio/mpeg' },
     body: arrayBuffer,
   });
 
@@ -51,6 +49,19 @@ export async function uploadAudioBlob(blob: Blob): Promise<string> {
 
 export function isTemporaryAudioUrl(url: string): boolean {
   return url.startsWith('blob:') || url.startsWith('data:');
+}
+
+/** Persist one temporary browser audio source and keep cloud URLs unchanged. */
+export async function persistAudioSourceForCloud(source?: string | null): Promise<string | null> {
+  if (!source) return null;
+  if (!isTemporaryAudioUrl(source)) return source;
+
+  const response = await fetch(source);
+  if (!response.ok) {
+    throw new Error('Audio sementara sudah kedaluwarsa. Upload ulang backsound lalu simpan lagi.');
+  }
+
+  return uploadAudioBlob(await response.blob());
 }
 
 /**

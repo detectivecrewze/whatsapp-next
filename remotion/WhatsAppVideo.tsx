@@ -14,6 +14,10 @@ import {
 import type { Message } from '@/types';
 import { extractDomain, getChatTimelineTime, getInitials, getSenderColor, stripAudioTags } from '@/lib/utils';
 import { getEndTransitionSfx } from '@/lib/endTransitions';
+import { usesLightChatTheme } from '@/lib/chatTheme';
+
+const AUDIO_RENDER_TIMEOUT_MS = 120_000;
+const AUDIO_RENDER_RETRIES = 2;
 import { buildVideoTimeline, getTimelineState, type TimelineEvent } from './timeline';
 import type { WhatsAppVideoProps } from './videoTypes';
 import { getMessageCustomSfx, getMessageSoundSource, getVoiceSource } from './audio';
@@ -846,8 +850,10 @@ function MessageAudioTracks({
                 name={`SFX ${event.message.direction} ${event.index + 1}`}
                 src={staticFile(soundSource)}
                 from={event.revealFrame}
-                volume={0.85}
+                volume={voiceSource ? 0.15 : 0.25}
                 premountFor={fps}
+                delayRenderTimeoutInMilliseconds={AUDIO_RENDER_TIMEOUT_MS}
+                delayRenderRetries={AUDIO_RENDER_RETRIES}
               />
             ) : null}
             {customSfx ? (
@@ -856,8 +862,10 @@ function MessageAudioTracks({
                 src={staticFile(customSfx.source)}
                 from={event.revealFrame}
                 durationInFrames={Math.max(1, Math.min(3 * fps, event.endFrame - event.revealFrame))}
-                volume={customSfx.volume}
+                volume={customSfx.volume * (voiceSource ? 0.65 : 1)}
                 premountFor={fps}
+                delayRenderTimeoutInMilliseconds={AUDIO_RENDER_TIMEOUT_MS}
+                delayRenderRetries={AUDIO_RENDER_RETRIES}
               />
             ) : null}
             {voiceSource ? (
@@ -868,12 +876,131 @@ function MessageAudioTracks({
                 volume={1}
                 playbackRate={voicePlaybackRate}
                 premountFor={fps}
+                delayRenderTimeoutInMilliseconds={AUDIO_RENDER_TIMEOUT_MS}
+                delayRenderRetries={AUDIO_RENDER_RETRIES}
               />
             ) : null}
           </React.Fragment>
         );
       })}
     </>
+  );
+}
+
+function BackgroundMusicTrack({
+  props,
+  timeline,
+}: {
+  props: WhatsAppVideoProps;
+  timeline: TimelineEvent[];
+}) {
+  const frame = useCurrentFrame();
+  const { durationInFrames, fps } = useVideoConfig();
+
+  if (!props.enableBgm || !props.bgmUrl) return null;
+
+  const baseVolume = Math.max(0, Math.min(1, props.bgmVolume ?? 0.18));
+  const fadeInFrames = Math.max(0, Math.round((props.bgmFadeIn ?? 1) * fps));
+  const fadeOutFrames = Math.max(0, Math.round((props.bgmFadeOut ?? 1.25) * fps));
+  const fadeInVolume = fadeInFrames > 0
+    ? interpolate(frame, [0, fadeInFrames], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    : 1;
+  const fadeOutStart = Math.max(0, durationInFrames - fadeOutFrames);
+  const fadeOutVolume = fadeOutFrames > 0
+    ? interpolate(frame, [fadeOutStart, Math.max(fadeOutStart + 1, durationInFrames - 1)], [1, 0], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    : 1;
+
+  let duckMultiplier = 1;
+    if (props.bgmDucking) {
+    const duckTarget = Math.max(0.05, Math.min(1, props.bgmDuckVolume ?? 0.25));
+    const rampFrames = Math.max(1, Math.round(fps * 0.18));
+
+      const getWindowMultiplier = (
+        startFrame: number,
+        endFrame: number,
+        target: number,
+      ) => {
+        if (frame >= startFrame - rampFrames && frame < startFrame) {
+          return interpolate(
+            frame,
+            [startFrame - rampFrames, startFrame],
+            [1, target],
+            { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
+          );
+        }
+        if (frame >= startFrame && frame <= endFrame) return target;
+        if (frame > endFrame && frame <= endFrame + rampFrames) {
+          return interpolate(
+            frame,
+            [endFrame, endFrame + rampFrames],
+            [target, 1],
+            { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
+          );
+        }
+        return 1;
+      };
+
+    for (const event of timeline) {
+      const hasVoice = Boolean(getVoiceSource(props, event.message, event.index));
+        if (props.enableTts && hasVoice && event.voiceEndFrame > event.revealFrame) {
+          duckMultiplier = Math.min(
+            duckMultiplier,
+            getWindowMultiplier(event.revealFrame, event.voiceEndFrame, duckTarget),
+          );
+      }
+
+        const hasDefaultSfx = Boolean(getMessageSoundSource(props, event.message));
+        const customSfx = getMessageCustomSfx(event.message);
+        if (hasDefaultSfx || customSfx) {
+          const sfxDurationFrames = customSfx
+            ? Math.max(1, Math.min(3 * fps, event.endFrame - event.revealFrame))
+            : Math.max(1, Math.round(0.7 * fps));
+          const sfxTarget = Math.min(0.12, duckTarget * 0.5);
+          duckMultiplier = Math.min(
+            duckMultiplier,
+            getWindowMultiplier(
+              event.revealFrame,
+              event.revealFrame + sfxDurationFrames,
+              sfxTarget,
+            ),
+          );
+        }
+      }
+
+      if (props.endTransition !== 'none' && getEndTransitionSfx(props.endTransitionSfx)?.file) {
+        const transitionFrames = Math.max(1, Math.round(fps * 0.75));
+        const transitionStart = Math.max(0, durationInFrames - transitionFrames);
+        duckMultiplier = Math.min(
+          duckMultiplier,
+          getWindowMultiplier(
+            transitionStart,
+            durationInFrames - 1,
+            Math.min(0.12, duckTarget * 0.5),
+          ),
+        );
+    }
+  }
+
+  const semitones = Math.max(-4, Math.min(4, props.bgmPitchSemitones ?? 0));
+
+  return (
+    <Audio
+      name={`Backsound · ${props.bgmName || 'musik latar'}`}
+      src={props.bgmUrl}
+      loop={props.bgmLoop}
+      trimBefore={Math.max(0, Math.round((props.bgmStartAt ?? 0) * fps))}
+      volume={baseVolume * fadeInVolume * fadeOutVolume * duckMultiplier}
+      toneFrequency={2 ** (semitones / 12)}
+      premountFor={fps}
+      delayRenderTimeoutInMilliseconds={AUDIO_RENDER_TIMEOUT_MS}
+      delayRenderRetries={AUDIO_RENDER_RETRIES}
+    />
   );
 }
 
@@ -902,6 +1029,8 @@ function EndTransitionLayer({ props }: { props: WhatsAppVideoProps }) {
           durationInFrames={transitionFrames}
           volume={0.22}
           premountFor={fps}
+          delayRenderTimeoutInMilliseconds={AUDIO_RENDER_TIMEOUT_MS}
+          delayRenderRetries={AUDIO_RENDER_RETRIES}
         />
       ) : null}
 
@@ -1063,19 +1192,21 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
-  const isClassic = props.bgType === 'default';
+  // Wallpaper type does not decide whether chat chrome is light or dark.
+  // A photo wallpaper may still use WhatsApp's original pale-green bubbles.
+  const usesLightTheme = usesLightChatTheme(props.bubbleColor);
   const usePhoneLayout = props.exportLayout !== 'normal';
 
   return (
     <ChatThemeContext.Provider
       value={{
-        outgoing: props.bubbleColor || (isClassic ? '#d9fdd3' : COLORS.outgoing),
-        incoming: isClassic ? '#ffffff' : COLORS.incoming,
-        text: isClassic ? '#111b21' : COLORS.text,
-        muted: isClassic ? '#667781' : COLORS.muted,
-        shadow: isClassic ? '0 2px 4px rgba(11,20,26,0.10)' : '0 4px 12px rgba(0,0,0,0.28)',
-        linkCard: isClassic ? 'rgba(11,20,26,0.06)' : 'rgba(0,0,0,0.2)',
-        linkBorder: isClassic ? 'rgba(102,119,129,0.12)' : 'rgba(134,150,160,0.14)',
+        outgoing: props.bubbleColor || '#d9fdd3',
+        incoming: usesLightTheme ? '#ffffff' : COLORS.incoming,
+        text: usesLightTheme ? '#111b21' : COLORS.text,
+        muted: usesLightTheme ? '#667781' : COLORS.muted,
+        shadow: usesLightTheme ? '0 2px 4px rgba(11,20,26,0.10)' : '0 4px 12px rgba(0,0,0,0.28)',
+        linkCard: usesLightTheme ? 'rgba(11,20,26,0.06)' : 'rgba(0,0,0,0.2)',
+        linkBorder: usesLightTheme ? 'rgba(102,119,129,0.12)' : 'rgba(134,150,160,0.14)',
       }}
     >
       <AbsoluteFill
@@ -1152,7 +1283,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
               left: 0,
               right: 0,
               height: 96,
-              backgroundColor: isClassic ? 'rgba(255,255,255,0.96)' : 'rgba(32,44,51,0.96)',
+              backgroundColor: usesLightTheme ? 'rgba(255,255,255,0.96)' : 'rgba(32,44,51,0.96)',
               display: 'flex',
               alignItems: 'center',
               gap: 20,
@@ -1162,7 +1293,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             <div style={{ width: 6, height: 62, borderRadius: 8, backgroundColor: COLORS.green }} />
             <div>
               <div style={{ color: '#25d366', fontSize: 24, fontWeight: 750 }}>📌 Pesan Disematkan</div>
-              <div style={{ color: isClassic ? '#54656f' : '#c8d0d5', fontSize: 27, marginTop: 3 }}>{props.pinnedMessage}</div>
+              <div style={{ color: usesLightTheme ? '#54656f' : '#c8d0d5', fontSize: 27, marginTop: 3 }}>{props.pinnedMessage}</div>
             </div>
           </div>
         ) : null}
@@ -1194,8 +1325,8 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
                   alignSelf: 'center',
                   padding: '12px 30px',
                   borderRadius: 16,
-                  backgroundColor: isClassic ? 'rgba(225,243,251,0.95)' : 'rgba(18,27,33,0.92)',
-                  color: isClassic ? '#54656f' : '#c7d0d5',
+                  backgroundColor: usesLightTheme ? 'rgba(225,243,251,0.95)' : 'rgba(18,27,33,0.92)',
+                  color: usesLightTheme ? '#54656f' : '#c7d0d5',
                   fontSize: 25,
                   flexShrink: 0,
                 }}
@@ -1239,7 +1370,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
         style={{
           height: 128,
           flexShrink: 0,
-          backgroundColor: isClassic ? '#f0f2f5' : '#111b21',
+          backgroundColor: usesLightTheme ? '#f0f2f5' : '#111b21',
           display: 'flex',
           alignItems: 'center',
           gap: 18,
@@ -1252,8 +1383,8 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             flex: 1,
             height: 82,
             borderRadius: 999,
-            backgroundColor: isClassic ? '#ffffff' : '#2a3942',
-            color: isClassic ? '#667781' : COLORS.muted,
+            backgroundColor: usesLightTheme ? '#ffffff' : '#2a3942',
+            color: usesLightTheme ? '#667781' : COLORS.muted,
             display: 'flex',
             alignItems: 'center',
             gap: 24,
@@ -1372,6 +1503,7 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             </>
           ) : null}
         </div>
+        <BackgroundMusicTrack props={props} timeline={timeline} />
         <MessageAudioTracks props={props} timeline={timeline} />
         <EndTransitionLayer props={props} />
       </AbsoluteFill>

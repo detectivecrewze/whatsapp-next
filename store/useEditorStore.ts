@@ -54,6 +54,7 @@ interface EditorStore extends EditorState {
 
   // Video settings
   setHoldMs: (ms: number) => void;
+  setImageHoldMs: (ms: number) => void;
   setReplyDelay: (ms: number) => void;
   setUseTyping: (v: boolean) => void;
   setUseSoundIn: (v: boolean) => void;
@@ -84,6 +85,19 @@ interface EditorStore extends EditorState {
   setAudioMapEntry: (key: string | number, url: string) => void;
   removeAudioMapEntry: (messageId: string) => void;
   clearAudioMap: () => void;
+
+  // Background music
+  setEnableBgm: (v: boolean) => void;
+  setBgmUrl: (url: string | null) => void;
+  setBgmName: (name: string) => void;
+  setBgmVolume: (v: number) => void;
+  setBgmPitchSemitones: (v: number) => void;
+  setBgmStartAt: (seconds: number) => void;
+  setBgmFadeIn: (seconds: number) => void;
+  setBgmFadeOut: (seconds: number) => void;
+  setBgmLoop: (v: boolean) => void;
+  setBgmDucking: (v: boolean) => void;
+  setBgmDuckVolume: (v: number) => void;
 
   // Header
   setHeaderStatus: (status: 'online' | 'typing' | 'custom') => void;
@@ -161,6 +175,7 @@ export const useEditorStore = create<EditorStore>()((set) => ({
 
   // Video settings
   setHoldMs: (holdMs) => set({ holdMs }),
+  setImageHoldMs: (imageHoldMs) => set({ imageHoldMs }),
   setReplyDelay: (replyDelay) => set({ replyDelay }),
   setUseTyping: (useTyping) => set({ useTyping }),
   setUseSoundIn: (useSoundIn) => set({ useSoundIn }),
@@ -199,6 +214,19 @@ export const useEditorStore = create<EditorStore>()((set) => ({
       return { ttsAudioMap };
     }),
   clearAudioMap: () => set({ ttsAudioMap: {} }),
+
+  // Background music
+  setEnableBgm: (enableBgm) => set({ enableBgm }),
+  setBgmUrl: (bgmUrl) => set({ bgmUrl }),
+  setBgmName: (bgmName) => set({ bgmName }),
+  setBgmVolume: (bgmVolume) => set({ bgmVolume }),
+  setBgmPitchSemitones: (bgmPitchSemitones) => set({ bgmPitchSemitones }),
+  setBgmStartAt: (bgmStartAt) => set({ bgmStartAt }),
+  setBgmFadeIn: (bgmFadeIn) => set({ bgmFadeIn }),
+  setBgmFadeOut: (bgmFadeOut) => set({ bgmFadeOut }),
+  setBgmLoop: (bgmLoop) => set({ bgmLoop }),
+  setBgmDucking: (bgmDucking) => set({ bgmDucking }),
+  setBgmDuckVolume: (bgmDuckVolume) => set({ bgmDuckVolume }),
 
   // Header
   setHeaderStatus: (headerStatus) => set({ headerStatus }),

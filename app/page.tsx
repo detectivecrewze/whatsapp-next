@@ -59,9 +59,9 @@ const WORKSPACES: Workspace[] = [
     id: 'voice',
     label: 'Voice',
     title: 'Voice Over',
-    description: 'Kelola suara untuk setiap karakter.',
+    description: 'Kelola voice dan musik latar.',
     icon: Volume2,
-    sections: ['voice-over'],
+    sections: ['voice-over', 'background-music'],
   },
   {
     id: 'visual',

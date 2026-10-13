@@ -1,24 +1,40 @@
 import type { CloudPreset, EditorState } from '@/types';
 
-export const CURRENT_CLOUD_PRESET_VERSION = 2;
+export const CURRENT_CLOUD_PRESET_VERSION = 4;
 
 export function isLegacyCloudPreset(preset: Pick<CloudPreset, 'schemaVersion'>): boolean {
   return (preset.schemaVersion ?? 1) < CURRENT_CLOUD_PRESET_VERSION;
 }
 
 /**
- * Version 2 introduced a status-bar clock driven by each bubble's timestamp.
- * Older projects could persist the former fixed clock, so disable that legacy
- * override while leaving explicitly configured clocks in new projects intact.
+ * Version 2 introduced the chat-driven status-bar clock, version 3 adds
+ * background music, and version 4 adds a separate hold for silent images.
+ * Explicit defaults stop older projects from inheriting settings from
+ * whichever project was open immediately before them.
  */
 export function migrateCloudPresetData(
   data: Partial<EditorState>,
   schemaVersion?: number,
 ): Partial<EditorState> {
-  if ((schemaVersion ?? 1) >= CURRENT_CLOUD_PRESET_VERSION) return data;
+  const sourceVersion = schemaVersion ?? 1;
+  if (sourceVersion >= CURRENT_CLOUD_PRESET_VERSION) return data;
 
   return {
     ...data,
-    useCustomTime: false,
+    ...(sourceVersion < 2 ? { useCustomTime: false } : {}),
+    ...(sourceVersion < 3 ? {
+      enableBgm: false,
+      bgmUrl: null,
+      bgmName: '',
+      bgmVolume: 0.18,
+      bgmPitchSemitones: 0,
+      bgmStartAt: 0,
+      bgmFadeIn: 1,
+      bgmFadeOut: 1.25,
+      bgmLoop: true,
+      bgmDucking: true,
+      bgmDuckVolume: 0.25,
+    } : {}),
+    imageHoldMs: data.imageHoldMs ?? 4000,
   };
 }

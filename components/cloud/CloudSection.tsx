@@ -10,6 +10,7 @@ import {
   FolderOpen,
   Loader2,
   MessageSquareText,
+  Music2,
   Pencil,
   RefreshCw,
   Save,
@@ -22,7 +23,7 @@ import { useCloudStore } from '@/store/useCloudStore';
 import { usePlayerStore } from '@/store/usePlayerStore';
 import type { CloudPreset, EditorState } from '@/types';
 import { newId } from '@/lib/utils';
-import { persistAudioMapForCloud } from '@/lib/tts';
+import { persistAudioMapForCloud, persistAudioSourceForCloud } from '@/lib/tts';
 import {
   CURRENT_CLOUD_PRESET_VERSION,
   isLegacyCloudPreset,
@@ -47,6 +48,7 @@ function collectEditorData(state: ReturnType<typeof useEditorStore.getState>): P
     bgImage: state.bgImage,
     messages: state.messages,
     holdMs: state.holdMs,
+    imageHoldMs: state.imageHoldMs,
     replyDelay: state.replyDelay,
     useTyping: state.useTyping,
     useSoundIn: state.useSoundIn,
@@ -67,6 +69,17 @@ function collectEditorData(state: ReturnType<typeof useEditorStore.getState>): P
     ttsStyle: state.ttsStyle,
     ttsSpeed: state.ttsSpeed,
     ttsAudioMap: state.ttsAudioMap,
+    enableBgm: state.enableBgm,
+    bgmUrl: state.bgmUrl,
+    bgmName: state.bgmName,
+    bgmVolume: state.bgmVolume,
+    bgmPitchSemitones: state.bgmPitchSemitones,
+    bgmStartAt: state.bgmStartAt,
+    bgmFadeIn: state.bgmFadeIn,
+    bgmFadeOut: state.bgmFadeOut,
+    bgmLoop: state.bgmLoop,
+    bgmDucking: state.bgmDucking,
+    bgmDuckVolume: state.bgmDuckVolume,
     headerStatus: state.headerStatus,
     headerStatusText: state.headerStatusText,
     pinnedMessage: state.pinnedMessage,
@@ -119,15 +132,18 @@ export default function CloudSection() {
     const id = newId('preset');
 
     try {
-      const ttsAudioMap = await persistAudioMapForCloud(state.ttsAudioMap);
-      state.applyPayload({ ttsAudioMap });
+      const [ttsAudioMap, bgmUrl] = await Promise.all([
+        persistAudioMapForCloud(state.ttsAudioMap),
+        persistAudioSourceForCloud(state.bgmUrl),
+      ]);
+      state.applyPayload({ ttsAudioMap, bgmUrl });
 
       const preset: CloudPreset = {
         id,
         name: label,
         updatedAt: Date.now(),
         schemaVersion: CURRENT_CLOUD_PRESET_VERSION,
-        data: { ...collectEditorData(useEditorStore.getState()), ttsAudioMap },
+        data: { ...collectEditorData(useEditorStore.getState()), ttsAudioMap, bgmUrl },
       };
 
       await saveTemplate(id, preset);
@@ -148,7 +164,7 @@ export default function CloudSection() {
     setActiveId(preset.id);
     showToast(
       isLegacyCloudPreset(preset)
-        ? `Project “${preset.name}” dimuat · jam otomatis mengikuti bubble.`
+        ? `Project “${preset.name}” dimuat · pengaturan lama disesuaikan otomatis.`
         : `Project “${preset.name}” dimuat.`,
     );
   }
@@ -323,6 +339,11 @@ export default function CloudSection() {
                         <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8.5px]" style={{ background: audioCount ? 'rgba(37,211,102,0.10)' : 'rgba(255,255,255,0.05)', color: audioCount ? 'var(--wa-green)' : 'var(--wa-text-muted)' }}>
                           <Volume2 size={9} /> {audioCount ? `${audioCount} voice` : 'Tanpa voice'}
                         </span>
+                        {preset.data.enableBgm && preset.data.bgmUrl ? (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[8.5px]" style={{ background: 'rgba(83,189,235,0.10)', color: '#53bdeb' }}>
+                            <Music2 size={9} /> Backsound
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                   </div>

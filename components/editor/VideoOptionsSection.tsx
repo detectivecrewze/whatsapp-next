@@ -5,8 +5,8 @@ import { useEditorStore } from '@/store/useEditorStore';
 
 export default function VideoOptionsSection() {
   const {
-    holdMs, replyDelay, useTyping, useSoundIn, useSoundOut,
-    setHoldMs, setReplyDelay, setUseTyping, setUseSoundIn, setUseSoundOut,
+    holdMs, imageHoldMs, replyDelay, useTyping, useSoundIn, useSoundOut,
+    setHoldMs, setImageHoldMs, setReplyDelay, setUseTyping, setUseSoundIn, setUseSoundOut,
   } = useEditorStore();
 
   return (
@@ -30,6 +30,33 @@ export default function VideoOptionsSection() {
           <span>0.5s</span>
           <span>6s</span>
         </div>
+      </div>
+
+      {/* Silent image hold duration */}
+      <div
+        className="rounded-lg border p-2.5"
+        style={{ borderColor: 'rgba(56,189,248,0.24)', background: 'rgba(56,189,248,0.055)' }}
+      >
+        <label className="section-label">
+          🖼️ Durasi Tahan Gambar —{' '}
+          <span style={{ color: '#38bdf8' }}>{imageHoldMs / 1000}s</span>
+        </label>
+        <input
+          type="range"
+          className="slider"
+          min={1000}
+          max={12000}
+          step={500}
+          value={imageHoldMs}
+          onChange={(e) => setImageHoldMs(Number(e.target.value))}
+        />
+        <div className="flex justify-between text-[10px] mt-0.5" style={{ color: 'var(--wa-text-muted)' }}>
+          <span>1s</span>
+          <span>12s</span>
+        </div>
+        <p className="mt-1.5 text-[10.5px] leading-relaxed" style={{ color: 'var(--wa-text-muted)' }}>
+          Untuk Gambar &amp; View Once tanpa voice. Jika ada voice, durasinya tetap mengikuti voice + tahan pesan biasa.
+        </p>
       </div>
 
       {/* Reply delay */}

@@ -30,6 +30,7 @@ const QWEN_MODEL_CHAIN = ['qwen-max', 'qwen-plus', 'qwen-turbo'];
 
 type StoryType = 'drama_product' | 'comedy_product' | 'horror';
 type RevealType = 'none' | 'link' | 'image';
+type GeneratedChatType = 'personal' | 'group';
 
 interface ProductBrief {
   url?: string;
@@ -37,6 +38,11 @@ interface ProductBrief {
   description?: string;
   image?: string;
   kind?: 'digital_gift';
+}
+
+interface GroupConfig {
+  name?: string;
+  members?: string[];
 }
 
 interface ExistingMessageBrief {
@@ -69,12 +75,16 @@ function buildStoryDirective(
   storyType: StoryType,
   product?: ProductBrief | null,
   revealType: RevealType = 'none',
+  chatType: GeneratedChatType = 'personal',
 ): string {
   if (storyType === 'horror') {
-    return `JENIS KONTEN: FAKE CHAT HORROR
+    return `JENIS KONTEN: FAKE CHAT HORROR${chatType === 'group' ? ' GRUP' : ''}
 - Mulai dengan kejadian biasa yang langsung memancing rasa penasaran dalam 1-2 bubble pertama.
 - Naikkan ketegangan secara bertahap lewat detail kecil yang realistis, bukan narasi panjang.
 - Pesan terakhir harus menjadi plot twist yang jelas dan pendek.
+- ${chatType === 'group'
+  ? 'Gunakan dinamika beberapa anggota: tiap pengirim punya pengetahuan, reaksi, dan gaya bicara berbeda. Horor harus muncul dari interaksi grup, bukan dialog dua orang yang hanya diberi nama pengirim.'
+  : 'Jaga pengetahuan kedua tokoh tetap konsisten dan jangan menukar identitas pengirim.'}
 - Jangan gunakan link produk, promosi, komedi, tag suara, atau kalimat narator.
 - Kamu BOLEH memakai maksimal satu bubble type "image" atau "view_once" jika bukti visual benar-benar membuat cerita lebih menyeramkan (contoh: foto lorong, tangkapan layar CCTV, atau sosok di jendela). Ini pilihan, bukan kewajiban.
 - Jangan selalu menaruh gambar sebagai pesan terakhir. Setelah gambar, percakapan boleh berlanjut agar tokoh bereaksi dan plot twist terasa hidup.
@@ -82,19 +92,35 @@ function buildStoryDirective(
   }
 
   const genreRules = storyType === 'comedy_product'
-    ? `- Ini komedi pasangan/bucin yang absurd tetapi masih masuk akal sebagai chat asli.
+    ? chatType === 'group'
+      ? `- Ini komedi circle pertemanan yang ramai tetapi alurnya tetap mudah diikuti.
+- Bangun satu premis jelas: kejadian pemicu → reaksi beberapa anggota → kekacauan/salah paham → reveal atau punchline → closure.
+- Dalam dua bubble pertama, jelaskan kejadian konkret yang membuat grup aktif. Jangan memulai dari kekacauan tanpa konteks.
+- Setiap anggota harus punya fungsi dan gaya berbeda; misalnya admin panik, teman receh, teman jujur, dan target kejutan. Jangan membuat semua orang terdengar sama.
+- Kelucuan berasal dari saling menyela, rahasia yang hampir bocor, atau alasan yang terlalu kentara—bukan kalimat random.
+- Produk, jika dipakai, adalah halaman digital berisi wish/ucapan bersama yang dibuat circle, bukan barang fisik.
+- Setelah reveal, beri reaksi target dan maksimal satu punchline penutup agar ending tetap jelas.`
+      : `- Ini komedi pasangan/bucin yang absurd tetapi masih masuk akal sebagai chat asli.
 - Bangun satu premis yang jelas: penyebab konkret → salah paham makin besar → usaha memperbaiki → payoff/punchline → reaksi penutup.
 - Dalam dua bubble pertama, jelaskan kejadian pemicu secara konkret: siapa melakukan apa, janji apa yang dilanggar, atau kalimat apa yang membuat salah paham. Jangan mulai dari "terserah", ngambek, marah, atau sindiran sebelum penyebabnya diketahui pembaca.
 - Kelucuan harus datang dari karakter, timing balasan, gengsi, atau logika yang terlalu harfiah. Jangan membuat kalimat random hanya supaya terlihat lucu.
 - Jangan menjadikan setiap bubble sebagai punchline. Sisakan respons pendek seperti "hah?", "serius?", atau "ya ampun" agar ritmenya natural.
 - Produk, jika dipakai, harus menjadi jawaban tak terduga, alat berdamai, atau bukti bucin—bukan iklan yang ditempel.
 - Setelah punchline/reveal, akhiri dengan satu reaksi yang menunjukkan nasib konflik: dimaafkan sedikit, masih digoda, atau sepakat membicarakannya. Jangan memaksakan perubahan emosi total.`
-    : `- Buat drama pasangan yang emosional tetapi tetap terasa seperti chat sehari-hari.
+    : chatType === 'group'
+      ? `- Buat drama pertemanan/circle yang hangat dan terasa seperti obrolan grup asli.
+- Dalam dua bubble pertama, jelaskan momen utamanya secara konkret: wisuda, ulang tahun, perpisahan, pencapaian, atau konflik pertemanan.
+- Beri 3-5 anggota fungsi yang berbeda. Percakapan harus bergerak lewat respons antaranggota, bukan monolog bergantian.
+- Jika ada digital gift, posisikan sebagai halaman Circle Wishes berisi ucapan, foto, atau harapan dari banyak anggota.
+- Setelah reveal, target memberi reaksi yang menjawab momen awal; anggota lain boleh menutup dengan dukungan atau candaan kecil. Jangan membuat semua anggota mendadak berbicara formal.`
+      : `- Buat drama pasangan yang emosional tetapi tetap terasa seperti chat sehari-hari.
 - Dalam dua bubble pertama, jelaskan kejadian pemicu secara konkret: siapa melakukan apa dan kenapa itu membuat tokoh lain kecewa. Jangan membuka dengan kemarahan atau ngambek tanpa sebab yang bisa dipahami pembaca.
 - Produk, jika dipakai, harus masuk sebagai usaha memperbaiki konflik—bukan iklan yang ditempel.
 - Setelah reveal, akhiri dengan satu reaksi yang jelas dari penerima: menerima usahanya, belum sepenuhnya memaafkan, atau menyepakati langkah berikutnya. Closure harus terasa wajar, bukan mendadak kembali mesra.`;
 
-  const contentLabel = storyType === 'comedy_product' ? 'KOMEDI BUCIN ABSURD' : 'DRAMA PASANGAN';
+  const contentLabel = storyType === 'comedy_product'
+    ? chatType === 'group' ? 'KOMEDI GROUP CHAT' : 'KOMEDI BUCIN ABSURD'
+    : chatType === 'group' ? 'DRAMA GROUP CHAT' : 'DRAMA PASANGAN';
 
   if (revealType === 'none') {
     return `JENIS KONTEN: FAKE CHAT ${contentLabel} TANPA MEDIA WAJIB
@@ -112,11 +138,11 @@ ${genreRules}
   };
 
   const digitalGiftRules = `KONTEKS PRODUK — WAJIB DIPATUHI:
-- Produk user adalah DIGITAL GIFT personal berupa halaman web berisi pesan/kejutan untuk pasangan. Ini BUKAN barang fisik.
-- Tokoh membuat atau menyiapkan halaman digital tersebut untuk menyampaikan perasaan yang sulit diucapkan lewat chat biasa.
+- Produk user adalah DIGITAL GIFT berupa halaman web personal${chatType === 'group' ? ' atau Circle Wishes yang dapat diisi banyak teman' : ''}. Ini BUKAN barang fisik.
+- Tokoh membuat atau menyiapkan halaman digital tersebut untuk menyampaikan ucapan, perasaan, atau kejutan yang lebih personal daripada chat biasa.
 - Jangan membuat adegan mengantar barang, datang ke rumah/kosan, menunggu di depan, mengirim paket, membungkus hadiah, membeli barang, atau menyerahkan benda.
 - Jangan menyebutnya "barang", "paket", "pesanan", atau "barang yang kamu pengen". Di dalam chat gunakan ungkapan natural seperti "aku bikinin sesuatu", "aku tulis semuanya di sini", atau "coba buka sebentar".
-- Reveal harus terasa seperti kelanjutan emosi percakapan: penerima membuka halaman personal itu untuk membaca pesan atau kejutan, bukan untuk melihat katalog produk.`;
+- Reveal harus terasa seperti kelanjutan emosi percakapan: penerima membuka halaman itu untuk membaca pesan, wish, atau kejutan, bukan untuk melihat katalog produk.`;
 
   if (revealType === 'image') {
     return `JENIS KONTEN: ${contentLabel} + PRODUCT REVEAL
@@ -147,23 +173,76 @@ ${digitalGiftRules}
 - Jangan menyebut istilah soft selling, CTA, penonton, konten, atau iklan di dalam percakapan.`;
 }
 
+function buildConversationDirective(
+  chatType: GeneratedChatType,
+  groupConfig?: GroupConfig | null,
+): string {
+  if (chatType === 'personal') {
+    return `FORMAT PERCAKAPAN: CHAT PERSONAL
+- Hanya ada dua tokoh: "outgoing" adalah pemilik HP dan "incoming" adalah kontak lawan bicara.
+- Field senderName tidak perlu dipakai.`;
+  }
+
+  const requestedName = groupConfig?.name?.trim();
+  const requestedMembers = groupConfig?.members
+    ?.map((member) => member.trim())
+    .filter(Boolean) ?? [];
+
+  return `FORMAT PERCAKAPAN: GROUP CHAT WHATSAPP
+- "outgoing" selalu pemilik HP / kamu. Pesan outgoing TIDAK memakai senderName.
+- "incoming" adalah pesan anggota lain. SETIAP pesan incoming WAJIB memiliki senderName yang konsisten.
+- Gunakan 3-5 anggota aktif dan variasikan giliran bicara secara natural. Jangan hanya membuat satu anggota membalas semua pesan.
+- Setiap anggota harus punya gaya, emosi, dan pengetahuan yang konsisten. Jangan menukar peran target kejutan, admin, atau pelaku konflik.
+- Output wajib berisi chatType "group", name sebagai nama grup, groupSubtitle, dan participants.
+- groupSubtitle berupa daftar ringkas anggota di header, diakhiri "kamu".
+${requestedName ? `- Gunakan nama grup ini: ${JSON.stringify(requestedName)}.` : '- Buat nama grup yang singkat, natural, dan relevan dengan cerita.'}
+${requestedMembers.length > 0
+  ? `- Gunakan nama anggota berikut secara konsisten: ${requestedMembers.map((member) => JSON.stringify(member)).join(', ')}.`
+  : '- Buat 3-5 nama anggota Indonesia yang mudah dibedakan.'}`;
+}
+
 // ── Build system prompt ───────────────────────────────────────────────────────
 function buildSystemPrompt(
   targetLength: number,
   storyType: StoryType,
   product?: ProductBrief | null,
   revealType: RevealType = 'none',
+  chatType: GeneratedChatType = 'personal',
+  groupConfig?: GroupConfig | null,
 ): string {
+  const outputExample = chatType === 'group'
+    ? `{
+  "chatType": "group",
+  "name": "Nama Grup yang sesuai cerita",
+  "groupSubtitle": "Naya, Dimas, Raka, kamu",
+  "participants": ["Naya", "Dimas", "Raka"],
+  "messages": [
+    { "type": "text", "direction": "incoming", "senderName": "Naya", "time": "21:30", "text": "Isi pesan Naya" },
+    { "type": "text", "direction": "outgoing", "time": "21:31", "text": "Balasan pemilik HP" },
+    { "type": "text", "direction": "incoming", "senderName": "Dimas", "time": "21:31", "text": "Balasan Dimas" }
+  ]
+}`
+    : `{
+  "chatType": "personal",
+  "name": "Nama kontak yang sesuai cerita",
+  "messages": [
+    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Isi pesan" },
+    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Balasan" }
+  ]
+}`;
+
   return `Kamu adalah penulis naskah fake chat WhatsApp untuk video TikTok dan Reels Indonesia.
 
-${buildStoryDirective(storyType, product, revealType)}
+${buildConversationDirective(chatType, groupConfig)}
+
+${buildStoryDirective(storyType, product, revealType, chatType)}
 
 ${buildSfxDirective(storyType)}
 
 ATURAN CERITA:
 1. Buat TEPAT ${targetLength} bubble chat dari awal sampai ending. Tidak boleh kurang atau lebih.
-2. Setiap bubble harus merespons bubble sebelumnya dan menjaga identitas dua tokoh secara konsisten.
-3. "outgoing" adalah pemilik HP; "incoming" adalah kontak lawan bicara.
+2. Setiap bubble harus merespons bubble sebelumnya dan menjaga identitas semua tokoh secara konsisten.
+3. Patuhi format arah dan senderName sesuai jenis percakapan. Jangan pernah memberi senderName pada outgoing.
 4. Gunakan bahasa Indonesia sehari-hari yang natural. Satu bubble berisi satu pikiran, idealnya 2-14 kata.
 5. Percakapan harus terasa seperti dua orang yang sudah saling mengenal. Hindari bahasa formal/kaku seperti "aku percaya kamu pasti punya sesuatu yang mengejutkan", "aku baik-baik saja kok", atau kalimat yang menjelaskan situasi secara terang-terangan.
 6. Jangan mengulang informasi, pertanyaan, maupun ajakan yang sama di dua bubble berurutan. Respons harus membawa percakapan maju.
@@ -172,18 +251,11 @@ ATURAN CERITA:
 9. Jangan memakai voice_note. Tipe yang diizinkan: text, link, image, view_once, notification, transfer, location, deleted.
 10. Gunakan image/view_once/notifikasi hanya jika benar-benar membantu alur. Untuk media visual, caption adalah ucapan pengirim dan imageHint adalah petunjuk foto yang perlu disiapkan user.
 11. Jam harus maju secara wajar dengan format HH:MM.
-12. Sebelum mengeluarkan JSON, lakukan pengecekan diam-diam: siapa pemilik HP, siapa kontak, siapa yang mengalami masalah, siapa yang menawarkan solusi, dan apa yang sudah diketahui masing-masing. Perbaiki setiap kata ganti atau respons yang tertukar.
+12. Sebelum mengeluarkan JSON, lakukan pengecekan diam-diam: siapa pemilik HP, siapa setiap pengirim, siapa target momen/kejutan, siapa yang menawarkan solusi, dan apa yang sudah diketahui masing-masing. Perbaiki senderName, kata ganti, atau respons yang tertukar.
 13. Jika ada product reveal, cek ulang bahwa tidak ada dialog yang menggambarkan produk sebagai barang fisik, paket, pesanan, atau sesuatu yang diantar ke rumah.
 
 FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
-{
-  "chatType": "personal",
-  "name": "Nama kontak yang sesuai cerita",
-  "messages": [
-    { "type": "text", "direction": "outgoing", "time": "21:30", "text": "Isi pesan" },
-    { "type": "text", "direction": "incoming", "time": "21:31", "text": "Balasan" }
-  ]
-}
+${outputExample}
 
 Jika memakai type "link", formatnya:
 { "type": "link", "direction": "incoming", "time": "21:35", "text": "Kalimat pengantar singkat", "linkUrl": "https://...", "linkTitle": "Judul", "linkDescription": "Deskripsi", "linkImage": "https://... atau kosong" }
@@ -203,6 +275,8 @@ Kembalikan hanya JSON valid.`;
 function buildImproviseSystemPrompt(
   targetLength: number,
   existingMessagesText: string,
+  chatType: GeneratedChatType = 'personal',
+  groupConfig?: GroupConfig | null,
 ): string {
   return `Kamu adalah penulis naskah fake chat WhatsApp untuk video TikTok dan Reels Indonesia.
 Tugasmu adalah MELANJUTKAN percakapan yang sudah ada tanpa mengulang atau mengubah pesan lama.
@@ -211,12 +285,14 @@ Tugasmu adalah MELANJUTKAN percakapan yang sudah ada tanpa mengulang atau mengub
 ${existingMessagesText}
 =============================
 
+${buildConversationDirective(chatType, groupConfig)}
+
 ${buildSfxDirective()}
 
 ATURAN LANJUTAN:
 - Tambahkan TEPAT ${targetLength} bubble BARU.
 - Bubble pertama harus langsung merespons pesan terakhir percakapan lama.
-- Jaga identitas dan arah incoming/outgoing secara konsisten.
+- Jaga identitas dan arah incoming/outgoing secara konsisten.${chatType === 'group' ? ' Setiap incoming baru wajib mempertahankan senderName anggota yang sudah ada atau memakai anggota yang tercantum di grup.' : ''}
 - Ikuti suasana, hubungan tokoh, dan konflik yang sudah terbentuk. Jangan mengubahnya menjadi promosi atau genre lain tanpa diminta user.
 - Gunakan bahasa Indonesia sehari-hari yang spontan, satu pikiran per bubble, tanpa tag emosi ElevenLabs dan tanpa narasi.
 - Secara default gunakan type "text". Tidak ada kewajiban mengakhiri chat dengan foto, link, produk, CTA, atau plot twist.
@@ -227,9 +303,10 @@ ATURAN LANJUTAN:
 
 FORMAT OUTPUT — JSON MURNI TANPA MARKDOWN:
 {
-  "name": "Nama kontak",
+  "chatType": "${chatType}",
+  "name": "${chatType === 'group' ? 'Nama grup' : 'Nama kontak'}",
   "messages": [
-    { "type": "text", "direction": "outgoing", "time": "21:35", "text": "Pesan baru yang menyambung" }
+    { "type": "text", "direction": "${chatType === 'group' ? 'incoming' : 'outgoing'}", ${chatType === 'group' ? '"senderName": "Nama anggota", ' : ''}"time": "21:35", "text": "Pesan baru yang menyambung" }
   ]
 }
 
@@ -377,8 +454,10 @@ export async function POST(req: NextRequest) {
       qwenKeyCustom = '',
       mode = 'create', // 'create' | 'improvise' | 'enhance_emotion'
       storyType = 'drama_product',
+      chatType = 'personal',
       revealType = 'none',
       product = null,
+      groupConfig = null,
       existingMessages = [],
     } = await req.json();
 
@@ -389,6 +468,19 @@ export async function POST(req: NextRequest) {
         : 'drama_product';
     const normalizedRevealType: RevealType =
       revealType === 'image' ? 'image' : revealType === 'link' ? 'link' : 'none';
+    const normalizedChatType: GeneratedChatType = chatType === 'group' ? 'group' : 'personal';
+    const normalizedGroupConfig: GroupConfig | null = normalizedChatType === 'group'
+      ? {
+          name: typeof groupConfig?.name === 'string' ? groupConfig.name.trim().slice(0, 60) : '',
+          members: Array.isArray(groupConfig?.members)
+            ? groupConfig.members
+                .filter((member: unknown): member is string => typeof member === 'string')
+                .map((member: string) => member.trim().slice(0, 30))
+                .filter(Boolean)
+                .slice(0, 8)
+            : [],
+        }
+      : null;
 
     if (!prompt?.trim() && mode === 'create') {
       return NextResponse.json({ error: 'Prompt kosong' }, { status: 400 });
@@ -424,12 +516,21 @@ export async function POST(req: NextRequest) {
       systemInstruction = buildImproviseSystemPrompt(
         Number(count),
         formattedHistory,
+        normalizedChatType,
+        normalizedGroupConfig,
       );
       userPrompt = prompt?.trim()
         ? `Arahan Khusus Improvisasi:\n${prompt.trim()}`
         : `Lanjutkan obrolan di atas secara natural. Tidak perlu menambahkan foto, link, produk, CTA, atau ending khusus.`;
     } else {
-      systemInstruction = buildSystemPrompt(Number(count), normalizedStoryType, product, normalizedRevealType);
+      systemInstruction = buildSystemPrompt(
+        Number(count),
+        normalizedStoryType,
+        product,
+        normalizedRevealType,
+        normalizedChatType,
+        normalizedGroupConfig,
+      );
       userPrompt = `Ide Cerita & Spesifikasi User:\n${prompt?.trim() || 'Drama percakapan WhatsApp viral'}`;
     }
 
@@ -472,6 +573,45 @@ export async function POST(req: NextRequest) {
     // ── Parse & return ───────────────────────────────────────────────────────
     try {
       const parsed = JSON.parse(rawText);
+      if (normalizedChatType === 'group' && mode !== 'enhance_emotion') {
+        const requestedMembers = normalizedGroupConfig?.members ?? [];
+        const aiParticipants = Array.isArray(parsed.participants)
+          ? parsed.participants
+              .filter((member: unknown): member is string => typeof member === 'string')
+              .map((member: string) => member.trim())
+              .filter((member: string) => Boolean(member) && member.toLowerCase() !== 'kamu')
+          : [];
+        const participantNames = [...new Set(aiParticipants.length > 0 ? aiParticipants : requestedMembers)];
+        const fallbackParticipants = participantNames.length > 0
+          ? participantNames
+          : ['Naya', 'Dimas', 'Raka'];
+        let fallbackSenderIndex = 0;
+
+        parsed.chatType = 'group';
+        parsed.name = normalizedGroupConfig?.name || parsed.name || parsed.groupName || 'Circle Kita';
+        parsed.participants = fallbackParticipants;
+        const generatedSubtitle = typeof parsed.groupSubtitle === 'string' && parsed.groupSubtitle.trim()
+          ? parsed.groupSubtitle.trim()
+          : `${fallbackParticipants.join(', ')}, kamu`;
+        parsed.groupSubtitle = /\bkamu\b/i.test(generatedSubtitle)
+          ? generatedSubtitle
+          : `${generatedSubtitle}, kamu`;
+        if (Array.isArray(parsed.messages)) {
+          parsed.messages = parsed.messages.map((message: Record<string, unknown>) => {
+            if (message.direction === 'outgoing') {
+              const outgoingMessage = { ...message };
+              delete outgoingMessage.senderName;
+              delete outgoingMessage.senderColor;
+              return outgoingMessage;
+            }
+
+            const senderName = typeof message.senderName === 'string' && message.senderName.trim()
+              ? message.senderName.trim()
+              : fallbackParticipants[fallbackSenderIndex++ % fallbackParticipants.length];
+            return { ...message, direction: 'incoming', senderName };
+          });
+        }
+      }
       console.log(`[AI] ✅ DONE in ${Date.now() - t0}ms via ${activeProvider}. Messages: ${parsed.messages?.length ?? 0}, Name: ${parsed.name}`);
       return NextResponse.json(parsed);
     } catch {

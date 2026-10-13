@@ -14,11 +14,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Audio data kosong' }, { status: 400 });
     }
 
+    if (audioBuffer.byteLength > 25 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Ukuran audio maksimal 25 MB' }, { status: 413 });
+    }
+
+    const contentType = req.headers.get('content-type') || 'audio/mpeg';
+    if (!contentType.startsWith('audio/')) {
+      return NextResponse.json({ error: 'File harus berupa audio' }, { status: 415 });
+    }
+
     // Upload to existing Cloudflare Worker
     const res = await fetch(`${WORKER_URL}/upload-audio?passcode=${encodeURIComponent(TEAM_PASSCODE)}`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'audio/mpeg',
+        'Content-Type': contentType,
         'X-Passcode': TEAM_PASSCODE,
         'X-Team-Passcode': TEAM_PASSCODE,
         'Content-Length': String(audioBuffer.byteLength),

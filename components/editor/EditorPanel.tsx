@@ -7,6 +7,7 @@ import {
   Film,
   Image as ImageIcon,
   MessageSquare,
+  Music2,
   Settings,
   User,
   Volume2,
@@ -20,6 +21,7 @@ import WallpaperSection from './WallpaperSection';
 import VideoOptionsSection from './VideoOptionsSection';
 import ZoomSection from './ZoomSection';
 import TtsSection from './TtsSection';
+import BacksoundSection from './BacksoundSection';
 import AiGeneratorSection from './AiGeneratorSection';
 import CloudSection from '@/components/cloud/CloudSection';
 import ShareLinkButton from '@/components/cloud/ShareLinkButton';
@@ -31,6 +33,7 @@ export type EditorSectionId =
   | 'messages'
   | 'ai-script'
   | 'voice-over'
+  | 'background-music'
   | 'wallpaper'
   | 'video-options'
   | 'auto-zoom'
@@ -74,6 +77,13 @@ export const EDITOR_SECTIONS: Record<EditorSectionId, EditorSectionMeta> = {
     shortTitle: 'Voice generator',
     description: 'Ubah bubble chat menjadi suara untuk preview dan video MP4.',
     icon: Volume2,
+  },
+  'background-music': {
+    id: 'background-music',
+    title: 'Backsound Musik',
+    shortTitle: 'Backsound',
+    description: 'Tambahkan musik latar, pitch, volume, fade, dan auto-ducking voice.',
+    icon: Music2,
   },
   wallpaper: {
     id: 'wallpaper',
@@ -121,6 +131,8 @@ export const EDITOR_SECTIONS: Record<EditorSectionId, EditorSectionMeta> = {
 
 function ExportSummary() {
   const exportLayout = useEditorStore((state) => state.exportLayout);
+  const enableBgm = useEditorStore((state) => state.enableBgm);
+  const bgmName = useEditorStore((state) => state.bgmName);
 
   return (
     <div className="flex flex-col gap-3">
@@ -135,6 +147,7 @@ function ExportSummary() {
           <span>Resolusi</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>1080 × 1920</strong>
           <span>Format</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>MP4 · H.264</strong>
           <span>Audio</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>AAC</strong>
+          <span>Backsound</span><strong className="truncate text-right font-medium" style={{ color: enableBgm ? 'var(--wa-green)' : 'var(--wa-text)' }}>{enableBgm ? bgmName || 'Aktif' : 'Nonaktif'}</strong>
           <span>Rasio</span><strong className="text-right font-medium" style={{ color: 'var(--wa-text)' }}>9:16</strong>
           <span>Layout</span><strong className="text-right font-medium" style={{ color: 'var(--wa-green)' }}>{exportLayout === 'phone' ? 'HP di Tengah' : 'Normal Penuh'}</strong>
         </div>
@@ -159,6 +172,8 @@ function SectionContent({ section }: { section: EditorSectionId }) {
       return <AiGeneratorSection />;
     case 'voice-over':
       return <TtsSection />;
+    case 'background-music':
+      return <BacksoundSection />;
     case 'wallpaper':
       return <WallpaperSection />;
     case 'video-options':

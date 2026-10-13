@@ -156,7 +156,7 @@ function ViewOnceBubble({ message, showSenderName }: { message: Message; showSen
         <div className="w-6 h-6 rounded-full border-2 border-[#00a884] flex items-center justify-center shrink-0">
           <span className="text-[11px] font-bold text-[#00a884]">1</span>
         </div>
-        <span className="text-[14px] font-semibold text-white flex-1">Foto</span>
+        <span className="text-[14px] font-semibold flex-1" style={{ color: 'var(--wa-chat-text)' }}>Foto</span>
         <TimeRow time={message.time} direction={message.direction} />
       </div>
     </div>

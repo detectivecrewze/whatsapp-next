@@ -16,7 +16,9 @@ import {
   type WhatsAppVideoProps,
 } from '@/remotion/videoTypes';
 
-type ExportStatus = 'idle' | 'checking' | 'rendering' | 'done' | 'error';
+type ExportStatus = 'idle' | 'checking' | 'preparing-audio' | 'rendering' | 'done' | 'error';
+
+const AUDIO_RENDER_TIMEOUT_MS = 120_000;
 
 function collectVideoProps(): WhatsAppVideoProps {
   const state = useEditorStore.getState();
@@ -36,6 +38,7 @@ function collectVideoProps(): WhatsAppVideoProps {
     bgImage: state.bgImage,
     messages: state.messages,
     holdMs: state.holdMs,
+    imageHoldMs: state.imageHoldMs,
     replyDelay: state.replyDelay,
     useTyping: state.useTyping,
     useSoundIn: state.useSoundIn,
@@ -50,6 +53,17 @@ function collectVideoProps(): WhatsAppVideoProps {
     enableTts: state.enableTts,
     ttsAudioMap: state.ttsAudioMap,
     ttsSpeed: state.ttsSpeed,
+    enableBgm: state.enableBgm,
+    bgmUrl: state.bgmUrl,
+    bgmName: state.bgmName,
+    bgmVolume: state.bgmVolume,
+    bgmPitchSemitones: state.bgmPitchSemitones,
+    bgmStartAt: state.bgmStartAt,
+    bgmFadeIn: state.bgmFadeIn,
+    bgmFadeOut: state.bgmFadeOut,
+    bgmLoop: state.bgmLoop,
+    bgmDucking: state.bgmDucking,
+    bgmDuckVolume: state.bgmDuckVolume,
     headerStatus: state.headerStatus,
     headerStatusText: state.headerStatusText,
     pinnedMessage: state.pinnedMessage,
@@ -95,6 +109,90 @@ async function resolveVoiceDurations(props: WhatsAppVideoProps) {
   );
 
   return Object.fromEntries(entries.filter((entry): entry is readonly [string, number] => entry !== null));
+}
+
+function isRemoteAudioSource(source: string | null | undefined): source is string {
+  return Boolean(source && /^https?:\/\//i.test(source));
+}
+
+async function downloadAudioForRender(source: string) {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), AUDIO_RENDER_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(source, {
+      cache: 'force-cache',
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const blob = await response.blob();
+    if (blob.size === 0) throw new Error('File audio kosong');
+    return URL.createObjectURL(blob);
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+async function localizeAudioForRender(props: WhatsAppVideoProps) {
+  const remoteSources = new Set<string>();
+
+  if (props.enableBgm && isRemoteAudioSource(props.bgmUrl)) {
+    remoteSources.add(props.bgmUrl);
+  }
+  for (const source of Object.values(props.ttsAudioMap)) {
+    if (isRemoteAudioSource(source)) remoteSources.add(source);
+  }
+  for (const message of props.messages) {
+    if (isRemoteAudioSource(message.audioDataUrl)) remoteSources.add(message.audioDataUrl);
+  }
+
+  if (remoteSources.size === 0) {
+    return { props, objectUrls: [] as string[] };
+  }
+
+  const replacements = new Map<string, string>();
+  const objectUrls: string[] = [];
+
+  try {
+    // Download sequentially to avoid a burst of concurrent cloud requests and
+    // memory spikes when a project contains many voice clips plus a long song.
+    for (const source of remoteSources) {
+      const localUrl = await downloadAudioForRender(source);
+      replacements.set(source, localUrl);
+      objectUrls.push(localUrl);
+    }
+
+    return {
+      props: {
+        ...props,
+        bgmUrl: props.bgmUrl ? (replacements.get(props.bgmUrl) ?? props.bgmUrl) : null,
+        ttsAudioMap: Object.fromEntries(
+          Object.entries(props.ttsAudioMap).map(([key, source]) => [
+            key,
+            replacements.get(source) ?? source,
+          ]),
+        ),
+        messages: props.messages.map((message) => ({
+          ...message,
+          audioDataUrl: message.audioDataUrl
+            ? (replacements.get(message.audioDataUrl) ?? message.audioDataUrl)
+            : message.audioDataUrl,
+        })),
+      },
+      objectUrls,
+    };
+  } catch (error) {
+    for (const objectUrl of objectUrls) URL.revokeObjectURL(objectUrl);
+    const reason = error instanceof Error && error.name === 'AbortError'
+      ? 'waktu unduh melewati 120 detik'
+      : error instanceof Error
+        ? error.message
+        : 'kesalahan jaringan';
+    throw new Error(`Audio cloud gagal disiapkan (${reason}). Periksa koneksi lalu coba export lagi.`);
+  }
 }
 
 function safeFileName(value: string) {
@@ -152,6 +250,7 @@ export default function VideoExportButton() {
     setStatus('checking');
     setProgress(0);
     setError(null);
+    let temporaryAudioUrls: string[] = [];
 
     try {
       if (messageCount === 0) {
@@ -179,9 +278,13 @@ export default function VideoExportButton() {
       }
 
       const baseProps = collectVideoProps();
+      setStatus('preparing-audio');
+      const localized = await localizeAudioForRender(baseProps);
+      temporaryAudioUrls = localized.objectUrls;
+      const localizedProps = localized.props;
       const inputProps: WhatsAppVideoProps = {
-        ...baseProps,
-        voiceDurationsMs: await resolveVoiceDurations(baseProps),
+        ...localizedProps,
+        voiceDurationsMs: await resolveVoiceDurations(localizedProps),
       };
       const durationInFrames = getVideoDurationInFrames(inputProps);
 
@@ -207,6 +310,7 @@ export default function VideoExportButton() {
         videoBitrate: 12_000_000,
         hardwareAcceleration: 'prefer-hardware',
         pageResponsiveness: 'medium',
+        delayRenderTimeoutInMilliseconds: AUDIO_RENDER_TIMEOUT_MS,
         onProgress: ({ progress: nextProgress }) => {
           setProgress(Math.max(0, Math.min(100, Math.round(nextProgress * 100))));
         },
@@ -228,10 +332,12 @@ export default function VideoExportButton() {
       console.error('[Video Export]', exportError);
       setError(exportError instanceof Error ? exportError.message : 'Export video gagal.');
       setStatus('error');
+    } finally {
+      for (const objectUrl of temporaryAudioUrls) URL.revokeObjectURL(objectUrl);
     }
   }
 
-  const busy = status === 'checking' || status === 'rendering';
+  const busy = status === 'checking' || status === 'preparing-audio' || status === 'rendering';
 
   return (
     <div
@@ -460,6 +566,8 @@ export default function VideoExportButton() {
         )}
         {status === 'checking'
           ? 'Memeriksa browser…'
+          : status === 'preparing-audio'
+            ? 'Menyiapkan audio…'
           : status === 'rendering'
             ? `Rendering MP4 — ${progress}%`
             : status === 'done'
