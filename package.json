@@ -13,6 +13,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@remotion/media": "4.0.534",
+    "@remotion/player": "4.0.534",
     "@remotion/web-renderer": "4.0.534",
     "lucide-react": "^1.27.0",
     "mediabunny": "1.56.1",

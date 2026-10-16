@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import {
   ChevronRight,
   Cloud,
@@ -11,6 +12,7 @@ import {
   MessageSquare,
   PenLine,
   Smartphone,
+  Sparkles,
   Volume2,
   Zap,
   type LucideIcon,
@@ -124,6 +126,10 @@ export default function EditorPage() {
         </div>
 
         <div className={styles.topActions}>
+          <Link href="/brand" className={styles.previewShortcut}>
+            <Sparkles size={15} />
+            <span>Brand Video</span>
+          </Link>
           <button
             type="button"
             className={styles.previewShortcut}
