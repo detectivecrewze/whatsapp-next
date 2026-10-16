@@ -3,23 +3,13 @@
 import { useState } from 'react';
 import { CheckCircle2, Download, Film, Loader2, TriangleAlert } from 'lucide-react';
 import {
-  BRAND_VIDEO_FPS,
-  BRAND_VIDEO_HEIGHT,
-  BRAND_VIDEO_WIDTH,
-  getBrandDurationInFrames,
-} from '@/lib/brandTemplates';
-import { BrandVideo } from '@/remotion/brand/BrandVideo';
+  assertBrandRenderSupport,
+  downloadBrandVideo,
+  renderBrandVideo,
+} from '@/lib/renderBrandVideo';
 import { getBrandVideoProps, useBrandStudioStore } from '@/store/useBrandStudioStore';
 
 type ExportStatus = 'idle' | 'checking' | 'rendering' | 'done' | 'error';
-
-function fileName(value: string) {
-  const normalized = value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-  return normalized || 'brand-video';
-}
 
 export default function BrandExportButton() {
   const [status, setStatus] = useState<ExportStatus>('idle');
@@ -40,68 +30,10 @@ export default function BrandExportButton() {
         throw new Error('CTA harus diisi sebelum export campaign.');
       }
 
-      const { canRenderMediaOnWeb, renderMediaOnWeb } = await import('@remotion/web-renderer');
-      const support = await canRenderMediaOnWeb({
-        container: 'mp4',
-        videoCodec: 'h264',
-        audioCodec: 'aac',
-        muted: false,
-        width: BRAND_VIDEO_WIDTH,
-        height: BRAND_VIDEO_HEIGHT,
-      });
-
-      if (!support.canRender) {
-        const reason = support.issues
-          .filter((issue) => issue.severity === 'error')
-          .map((issue) => issue.message)
-          .join(' ');
-        throw new Error(
-          reason || 'Browser belum mendukung export MP4. Gunakan Chrome atau Edge terbaru.',
-        );
-      }
-
-      const durationInFrames = getBrandDurationInFrames(props);
+      await assertBrandRenderSupport();
       setStatus('rendering');
-
-      const result = await renderMediaOnWeb({
-        licenseKey: 'free-license',
-        composition: {
-          id: 'FYABrandVideo',
-          component: BrandVideo,
-          durationInFrames,
-          fps: BRAND_VIDEO_FPS,
-          width: BRAND_VIDEO_WIDTH,
-          height: BRAND_VIDEO_HEIGHT,
-          calculateMetadata: null,
-          defaultProps: props,
-        },
-        inputProps: props,
-        container: 'mp4',
-        videoCodec: 'h264',
-        audioCodec: 'aac',
-        audioBitrate: 192_000,
-        sampleRate: 48_000,
-        muted: false,
-        videoBitrate: 12_000_000,
-        hardwareAcceleration: 'prefer-hardware',
-        pageResponsiveness: 'medium',
-        delayRenderTimeoutInMilliseconds: 120_000,
-        onProgress: ({ progress: nextProgress }) => {
-          setProgress(Math.round(Math.max(0, Math.min(1, nextProgress)) * 100));
-        },
-      });
-
-      const blob = await result.getBlob();
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = props.outputMode === 'hook'
-        ? `${fileName(props.copy.hookTitle)}-hook-1080p.mp4`
-        : `${fileName(props.copy.productName)}-9x16.mp4`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      const blob = await renderBrandVideo(props, setProgress);
+      downloadBrandVideo(blob, props);
 
       setProgress(100);
       setStatus('done');

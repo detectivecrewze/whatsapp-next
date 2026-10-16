@@ -5,11 +5,13 @@ import Link from 'next/link';
 import { Player } from '@remotion/player';
 import {
   ArrowLeft,
+  CheckCircle2,
   Clock3,
   Download,
   Film,
   Image as ImageIcon,
   LayoutTemplate,
+  Layers3,
   Music2,
   Palette,
   Play,
@@ -23,6 +25,7 @@ import {
   Volume2,
   WandSparkles,
 } from 'lucide-react';
+import { BRAND_CONTENT_GOALS, getRecommendedVariant } from '@/lib/brandVariants';
 import {
   BRAND_HOOK_PRESETS,
   BRAND_KIT_PRESETS,
@@ -43,6 +46,7 @@ import {
 } from '@/store/useBrandStudioStore';
 import type {
   BrandCopy,
+  BrandContentGoal,
   BrandHookAlignment,
   BrandHookBackgroundMode,
   BrandHookBackgroundMotion,
@@ -58,6 +62,7 @@ import type {
   BrandTransitionSfx,
 } from '@/types/brand';
 import BrandExportButton from './BrandExportButton';
+import BrandBatchExport from './BrandBatchExport';
 import styles from '@/app/brand/brand.module.css';
 
 const SECTIONS: Array<{
@@ -73,6 +78,7 @@ const SECTIONS: Array<{
   { id: 'style', label: 'Warna', description: 'Palet visual brand', icon: Palette },
   { id: 'timing', label: 'Timing', description: 'Durasi setiap scene', icon: Clock3 },
   { id: 'audio', label: 'Audio', description: 'Backsound dan SFX', icon: Music2 },
+  { id: 'variants', label: 'Variasi', description: 'Buat dan pilih versi A/B/C', icon: Layers3 },
   { id: 'export', label: 'Export', description: 'Render MP4 vertikal', icon: Download },
 ];
 
@@ -99,6 +105,7 @@ function sectionDescription(section: BrandEditorSection, outputMode: BrandOutput
   if (section === 'style') return 'Warna hook sesuai brand';
   if (section === 'timing') return 'Durasi klip pembuka';
   if (section === 'audio') return 'Backsound dan SFX pembuka';
+  if (section === 'variants') return 'Buat, bandingkan, dan pilih versi A/B/C';
   if (section === 'export') return 'Export Hook MP4 HD';
   return '';
 }
@@ -1187,8 +1194,146 @@ function TemplateFields() {
   );
 }
 
+function VariantsFields() {
+  const contentGoal = useBrandStudioStore((state) => state.contentGoal);
+  const variants = useBrandStudioStore((state) => state.variants);
+  const setContentGoal = useBrandStudioStore((state) => state.setContentGoal);
+  const generateVariants = useBrandStudioStore((state) => state.generateVariants);
+  const toggleVariant = useBrandStudioStore((state) => state.toggleVariant);
+  const updateVariantCopy = useBrandStudioStore((state) => state.updateVariantCopy);
+  const applyVariant = useBrandStudioStore((state) => state.applyVariant);
+  const recommended = getRecommendedVariant(variants);
+  const selectedCount = variants.filter((variant) => variant.selected).length;
+
+  return (
+    <div className={styles.sectionStack}>
+      <div className={styles.introCard}>
+        <Layers3 size={18} />
+        <div>
+          <strong>Satu ide, tiga versi siap tes</strong>
+          <p>Studio menyusun versi original, versi cepat, dan versi story reveal dari hook Anda.</p>
+        </div>
+      </div>
+
+      <div className={styles.variantGoalField}>
+        <span className={styles.fieldLabel}>Tujuan utama konten</span>
+        <div className={styles.goalGrid}>
+          {BRAND_CONTENT_GOALS.map((goal) => (
+            <button
+              type="button"
+              key={goal.id}
+              className={contentGoal === goal.id ? styles.goalCardActive : styles.goalCard}
+              onClick={() => setContentGoal(goal.id as BrandContentGoal)}
+            >
+              <strong>{goal.label}</strong>
+              <small>{goal.description}</small>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <button type="button" className={styles.generateVariantsButton} onClick={generateVariants}>
+        <WandSparkles size={15} />
+        {variants.length ? 'Buat ulang variasi dari preview saat ini' : 'Buat 3 variasi A/B/C'}
+      </button>
+
+      {recommended ? (
+        <div className={styles.recommendationCard}>
+          <span><Sparkles size={15} /></span>
+          <div>
+            <small>REKOMENDASI STUDIO · SKOR {recommended.score}</small>
+            <strong>{recommended.label}</strong>
+            <p>{recommended.reason}</p>
+          </div>
+        </div>
+      ) : (
+        <div className={styles.variantEmptyState}>
+          <strong>Belum ada versi pembanding</strong>
+          <p>Pilih tujuan konten, lalu buat variasi. Naskah asli tetap aman sebagai versi A.</p>
+        </div>
+      )}
+
+      {variants.length ? (
+        <>
+          <div className={styles.variantSelectionSummary}>
+            <span>{selectedCount} dari {variants.length} dipilih untuk batch export</span>
+            <small>Klik checkbox untuk mengatur antrean.</small>
+          </div>
+          <div className={styles.variantList}>
+            {variants.map((variant) => {
+              const isRecommended = recommended?.id === variant.id;
+              return (
+                <article
+                  key={variant.id}
+                  className={`${styles.variantCard} ${isRecommended ? styles.variantCardRecommended : ''}`}
+                >
+                  <header>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={variant.selected}
+                        onChange={() => toggleVariant(variant.id)}
+                      />
+                      <span>
+                        <strong>{variant.label}</strong>
+                        <small>{variant.strategy}</small>
+                      </span>
+                    </label>
+                    <b>{variant.score}</b>
+                  </header>
+                  {isRecommended ? (
+                    <div className={styles.recommendedBadge}><CheckCircle2 size={11} /> Pilihan terbaik</div>
+                  ) : null}
+                  <p>{variant.reason}</p>
+                  <label className={styles.variantInput}>
+                    <span>Hook utama</span>
+                    <textarea
+                      value={variant.props.copy.hookTitle}
+                      onChange={(event) => updateVariantCopy(variant.id, 'hookTitle', event.target.value)}
+                    />
+                  </label>
+                  <label className={styles.variantInput}>
+                    <span>Aksen / lanjutan</span>
+                    <textarea
+                      value={variant.props.copy.hookAccent}
+                      onChange={(event) => updateVariantCopy(variant.id, 'hookAccent', event.target.value)}
+                    />
+                  </label>
+                  {variant.props.hook.sequenceMode === 'three-beat' ? (
+                    <details className={styles.variantDetails}>
+                      <summary>Edit build-up & reveal</summary>
+                      <label className={styles.variantInput}>
+                        <span>Build-up</span>
+                        <textarea
+                          value={variant.props.copy.hookBridge}
+                          onChange={(event) => updateVariantCopy(variant.id, 'hookBridge', event.target.value)}
+                        />
+                      </label>
+                      <label className={styles.variantInput}>
+                        <span>Reveal</span>
+                        <textarea
+                          value={variant.props.copy.hookReveal}
+                          onChange={(event) => updateVariantCopy(variant.id, 'hookReveal', event.target.value)}
+                        />
+                      </label>
+                    </details>
+                  ) : null}
+                  <button type="button" onClick={() => applyVariant(variant.id)}>
+                    <Play size={13} /> Tampilkan di preview
+                  </button>
+                </article>
+              );
+            })}
+          </div>
+        </>
+      ) : null}
+    </div>
+  );
+}
+
 function ExportFields() {
   const props = getBrandVideoProps();
+  const variants = useBrandStudioStore((state) => state.variants);
   const seconds = getBrandDurationInFrames(props) / BRAND_VIDEO_FPS;
   return (
     <div className={styles.sectionStack}>
@@ -1201,6 +1346,12 @@ function ExportFields() {
         <span>Audio</span><strong>AAC</strong>
       </div>
       <BrandExportButton />
+      {props.outputMode === 'hook' && variants.length ? (
+        <>
+          <div className={styles.divider} />
+          <BrandBatchExport />
+        </>
+      ) : null}
       <p className={styles.exportHint}>
         Export dijalankan langsung di browser. Jangan menutup tab sampai proses selesai.
       </p>
@@ -1216,12 +1367,15 @@ function InspectorContent({ section }: { section: BrandEditorSection }) {
   if (section === 'style') return <PaletteFields />;
   if (section === 'timing') return <TimingFields />;
   if (section === 'audio') return <AudioFields />;
+  if (section === 'variants') return <VariantsFields />;
   return <ExportFields />;
 }
 
 export default function BrandStudio() {
   const state = useBrandStudioStore();
-  const visibleSections = SECTIONS;
+  const visibleSections = state.outputMode === 'hook'
+    ? SECTIONS
+    : SECTIONS.filter((section) => section.id !== 'variants');
   const activeMeta = visibleSections.find((section) => section.id === state.activeSection) ?? visibleSections[0];
   const ActiveIcon = activeMeta.icon;
   const currentTemplate = BRAND_TEMPLATE_LIST.find((template) => template.id === state.templateId)!;

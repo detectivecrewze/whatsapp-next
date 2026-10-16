@@ -19,6 +19,7 @@ export type BrandHookMotion =
 export type BrandHookExit = 'none' | 'fade' | 'zoom' | 'slide-up';
 export type BrandHookAlignment = 'left' | 'center';
 export type BrandHookSequenceMode = 'single' | 'three-beat';
+export type BrandContentGoal = 'retention' | 'emotion' | 'conversion' | 'comedy';
 
 export interface BrandHookPartMotions {
   eyebrow: BrandHookMotion;
@@ -135,6 +136,16 @@ export interface BrandVideoProps extends Record<string, unknown> {
   detailMedia: BrandMediaSlot;
   timing: BrandTiming;
   audio: BrandAudioSettings;
+}
+
+export interface BrandHookVariant {
+  id: 'variant-a' | 'variant-b' | 'variant-c';
+  label: string;
+  strategy: string;
+  reason: string;
+  score: number;
+  selected: boolean;
+  props: BrandVideoProps;
 }
 
 export interface BrandTemplateDefinition {

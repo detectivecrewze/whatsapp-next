@@ -1243,6 +1243,402 @@
   font-size: 9px;
 }
 
+.goalGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.variantGoalField {
+  display: grid;
+  gap: 7px;
+}
+
+.goalCard,
+.goalCardActive {
+  min-height: 72px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  padding: 10px;
+  background: #181f26;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.goalCard:hover {
+  border-color: rgba(215, 154, 135, 0.35);
+}
+
+.goalCardActive {
+  border-color: rgba(215, 154, 135, 0.72);
+  background: rgba(215, 154, 135, 0.11);
+  box-shadow: inset 3px 0 0 #d79a87;
+}
+
+.goalCard strong,
+.goalCardActive strong,
+.goalCard small,
+.goalCardActive small {
+  display: block;
+}
+
+.goalCard strong,
+.goalCardActive strong {
+  color: #ece3dd;
+  font-size: 9.5px;
+}
+
+.goalCard small,
+.goalCardActive small {
+  margin-top: 5px;
+  color: #827a75;
+  font-size: 7.5px;
+  line-height: 1.4;
+}
+
+.generateVariantsButton,
+.batchExportButton {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid rgba(215, 154, 135, 0.58);
+  border-radius: 11px;
+  background: linear-gradient(135deg, #d79a87, #b9786d);
+  color: #171311;
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.generateVariantsButton:hover,
+.batchExportButton:hover:not(:disabled) {
+  filter: brightness(1.07);
+}
+
+.recommendationCard {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid rgba(234, 180, 106, 0.28);
+  border-radius: 13px;
+  padding: 12px;
+  background: linear-gradient(135deg, rgba(234, 180, 106, 0.12), rgba(215, 154, 135, 0.05));
+}
+
+.recommendationCard > span {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(234, 180, 106, 0.14);
+  color: #eab46a;
+}
+
+.recommendationCard small,
+.recommendationCard strong {
+  display: block;
+}
+
+.recommendationCard small {
+  color: #c69b65;
+  font-size: 7.5px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.recommendationCard strong {
+  margin-top: 4px;
+  color: #efe2d7;
+  font-size: 10px;
+}
+
+.recommendationCard p,
+.variantEmptyState p,
+.variantCard > p {
+  margin: 5px 0 0;
+  color: #8c827c;
+  font-size: 8px;
+  line-height: 1.5;
+}
+
+.variantEmptyState {
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.variantEmptyState strong {
+  color: #d8cec8;
+  font-size: 10px;
+}
+
+.variantSelectionSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.variantSelectionSummary span {
+  color: #cfc4bd;
+  font-size: 8.5px;
+  font-weight: 700;
+}
+
+.variantSelectionSummary small {
+  color: #706965;
+  font-size: 7.5px;
+}
+
+.variantList {
+  display: grid;
+  gap: 10px;
+}
+
+.variantCard {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 13px;
+  padding: 11px;
+  background: #181f26;
+}
+
+.variantCardRecommended {
+  border-color: rgba(234, 180, 106, 0.46);
+  box-shadow: inset 3px 0 0 #eab46a;
+}
+
+.variantCard > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.variantCard > header label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.variantCard > header input {
+  accent-color: #d79a87;
+}
+
+.variantCard > header strong,
+.variantCard > header small {
+  display: block;
+}
+
+.variantCard > header strong {
+  color: #ebe0da;
+  font-size: 10px;
+}
+
+.variantCard > header small {
+  margin-top: 2px;
+  color: #8c827c;
+  font-size: 7.5px;
+}
+
+.variantCard > header b {
+  display: grid;
+  width: 30px;
+  height: 26px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #d8b09f;
+  font-size: 9px;
+}
+
+.recommendedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  border-radius: 999px;
+  padding: 4px 7px;
+  background: rgba(234, 180, 106, 0.12);
+  color: #eab46a;
+  font-size: 7px;
+  font-weight: 800;
+}
+
+.variantInput {
+  display: grid;
+  gap: 5px;
+  margin-top: 10px;
+}
+
+.variantInput span {
+  color: #7d7570;
+  font-size: 7.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.variantInput textarea {
+  min-height: 52px;
+  resize: vertical;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  outline: none;
+  padding: 8px;
+  background: #13191f;
+  color: #ded5cf;
+  font: inherit;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.variantInput textarea:focus {
+  border-color: rgba(215, 154, 135, 0.55);
+}
+
+.variantDetails {
+  margin-top: 9px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 8px;
+}
+
+.variantDetails summary {
+  color: #b58f80;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.variantCard > button {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+  border: 1px solid rgba(215, 154, 135, 0.3);
+  border-radius: 9px;
+  background: rgba(215, 154, 135, 0.08);
+  color: #dca692;
+  cursor: pointer;
+  font-size: 8.5px;
+  font-weight: 700;
+}
+
+.batchExportCard {
+  display: grid;
+  gap: 11px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 14px;
+  padding: 13px;
+  background: #181f26;
+}
+
+.batchExportHeading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.batchExportHeading > span {
+  display: grid;
+  width: 31px;
+  height: 31px;
+  place-items: center;
+  border-radius: 9px;
+  background: rgba(215, 154, 135, 0.1);
+  color: #d79a87;
+}
+
+.batchExportHeading strong,
+.batchExportHeading small {
+  display: block;
+}
+
+.batchExportHeading strong {
+  color: #e8ded8;
+  font-size: 10px;
+}
+
+.batchExportHeading small,
+.batchExportNote {
+  margin-top: 3px;
+  color: #817873;
+  font-size: 7.5px;
+}
+
+.batchQueue {
+  display: grid;
+  gap: 7px;
+}
+
+.batchQueueItem {
+  display: grid;
+  gap: 5px;
+}
+
+.batchQueueItem > div {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #bdb2ac;
+}
+
+.batchQueueItem > div strong {
+  font-size: 8px;
+}
+
+.batchQueueItem > div small {
+  margin-left: auto;
+  color: #786f6a;
+  font-size: 7px;
+  text-transform: capitalize;
+}
+
+.batchQueueItem > span {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.batchQueueItem > span i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #d79a87;
+  transition: width 160ms ease;
+}
+
+.batchQueueItem p,
+.batchError {
+  margin: 0;
+  color: #ef9a9a;
+  font-size: 7.5px;
+  line-height: 1.4;
+}
+
+.queueDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 99px;
+  background: #5e5956;
+}
+
+.batchExportButton:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.5);
+  opacity: 0.55;
+}
+
 .exportSummary {
   display: grid;
   grid-template-columns: 1fr auto;
