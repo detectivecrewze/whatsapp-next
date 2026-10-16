@@ -1,12 +1,28 @@
 export type BrandTemplateId = 'editorial' | 'birthday' | 'anniversary';
 export type BrandOutputMode = 'hook' | 'campaign';
 export type BrandHookTypography = 'editorial' | 'bold' | 'clean';
-export type BrandHookMotion = 'soft' | 'pop' | 'slide';
+export type BrandHookMotion = 'fade' | 'soft' | 'pop' | 'slide' | 'blur';
+export type BrandHookExit = 'none' | 'fade' | 'zoom' | 'slide-up';
 export type BrandHookAlignment = 'left' | 'center';
 
 export type BrandMediaKind = 'image' | 'video';
 export type BrandMediaFit = 'cover' | 'contain';
-export type BrandTransitionSfx = 'none' | 'whoosh' | 'page-turn' | 'ding';
+export type BrandTransitionSfx =
+  | 'none'
+  | 'whoosh'
+  | 'whip'
+  | 'page-turn'
+  | 'switch'
+  | 'ding'
+  | 'shutter-modern'
+  | 'bruh'
+  | 'vine-boom'
+  | 'record-scratch'
+  | 'romance-meme'
+  | 'anime-wow'
+  | 'yippee'
+  | 'dramatic-boomer'
+  | 'bone-crack';
 
 export interface BrandMediaSlot {
   src: string;
@@ -33,6 +49,8 @@ export interface BrandCopy {
 export interface BrandHookSettings {
   typography: BrandHookTypography;
   motion: BrandHookMotion;
+  exitTransition: BrandHookExit;
+  transitionSeconds: number;
   alignment: BrandHookAlignment;
   textScale: number;
   positionY: number;
@@ -60,6 +78,7 @@ export interface BrandAudioSettings {
   musicVolume: number;
   transitionSfx: BrandTransitionSfx;
   transitionSfxVolume: number;
+  sfxOffsetSeconds: number;
 }
 
 export interface BrandVideoProps extends Record<string, unknown> {

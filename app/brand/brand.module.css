@@ -798,7 +798,8 @@
 }
 
 .uploadButton,
-.clearButton {
+.clearButton,
+.effectPreviewButton {
   display: flex;
   min-height: 36px;
   align-items: center;
@@ -817,6 +818,13 @@
   border-color: rgba(255, 255, 255, 0.08);
   background: transparent;
   color: #857d78;
+}
+
+.effectPreviewButton:disabled {
+  border-color: rgba(255, 255, 255, 0.06);
+  background: transparent;
+  color: #5f5a57;
+  cursor: not-allowed;
 }
 
 .twoColumns {

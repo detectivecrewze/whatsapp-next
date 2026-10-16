@@ -33,6 +33,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
       hook: {
         typography: 'editorial',
         motion: 'soft',
+        exitTransition: 'fade',
+        transitionSeconds: 0.55,
         alignment: 'center',
         textScale: 1,
         positionY: 33,
@@ -67,7 +69,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         musicName: '',
         musicVolume: 0.18,
         transitionSfx: 'whoosh',
-        transitionSfxVolume: 0.18,
+        transitionSfxVolume: 0.24,
+        sfxOffsetSeconds: 0.2,
       },
     },
   },
@@ -95,6 +98,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
       hook: {
         typography: 'bold',
         motion: 'pop',
+        exitTransition: 'zoom',
+        transitionSeconds: 0.5,
         alignment: 'center',
         textScale: 1,
         positionY: 34,
@@ -129,7 +134,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         musicName: '',
         musicVolume: 0.18,
         transitionSfx: 'ding',
-        transitionSfxVolume: 0.18,
+        transitionSfxVolume: 0.24,
+        sfxOffsetSeconds: 0.2,
       },
     },
   },
@@ -157,6 +163,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
       hook: {
         typography: 'clean',
         motion: 'slide',
+        exitTransition: 'slide-up',
+        transitionSeconds: 0.6,
         alignment: 'left',
         textScale: 1,
         positionY: 32,
@@ -191,7 +199,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         musicName: '',
         musicVolume: 0.18,
         transitionSfx: 'page-turn',
-        transitionSfxVolume: 0.16,
+        transitionSfxVolume: 0.24,
+        sfxOffsetSeconds: 0.2,
       },
     },
   },
@@ -206,6 +215,56 @@ export const BRAND_HOOK_VARIANTS = [
   { label: 'Minta maaf', title: 'Kadang kata “maaf”', accent: 'butuh cara yang lebih tulus.' },
   { label: 'Soft selling', title: 'Hadiah terbaik tidak selalu', accent: 'datang dalam sebuah kotak.' },
   { label: 'Anniversary', title: 'Kita tidak hanya menghitung tahun,', accent: 'kita menyimpan ceritanya.' },
+] as const;
+
+export const BRAND_SFX_FILES = {
+  whoosh: 'whoosh.wav',
+  whip: 'whip.wav',
+  'page-turn': 'page-turn.wav',
+  switch: 'switch.wav',
+  ding: 'ding.wav',
+  'shutter-modern': 'shutter-modern.wav',
+  bruh: 'bruh.wav',
+  'vine-boom': 'vine-boom.wav',
+  'record-scratch': 'record-scratch.wav',
+  'romance-meme': 'romance-meme.wav',
+  'anime-wow': 'anime-wow.wav',
+  yippee: 'yippee.wav',
+  'dramatic-boomer': 'dramatic-boomer.wav',
+  'bone-crack': 'bone-crack.wav',
+} as const;
+
+export const BRAND_SFX_GROUPS = [
+  {
+    label: 'Transisi',
+    options: [
+      { id: 'none', label: 'Tanpa SFX' },
+      { id: 'whoosh', label: 'Soft whoosh' },
+      { id: 'whip', label: 'Fast whip' },
+      { id: 'page-turn', label: 'Page turn' },
+      { id: 'switch', label: 'Soft switch' },
+      { id: 'ding', label: 'Soft ding' },
+      { id: 'shutter-modern', label: 'Camera shutter' },
+    ],
+  },
+  {
+    label: 'Komedi / Viral',
+    options: [
+      { id: 'bruh', label: 'Bruh' },
+      { id: 'vine-boom', label: 'Vine boom' },
+      { id: 'record-scratch', label: 'Record scratch' },
+      { id: 'romance-meme', label: 'Romance meme' },
+      { id: 'anime-wow', label: 'Anime wow' },
+      { id: 'yippee', label: 'Yippee' },
+    ],
+  },
+  {
+    label: 'Dramatis / Horror',
+    options: [
+      { id: 'dramatic-boomer', label: 'Dramatic boom' },
+      { id: 'bone-crack', label: 'Bone crack' },
+    ],
+  },
 ] as const;
 
 export function cloneBrandProps(props: BrandVideoProps): BrandVideoProps {

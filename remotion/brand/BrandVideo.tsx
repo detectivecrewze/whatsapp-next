@@ -10,7 +10,9 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import { BRAND_SFX_FILES } from '@/lib/brandTemplates';
 import type {
+  BrandHookExit,
   BrandMediaSlot,
   BrandTemplateId,
   BrandVideoProps,
@@ -18,12 +20,6 @@ import type {
 
 const serif = 'Georgia, Cambria, "Times New Roman", serif';
 const sans = 'Arial, Helvetica, sans-serif';
-
-const SFX_FILES = {
-  whoosh: 'sounds/sfx/whoosh.wav',
-  'page-turn': 'sounds/sfx/page-turn.wav',
-  ding: 'sounds/sfx/ding.wav',
-} as const;
 
 function textureFor(templateId: BrandTemplateId) {
   if (templateId === 'birthday') {
@@ -103,24 +99,43 @@ function BrandHeader({ props, compact = false }: { props: BrandVideoProps; compa
   );
 }
 
-function SceneShell({ children, fadeIn = true }: { children: ReactNode; fadeIn?: boolean }) {
+function SceneShell({
+  children,
+  fadeIn = true,
+  exitTransition = 'fade',
+  transitionFrames = 10,
+}: {
+  children: ReactNode;
+  fadeIn?: boolean;
+  exitTransition?: BrandHookExit;
+  transitionFrames?: number;
+}) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
-  const endStart = Math.max(10, durationInFrames - 10);
+  const safeTransitionFrames = Math.min(
+    Math.max(1, transitionFrames),
+    Math.max(1, durationInFrames - 1),
+  );
+  const endStart = Math.max(0, durationInFrames - safeTransitionFrames);
+  const introOpacity = fadeIn
+    ? interpolate(frame, [0, 9], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      })
+    : 1;
+  const exitProgress = interpolate(frame, [endStart, durationInFrames - 1], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: Easing.bezier(0.4, 0, 1, 1),
+  });
 
   return (
     <AbsoluteFill
       style={{
-        opacity: interpolate(
-          frame,
-          [0, 9, endStart, durationInFrames - 1],
-          [fadeIn ? 0 : 1, 1, 1, 0],
-          {
-            extrapolateLeft: 'clamp',
-            extrapolateRight: 'clamp',
-            easing: Easing.bezier(0.16, 1, 0.3, 1),
-          },
-        ),
+        opacity: introOpacity * (exitTransition === 'none' ? 1 : 1 - exitProgress),
+        scale: exitTransition === 'zoom' ? 1 + exitProgress * 0.09 : 1,
+        translate: exitTransition === 'slide-up' ? `0px ${-140 * exitProgress}px` : '0px 0px',
       }}
     >
       {children}
@@ -155,6 +170,7 @@ function MediaVisual({ media }: { media: BrandMediaSlot }) {
 
 function HookScene({ props }: { props: BrandVideoProps }) {
   const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
   const isEditorial = props.hook.typography === 'editorial';
   const isBold = props.hook.typography === 'bold';
   const titleFont = isEditorial ? serif : sans;
@@ -183,7 +199,11 @@ function HookScene({ props }: { props: BrandVideoProps }) {
     : 1;
 
   return (
-    <SceneShell fadeIn={props.outputMode !== 'hook'}>
+    <SceneShell
+      fadeIn={props.outputMode !== 'hook'}
+      exitTransition={props.hook.exitTransition}
+      transitionFrames={Math.round(props.hook.transitionSeconds * fps)}
+    >
       <BrandCanvas props={props} />
       <div
         style={{
@@ -212,11 +232,18 @@ function HookScene({ props }: { props: BrandVideoProps }) {
           fontFamily: titleFont,
           translate: entryTranslate,
           scale: entryScale,
-          opacity: interpolate(frame, [0, 12], [0.35, 1], {
+          opacity: interpolate(frame, [0, 12], [props.hook.motion === 'fade' ? 0 : 0.35, 1], {
             extrapolateLeft: 'clamp',
             extrapolateRight: 'clamp',
             easing: Easing.bezier(0.16, 1, 0.3, 1),
           }),
+          filter: props.hook.motion === 'blur'
+            ? `blur(${interpolate(frame, [0, 16], [18, 0], {
+                extrapolateLeft: 'clamp',
+                extrapolateRight: 'clamp',
+                easing: Easing.bezier(0.16, 1, 0.3, 1),
+              })}px)`
+            : 'none',
         }}
       >
         <div
@@ -513,37 +540,72 @@ function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStart
   );
   const sfxFile = props.audio.transitionSfx === 'none'
     ? null
-    : SFX_FILES[props.audio.transitionSfx];
+    : BRAND_SFX_FILES[props.audio.transitionSfx];
+  const hookSfxStart = Math.min(
+    Math.max(0, durationInFrames - 1),
+    Math.max(0, Math.round(props.audio.sfxOffsetSeconds * fps)),
+  );
 
   return (
     <>
       {props.audio.musicSrc ? (
         <Audio
+          name={`Backsound · ${props.audio.musicName || 'musik latar'}`}
           src={props.audio.musicSrc}
           loop
           premountFor={fps}
           volume={props.audio.musicVolume * fadeIn * fadeOut}
+          delayRenderTimeoutInMilliseconds={120_000}
+          delayRenderRetries={2}
         />
       ) : null}
       {props.outputMode === 'hook' && sfxFile ? (
-        <Sequence from={0} durationInFrames={fps} layout="none">
-          <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume} />
-        </Sequence>
+        <Audio
+          name={`SFX hook · ${props.audio.transitionSfx}`}
+          src={staticFile(`sounds/sfx/${sfxFile}`)}
+          from={hookSfxStart}
+          durationInFrames={Math.max(1, Math.min(fps * 3, durationInFrames - hookSfxStart))}
+          premountFor={fps}
+          volume={props.audio.transitionSfxVolume}
+          delayRenderTimeoutInMilliseconds={120_000}
+          delayRenderRetries={2}
+        />
       ) : null}
       {props.outputMode === 'campaign' && sfxFile ? (
-        <Sequence from={sceneStarts[1]} durationInFrames={fps} layout="none">
-          <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume} />
-        </Sequence>
+        <Audio
+          name={`SFX scene 2 · ${props.audio.transitionSfx}`}
+          src={staticFile(`sounds/sfx/${sfxFile}`)}
+          from={sceneStarts[1]}
+          durationInFrames={Math.min(fps * 3, durationInFrames - sceneStarts[1])}
+          premountFor={fps}
+          volume={props.audio.transitionSfxVolume}
+          delayRenderTimeoutInMilliseconds={120_000}
+          delayRenderRetries={2}
+        />
       ) : null}
       {props.outputMode === 'campaign' && sfxFile ? (
-        <Sequence from={sceneStarts[2]} durationInFrames={fps} layout="none">
-          <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume * 0.85} />
-        </Sequence>
+        <Audio
+          name={`SFX scene 3 · ${props.audio.transitionSfx}`}
+          src={staticFile(`sounds/sfx/${sfxFile}`)}
+          from={sceneStarts[2]}
+          durationInFrames={Math.min(fps * 3, durationInFrames - sceneStarts[2])}
+          premountFor={fps}
+          volume={props.audio.transitionSfxVolume * 0.85}
+          delayRenderTimeoutInMilliseconds={120_000}
+          delayRenderRetries={2}
+        />
       ) : null}
       {props.outputMode === 'campaign' && sfxFile ? (
-        <Sequence from={sceneStarts[3]} durationInFrames={fps} layout="none">
-          <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume * 0.72} />
-        </Sequence>
+        <Audio
+          name={`SFX scene 4 · ${props.audio.transitionSfx}`}
+          src={staticFile(`sounds/sfx/${sfxFile}`)}
+          from={sceneStarts[3]}
+          durationInFrames={Math.min(fps * 3, durationInFrames - sceneStarts[3])}
+          premountFor={fps}
+          volume={props.audio.transitionSfxVolume * 0.72}
+          delayRenderTimeoutInMilliseconds={120_000}
+          delayRenderRetries={2}
+        />
       ) : null}
     </>
   );

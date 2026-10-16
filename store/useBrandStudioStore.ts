@@ -20,6 +20,7 @@ import type {
 export type BrandEditorSection =
   | 'templates'
   | 'copy'
+  | 'effects'
   | 'media'
   | 'style'
   | 'timing'

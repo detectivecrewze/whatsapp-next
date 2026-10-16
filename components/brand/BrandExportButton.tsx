@@ -79,6 +79,8 @@ export default function BrandExportButton() {
         container: 'mp4',
         videoCodec: 'h264',
         audioCodec: 'aac',
+        audioBitrate: 192_000,
+        sampleRate: 48_000,
         muted: false,
         videoBitrate: 12_000_000,
         hardwareAcceleration: 'prefer-hardware',

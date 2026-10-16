@@ -1,6 +1,6 @@
 'use client';
 
-import type { ChangeEvent, ReactNode } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type ReactNode } from 'react';
 import Link from 'next/link';
 import { Player } from '@remotion/player';
 import {
@@ -18,10 +18,13 @@ import {
   Type,
   Upload,
   Video,
+  Volume2,
   WandSparkles,
 } from 'lucide-react';
 import {
   BRAND_HOOK_VARIANTS,
+  BRAND_SFX_FILES,
+  BRAND_SFX_GROUPS,
   BRAND_TEMPLATE_LIST,
   BRAND_VIDEO_FPS,
   BRAND_VIDEO_HEIGHT,
@@ -37,12 +40,14 @@ import {
 import type {
   BrandCopy,
   BrandHookAlignment,
+  BrandHookExit,
   BrandHookMotion,
   BrandHookTypography,
   BrandMediaSlot,
   BrandOutputMode,
   BrandPalette,
   BrandTiming,
+  BrandTransitionSfx,
 } from '@/types/brand';
 import BrandExportButton from './BrandExportButton';
 import styles from '@/app/brand/brand.module.css';
@@ -55,6 +60,7 @@ const SECTIONS: Array<{
 }> = [
   { id: 'templates', label: 'Template', description: 'Pilih gaya campaign', icon: LayoutTemplate },
   { id: 'copy', label: 'Naskah', description: 'Hook, cerita, dan CTA', icon: Type },
+  { id: 'effects', label: 'Efek', description: 'Transisi dan SFX', icon: WandSparkles },
   { id: 'media', label: 'Media', description: 'Foto atau video produk', icon: ImageIcon },
   { id: 'style', label: 'Warna', description: 'Palet visual brand', icon: Palette },
   { id: 'timing', label: 'Timing', description: 'Durasi setiap scene', icon: Clock3 },
@@ -69,6 +75,7 @@ function sectionDescription(section: BrandEditorSection, outputMode: BrandOutput
 
   if (section === 'templates') return 'Pilih gaya visual hook';
   if (section === 'copy') return 'Teks, tipografi, dan animasi';
+  if (section === 'effects') return 'Transisi masuk, keluar, dan SFX';
   if (section === 'style') return 'Warna hook sesuai brand';
   if (section === 'timing') return 'Durasi klip pembuka';
   if (section === 'audio') return 'Backsound dan SFX pembuka';
@@ -166,28 +173,17 @@ function CopyFields() {
                 <option value="clean">Clean</option>
               </select>
             </Field>
-            <Field label="Animasi masuk">
+            <Field label="Perataan teks">
               <select
                 className={styles.select}
-                value={hook.motion}
-                onChange={(event) => updateHook('motion', event.target.value as BrandHookMotion)}
+                value={hook.alignment}
+                onChange={(event) => updateHook('alignment', event.target.value as BrandHookAlignment)}
               >
-                <option value="soft">Soft rise</option>
-                <option value="pop">Pop</option>
-                <option value="slide">Slide</option>
+                <option value="center">Tengah</option>
+                <option value="left">Kiri</option>
               </select>
             </Field>
           </div>
-          <Field label="Perataan teks">
-            <select
-              className={styles.select}
-              value={hook.alignment}
-              onChange={(event) => updateHook('alignment', event.target.value as BrandHookAlignment)}
-            >
-              <option value="center">Tengah</option>
-              <option value="left">Kiri</option>
-            </select>
-          </Field>
           <Field label={`Ukuran teks — ${Math.round(hook.textScale * 100)}%`}>
             <input
               className={styles.slider}
@@ -389,9 +385,140 @@ function TimingFields() {
   );
 }
 
-function AudioFields() {
+function EffectsFields() {
+  const hook = useBrandStudioStore((state) => state.hook);
   const audio = useBrandStudioStore((state) => state.audio);
   const outputMode = useBrandStudioStore((state) => state.outputMode);
+  const updateHook = useBrandStudioStore((state) => state.updateHook);
+  const updateAudio = useBrandStudioStore((state) => state.updateAudio);
+  const previewRef = useRef<HTMLAudioElement | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  useEffect(() => () => {
+    previewRef.current?.pause();
+    previewRef.current = null;
+  }, []);
+
+  function previewSfx() {
+    previewRef.current?.pause();
+    previewRef.current = null;
+
+    if (audio.transitionSfx === 'none') {
+      setIsPreviewing(false);
+      return;
+    }
+
+    const preview = new window.Audio(`/sounds/sfx/${BRAND_SFX_FILES[audio.transitionSfx]}`);
+    preview.volume = audio.transitionSfxVolume;
+    preview.onended = () => setIsPreviewing(false);
+    preview.onerror = () => setIsPreviewing(false);
+    previewRef.current = preview;
+    setIsPreviewing(true);
+    void preview.play().catch(() => setIsPreviewing(false));
+  }
+
+  return (
+    <div className={styles.sectionStack}>
+      <div className={styles.introCard}>
+        <WandSparkles size={18} />
+        <div>
+          <strong>Efek khusus hook</strong>
+          <p>Transisi dan SFX di preview akan sama dengan hasil export.</p>
+        </div>
+      </div>
+      <div className={styles.twoColumns}>
+        <Field label="Transisi masuk">
+          <select
+            className={styles.select}
+            value={hook.motion}
+            onChange={(event) => updateHook('motion', event.target.value as BrandHookMotion)}
+          >
+            <option value="fade">Fade</option>
+            <option value="soft">Soft rise</option>
+            <option value="pop">Pop</option>
+            <option value="slide">Slide</option>
+            <option value="blur">Blur reveal</option>
+          </select>
+        </Field>
+        <Field label="Transisi keluar">
+          <select
+            className={styles.select}
+            value={hook.exitTransition}
+            onChange={(event) => updateHook('exitTransition', event.target.value as BrandHookExit)}
+          >
+            <option value="none">Tanpa transisi</option>
+            <option value="fade">Fade out</option>
+            <option value="zoom">Zoom out</option>
+            <option value="slide-up">Slide ke atas</option>
+          </select>
+        </Field>
+      </div>
+      <Field label={`Durasi transisi keluar — ${hook.transitionSeconds.toFixed(2)}s`}>
+        <input
+          className={styles.slider}
+          type="range"
+          min={0.2}
+          max={1.2}
+          step={0.05}
+          value={hook.transitionSeconds}
+          onChange={(event) => updateHook('transitionSeconds', Number(event.target.value))}
+        />
+      </Field>
+      <div className={styles.divider} />
+      <Field label={outputMode === 'hook' ? 'SFX pembuka hook' : 'SFX pergantian scene'}>
+        <select
+          className={styles.select}
+          value={audio.transitionSfx}
+          onChange={(event) => updateAudio({ transitionSfx: event.target.value as BrandTransitionSfx })}
+        >
+          {BRAND_SFX_GROUPS.map((group) => (
+            <optgroup key={group.label} label={group.label}>
+              {group.options.map((option) => (
+                <option key={option.id} value={option.id}>{option.label}</option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
+      </Field>
+      <button
+        type="button"
+        className={styles.effectPreviewButton}
+        disabled={audio.transitionSfx === 'none'}
+        onClick={previewSfx}
+      >
+        <Volume2 size={15} />
+        {isPreviewing ? 'Memutar SFX…' : 'Dengarkan SFX'}
+      </button>
+      <Field label={`Volume SFX — ${Math.round(audio.transitionSfxVolume * 100)}%`}>
+        <input
+          className={styles.slider}
+          type="range"
+          min={0}
+          max={0.5}
+          step={0.01}
+          value={audio.transitionSfxVolume}
+          onChange={(event) => updateAudio({ transitionSfxVolume: Number(event.target.value) })}
+        />
+      </Field>
+      {outputMode === 'hook' ? (
+        <Field label={`SFX mulai pada — ${audio.sfxOffsetSeconds.toFixed(2)}s`}>
+          <input
+            className={styles.slider}
+            type="range"
+            min={0}
+            max={1.5}
+            step={0.05}
+            value={audio.sfxOffsetSeconds}
+            onChange={(event) => updateAudio({ sfxOffsetSeconds: Number(event.target.value) })}
+          />
+        </Field>
+      ) : null}
+    </div>
+  );
+}
+
+function AudioFields() {
+  const audio = useBrandStudioStore((state) => state.audio);
   const updateAudio = useBrandStudioStore((state) => state.updateAudio);
 
   function handleMusic(event: ChangeEvent<HTMLInputElement>) {
@@ -441,29 +568,7 @@ function AudioFields() {
           onChange={(event) => updateAudio({ musicVolume: Number(event.target.value) })}
         />
       </Field>
-      <Field label={outputMode === 'hook' ? 'SFX pembuka hook' : 'SFX pergantian scene'}>
-        <select
-          className={styles.select}
-          value={audio.transitionSfx}
-          onChange={(event) => updateAudio({ transitionSfx: event.target.value as typeof audio.transitionSfx })}
-        >
-          <option value="none">Tanpa SFX</option>
-          <option value="whoosh">Soft whoosh</option>
-          <option value="page-turn">Page turn</option>
-          <option value="ding">Soft ding</option>
-        </select>
-      </Field>
-      <Field label={`Volume SFX — ${Math.round(audio.transitionSfxVolume * 100)}%`}>
-        <input
-          className={styles.slider}
-          type="range"
-          min={0}
-          max={0.4}
-          step={0.01}
-          value={audio.transitionSfxVolume}
-          onChange={(event) => updateAudio({ transitionSfxVolume: Number(event.target.value) })}
-        />
-      </Field>
+      <div className={styles.infoNote}>SFX dan transisi sekarang tersedia di menu Efek.</div>
     </div>
   );
 }
@@ -520,6 +625,7 @@ function ExportFields() {
 function InspectorContent({ section }: { section: BrandEditorSection }) {
   if (section === 'templates') return <TemplateFields />;
   if (section === 'copy') return <CopyFields />;
+  if (section === 'effects') return <EffectsFields />;
   if (section === 'media') return <MediaFields />;
   if (section === 'style') return <PaletteFields />;
   if (section === 'timing') return <TimingFields />;
