@@ -1121,7 +1121,8 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
     Math.max(0, visibleEvents.length - 1) * 16 +
     (typingEvent ? 96 : 0);
   const availableChatHeight = props.pinnedMessage ? 1368 : 1488;
-  const scrollOffset = Math.min(0, availableChatHeight - estimatedContentHeight);
+  const estimatedContentTop = Math.min(0, availableChatHeight - estimatedContentHeight);
+  const contentLikelyOverflows = estimatedContentHeight >= availableChatHeight - 80;
 
   const activeVisibleIndex = activeEvent
     ? visibleEvents.findIndex((event) => event.message.id === activeEvent.message.id)
@@ -1134,9 +1135,11 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
   const heightBeforeActive =
     dateBadgeHeight +
     estimatedHeights.slice(0, Math.max(0, activeVisibleIndex)).reduce((total, height) => total + height + 16, 0);
-  const zoomOriginY = estimatedContentHeight > 0
-    ? Math.max(8, Math.min(92, ((heightBeforeActive + activeHeight / 2) / estimatedContentHeight) * 100))
-    : 50;
+  const zoomOriginY = contentLikelyOverflows
+    ? 100
+    : estimatedContentHeight > 0
+      ? Math.max(8, Math.min(96, ((heightBeforeActive + activeHeight / 2) / estimatedContentHeight) * 100))
+      : 50;
 
   let cameraScale = 1;
   let zoomProgress = 0;
@@ -1177,13 +1180,11 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
   }
 
   const isTallMediaCard = activeEvent?.message.type === 'link' || activeEvent?.message.type === 'image';
-  const activeCenterInViewport = heightBeforeActive + activeHeight / 2 + scrollOffset;
+  const activeCenterInViewport = heightBeforeActive + activeHeight / 2 + estimatedContentTop;
   const safeMediaCenterY = availableChatHeight * (activeEvent?.message.type === 'link' ? 0.58 : 0.56);
   const mediaFocusShiftY = zoomEnabled && isTallMediaCard
     ? (safeMediaCenterY - activeCenterInViewport) * zoomProgress
     : 0;
-  const cameraTranslateY = scrollOffset + mediaFocusShiftY;
-
   // Anchor the camera to the bubble's own edge. Using an inset origin caused
   // the rounded bubble edge to move outside the viewport during zoom, making
   // it look as if only the text was enlarged.
@@ -1306,6 +1307,9 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
             top: props.pinnedMessage ? 120 : 28,
             bottom: 28,
             overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'flex-end',
           }}
         >
           <div
@@ -1314,7 +1318,10 @@ export const WhatsAppVideo: React.FC<WhatsAppVideoProps> = (props) => {
               flexDirection: 'column',
               gap: 16,
               width: '100%',
-              translate: `0px ${cameraTranslateY}px`,
+              minHeight: '100%',
+              flexShrink: 0,
+              boxSizing: 'border-box',
+              translate: `0px ${mediaFocusShiftY}px`,
               scale: cameraScale,
               transformOrigin: `${zoomOriginX}% ${zoomOriginY}%`,
             }}
