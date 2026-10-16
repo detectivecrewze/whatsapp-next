@@ -7,6 +7,10 @@ import {
   cloneBrandProps,
 } from '@/lib/brandTemplates';
 import { generateBrandHookVariants } from '@/lib/brandVariants';
+import {
+  BRAND_TEMPLATE_PACKS,
+  personalizeTemplatePackCopy,
+} from '@/lib/brandTemplatePacks';
 import type {
   BrandAudioSettings,
   BrandContentGoal,
@@ -24,6 +28,7 @@ import type {
 
 export type BrandEditorSection =
   | 'templates'
+  | 'template-packs'
   | 'copy'
   | 'effects'
   | 'media'
@@ -36,6 +41,7 @@ export type BrandEditorSection =
 interface BrandStudioStore extends BrandVideoProps {
   activeSection: BrandEditorSection;
   activeHookPresetId: string | null;
+  activeTemplatePackId: string | null;
   showSafeArea: boolean;
   contentGoal: BrandContentGoal;
   variants: BrandHookVariant[];
@@ -44,6 +50,10 @@ interface BrandStudioStore extends BrandVideoProps {
   setOutputMode: (outputMode: BrandOutputMode) => void;
   setTemplate: (templateId: BrandTemplateId) => void;
   applyHookPreset: (presetId: string) => void;
+  applyTemplatePack: (
+    packId: string,
+    personalization: { recipientName: string; productName: string },
+  ) => void;
   updateCopy: (key: keyof BrandCopy, value: string) => void;
   updateHook: <K extends keyof BrandHookSettings>(key: K, value: BrandHookSettings[K]) => void;
   updatePalette: (key: keyof BrandPalette, value: string) => void;
@@ -73,12 +83,18 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
   ...initial,
   activeSection: 'templates',
   activeHookPresetId: null,
+  activeTemplatePackId: null,
   showSafeArea: false,
   contentGoal: 'retention',
   variants: [],
   setActiveSection: (activeSection) => set({ activeSection }),
   setShowSafeArea: (showSafeArea) => set({ showSafeArea }),
-  setOutputMode: (outputMode) => set({ outputMode, activeSection: 'copy', variants: [] }),
+  setOutputMode: (outputMode) => set({
+    outputMode,
+    activeSection: 'copy',
+    variants: [],
+    activeTemplatePackId: null,
+  }),
   setTemplate: (templateId) => {
     const outputMode = get().outputMode;
     set({
@@ -86,6 +102,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       outputMode,
       activeSection: 'copy',
       activeHookPresetId: null,
+      activeTemplatePackId: null,
       variants: [],
     });
   },
@@ -111,16 +128,64 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       timing: { ...state.timing, hookSeconds: preset.hookSeconds },
       audio: { ...state.audio, ...preset.audio },
       activeHookPresetId: preset.id,
+      activeTemplatePackId: null,
       activeSection: 'copy',
       variants: [],
     }));
   },
+  applyTemplatePack: (packId, personalization) => {
+    const pack = BRAND_TEMPLATE_PACKS.find((entry) => entry.id === packId);
+    if (!pack) return;
+    const personalizedCopy = personalizeTemplatePackCopy(
+      pack.copy,
+      personalization.recipientName,
+      personalization.productName,
+    );
+    set((state) => ({
+      outputMode: 'hook',
+      copy: {
+        ...state.copy,
+        ...personalizedCopy,
+        productName: personalization.productName.trim() || state.copy.productName,
+      },
+      hook: {
+        ...state.hook,
+        ...pack.hook,
+        partMotions: {
+          ...state.hook.partMotions,
+          ...(pack.hook.partMotions ?? {}),
+        },
+      },
+      palette: { ...pack.palette },
+      timing: { ...state.timing, hookSeconds: pack.hookSeconds },
+      audio: { ...state.audio, ...pack.audio },
+      contentGoal: pack.goal,
+      activeHookPresetId: null,
+      activeTemplatePackId: pack.id,
+      variants: [],
+    }));
+  },
   updateCopy: (key, value) =>
-    set((state) => ({ copy: { ...state.copy, [key]: value }, activeHookPresetId: null, variants: [] })),
+    set((state) => ({
+      copy: { ...state.copy, [key]: value },
+      activeHookPresetId: null,
+      activeTemplatePackId: null,
+      variants: [],
+    })),
   updateHook: (key, value) =>
-    set((state) => ({ hook: { ...state.hook, [key]: value }, activeHookPresetId: null, variants: [] })),
+    set((state) => ({
+      hook: { ...state.hook, [key]: value },
+      activeHookPresetId: null,
+      activeTemplatePackId: null,
+      variants: [],
+    })),
   updatePalette: (key, value) =>
-    set((state) => ({ palette: { ...state.palette, [key]: value }, activeHookPresetId: null, variants: [] })),
+    set((state) => ({
+      palette: { ...state.palette, [key]: value },
+      activeHookPresetId: null,
+      activeTemplatePackId: null,
+      variants: [],
+    })),
   updateHookBackground: (updates) =>
     set((state) => ({
       hookBackground: {
@@ -143,9 +208,18 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
   updateMedia: (slot, updates) =>
     set((state) => ({ [slot]: { ...state[slot], ...updates }, variants: [] })),
   updateTiming: (key, value) =>
-    set((state) => ({ timing: { ...state.timing, [key]: value }, variants: [] })),
+    set((state) => ({
+      timing: { ...state.timing, [key]: value },
+      activeTemplatePackId: null,
+      variants: [],
+    })),
   updateAudio: (updates) =>
-    set((state) => ({ audio: { ...state.audio, ...updates }, activeHookPresetId: null, variants: [] })),
+    set((state) => ({
+      audio: { ...state.audio, ...updates },
+      activeHookPresetId: null,
+      activeTemplatePackId: null,
+      variants: [],
+    })),
   setContentGoal: (contentGoal) => set({ contentGoal, variants: [] }),
   generateVariants: () => {
     const state = get();
@@ -172,6 +246,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
     set({
       ...next,
       activeHookPresetId: null,
+      activeTemplatePackId: null,
     });
   },
   resetTemplate: () => {
@@ -180,6 +255,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       ...cloneBrandProps(BRAND_TEMPLATES[templateId].defaults),
       outputMode,
       activeHookPresetId: null,
+      activeTemplatePackId: null,
       variants: [],
     });
   },

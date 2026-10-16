@@ -13,6 +13,7 @@ import {
   LayoutTemplate,
   Layers3,
   Music2,
+  PackageOpen,
   Palette,
   Play,
   RefreshCw,
@@ -63,6 +64,7 @@ import type {
 } from '@/types/brand';
 import BrandExportButton from './BrandExportButton';
 import BrandBatchExport from './BrandBatchExport';
+import BrandTemplatePackFields from './BrandTemplatePackFields';
 import styles from '@/app/brand/brand.module.css';
 
 const SECTIONS: Array<{
@@ -72,6 +74,7 @@ const SECTIONS: Array<{
   icon: typeof LayoutTemplate;
 }> = [
   { id: 'templates', label: 'Template', description: 'Pilih gaya campaign', icon: LayoutTemplate },
+  { id: 'template-packs', label: 'Template Pack', description: 'Cerita siap produksi', icon: PackageOpen },
   { id: 'copy', label: 'Naskah', description: 'Hook, cerita, dan CTA', icon: Type },
   { id: 'effects', label: 'Efek', description: 'Transisi dan SFX', icon: WandSparkles },
   { id: 'media', label: 'Media', description: 'Foto atau video produk', icon: ImageIcon },
@@ -99,6 +102,7 @@ function sectionDescription(section: BrandEditorSection, outputMode: BrandOutput
   }
 
   if (section === 'templates') return 'Pilih gaya visual hook';
+  if (section === 'template-packs') return 'Cerita lengkap siap dipersonalisasi';
   if (section === 'copy') return 'Teks, tipografi, dan animasi';
   if (section === 'effects') return 'Transisi masuk, keluar, dan SFX';
   if (section === 'media') return 'Background foto atau video hook';
@@ -1361,6 +1365,7 @@ function ExportFields() {
 
 function InspectorContent({ section }: { section: BrandEditorSection }) {
   if (section === 'templates') return <TemplateFields />;
+  if (section === 'template-packs') return <BrandTemplatePackFields />;
   if (section === 'copy') return <CopyFields />;
   if (section === 'effects') return <EffectsFields />;
   if (section === 'media') return <MediaFields />;
