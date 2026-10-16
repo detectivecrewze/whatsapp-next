@@ -9,7 +9,7 @@ import {
   getBrandDurationInFrames,
 } from '@/lib/brandTemplates';
 import { BrandVideo } from '@/remotion/brand/BrandVideo';
-import { getBrandVideoProps } from '@/store/useBrandStudioStore';
+import { getBrandVideoProps, useBrandStudioStore } from '@/store/useBrandStudioStore';
 
 type ExportStatus = 'idle' | 'checking' | 'rendering' | 'done' | 'error';
 
@@ -33,8 +33,11 @@ export default function BrandExportButton() {
 
     try {
       const props = getBrandVideoProps();
-      if (!props.copy.hookTitle.trim() || !props.copy.cta.trim()) {
-        throw new Error('Hook dan CTA harus diisi sebelum export.');
+      if (!props.copy.hookTitle.trim() && !props.copy.hookAccent.trim()) {
+        throw new Error('Isi minimal satu teks hook sebelum export.');
+      }
+      if (props.outputMode === 'campaign' && !props.copy.cta.trim()) {
+        throw new Error('CTA harus diisi sebelum export campaign.');
       }
 
       const { canRenderMediaOnWeb, renderMediaOnWeb } = await import('@remotion/web-renderer');
@@ -90,7 +93,9 @@ export default function BrandExportButton() {
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement('a');
       anchor.href = url;
-      anchor.download = `${fileName(props.copy.productName)}-9x16.mp4`;
+      anchor.download = props.outputMode === 'hook'
+        ? `${fileName(props.copy.hookTitle)}-hook-1080p.mp4`
+        : `${fileName(props.copy.productName)}-9x16.mp4`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -105,6 +110,7 @@ export default function BrandExportButton() {
   }
 
   const busy = status === 'checking' || status === 'rendering';
+  const outputMode = useBrandStudioStore((state) => state.outputMode);
 
   return (
     <div className="flex flex-col gap-3">
@@ -119,7 +125,9 @@ export default function BrandExportButton() {
           ? 'Memeriksa browser…'
           : status === 'rendering'
             ? `Rendering MP4 — ${progress}%`
-            : 'Export Brand Video'}
+            : outputMode === 'hook'
+              ? 'Export Hook MP4 HD'
+              : 'Export Brand Video'}
       </button>
 
       {status === 'rendering' ? (
@@ -134,7 +142,7 @@ export default function BrandExportButton() {
       {status === 'done' ? (
         <div className="flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-[11px] text-emerald-200">
           <CheckCircle2 size={15} />
-          MP4 berhasil dibuat dan diunduh.
+          {outputMode === 'hook' ? 'Hook MP4 HD berhasil dibuat.' : 'MP4 berhasil dibuat dan diunduh.'}
           <Download size={14} className="ml-auto" />
         </div>
       ) : null}

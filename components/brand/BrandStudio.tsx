@@ -34,7 +34,16 @@ import {
   useBrandStudioStore,
   type BrandEditorSection,
 } from '@/store/useBrandStudioStore';
-import type { BrandCopy, BrandMediaSlot, BrandPalette, BrandTiming } from '@/types/brand';
+import type {
+  BrandCopy,
+  BrandHookAlignment,
+  BrandHookMotion,
+  BrandHookTypography,
+  BrandMediaSlot,
+  BrandOutputMode,
+  BrandPalette,
+  BrandTiming,
+} from '@/types/brand';
 import BrandExportButton from './BrandExportButton';
 import styles from '@/app/brand/brand.module.css';
 
@@ -53,6 +62,20 @@ const SECTIONS: Array<{
   { id: 'export', label: 'Export', description: 'Render MP4 vertikal', icon: Download },
 ];
 
+function sectionDescription(section: BrandEditorSection, outputMode: BrandOutputMode) {
+  if (outputMode === 'campaign') {
+    return SECTIONS.find((entry) => entry.id === section)?.description ?? '';
+  }
+
+  if (section === 'templates') return 'Pilih gaya visual hook';
+  if (section === 'copy') return 'Teks, tipografi, dan animasi';
+  if (section === 'style') return 'Warna hook sesuai brand';
+  if (section === 'timing') return 'Durasi klip pembuka';
+  if (section === 'audio') return 'Backsound dan SFX pembuka';
+  if (section === 'export') return 'Export Hook MP4 HD';
+  return '';
+}
+
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
     <label className={styles.field}>
@@ -65,11 +88,17 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 
 function CopyFields() {
   const copy = useBrandStudioStore((state) => state.copy);
+  const hook = useBrandStudioStore((state) => state.hook);
+  const outputMode = useBrandStudioStore((state) => state.outputMode);
   const updateCopy = useBrandStudioStore((state) => state.updateCopy);
-  const fields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
+  const updateHook = useBrandStudioStore((state) => state.updateHook);
+  const hookFields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
     { key: 'eyebrow', label: 'Brand kecil di atas' },
     { key: 'hookTitle', label: 'Hook utama' },
     { key: 'hookAccent', label: 'Hook aksen / italic' },
+    { key: 'hookFooter', label: 'Teks kecil di bawah' },
+  ];
+  const campaignFields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
     { key: 'storyTitle', label: 'Judul cerita' },
     { key: 'storyBody', label: 'Penjelasan singkat', multiline: true },
     { key: 'productName', label: 'Nama produk digital' },
@@ -77,6 +106,7 @@ function CopyFields() {
     { key: 'cta', label: 'Call to action' },
     { key: 'domain', label: 'Domain / username' },
   ];
+  const fields = outputMode === 'hook' ? hookFields : [...hookFields, ...campaignFields];
 
   return (
     <div className={styles.sectionStack}>
@@ -121,6 +151,78 @@ function CopyFields() {
           )}
         </Field>
       ))}
+      {outputMode === 'hook' ? (
+        <>
+          <div className={styles.divider} />
+          <div className={styles.twoColumns}>
+            <Field label="Gaya tipografi">
+              <select
+                className={styles.select}
+                value={hook.typography}
+                onChange={(event) => updateHook('typography', event.target.value as BrandHookTypography)}
+              >
+                <option value="editorial">Editorial</option>
+                <option value="bold">Bold / Viral</option>
+                <option value="clean">Clean</option>
+              </select>
+            </Field>
+            <Field label="Animasi masuk">
+              <select
+                className={styles.select}
+                value={hook.motion}
+                onChange={(event) => updateHook('motion', event.target.value as BrandHookMotion)}
+              >
+                <option value="soft">Soft rise</option>
+                <option value="pop">Pop</option>
+                <option value="slide">Slide</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Perataan teks">
+            <select
+              className={styles.select}
+              value={hook.alignment}
+              onChange={(event) => updateHook('alignment', event.target.value as BrandHookAlignment)}
+            >
+              <option value="center">Tengah</option>
+              <option value="left">Kiri</option>
+            </select>
+          </Field>
+          <Field label={`Ukuran teks — ${Math.round(hook.textScale * 100)}%`}>
+            <input
+              className={styles.slider}
+              type="range"
+              min={0.72}
+              max={1.25}
+              step={0.01}
+              value={hook.textScale}
+              onChange={(event) => updateHook('textScale', Number(event.target.value))}
+            />
+          </Field>
+          <Field label={`Posisi vertikal — ${hook.positionY}%`}>
+            <input
+              className={styles.slider}
+              type="range"
+              min={22}
+              max={58}
+              step={1}
+              value={hook.positionY}
+              onChange={(event) => updateHook('positionY', Number(event.target.value))}
+            />
+          </Field>
+          <label className={styles.toggleRow}>
+            <span>
+              <strong>Garis aksen</strong>
+              <small>Tampilkan divider dekoratif di bawah hook.</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={hook.showDivider}
+              onChange={(event) => updateHook('showDivider', event.target.checked)}
+            />
+          </label>
+        </>
+      ) : null}
     </div>
   );
 }
@@ -248,21 +350,25 @@ function PaletteFields() {
 
 function TimingFields() {
   const timing = useBrandStudioStore((state) => state.timing);
+  const outputMode = useBrandStudioStore((state) => state.outputMode);
   const updateTiming = useBrandStudioStore((state) => state.updateTiming);
-  const rows: Array<{ key: keyof BrandTiming; label: string; min: number; max: number }> = [
+  const campaignRows: Array<{ key: keyof BrandTiming; label: string; min: number; max: number }> = [
     { key: 'hookSeconds', label: 'Hook awal', min: 2, max: 6 },
     { key: 'productSeconds', label: 'Product reveal', min: 3, max: 10 },
     { key: 'storySeconds', label: 'Cerita dan benefit', min: 3, max: 9 },
     { key: 'outroSeconds', label: 'CTA akhir', min: 2.5, max: 7 },
   ];
-  const total = Object.values(timing).reduce((sum, value) => sum + value, 0);
+  const rows = outputMode === 'hook' ? [campaignRows[0]] : campaignRows;
+  const total = outputMode === 'hook'
+    ? timing.hookSeconds
+    : Object.values(timing).reduce((sum, value) => sum + value, 0);
 
   return (
     <div className={styles.sectionStack}>
       <div className={styles.durationSummary}>
         <Clock3 size={19} />
         <div>
-          <span>Total durasi</span>
+          <span>{outputMode === 'hook' ? 'Durasi hook' : 'Total durasi'}</span>
           <strong>{total.toFixed(1)} detik</strong>
         </div>
       </div>
@@ -285,6 +391,7 @@ function TimingFields() {
 
 function AudioFields() {
   const audio = useBrandStudioStore((state) => state.audio);
+  const outputMode = useBrandStudioStore((state) => state.outputMode);
   const updateAudio = useBrandStudioStore((state) => state.updateAudio);
 
   function handleMusic(event: ChangeEvent<HTMLInputElement>) {
@@ -334,7 +441,7 @@ function AudioFields() {
           onChange={(event) => updateAudio({ musicVolume: Number(event.target.value) })}
         />
       </Field>
-      <Field label="SFX pergantian scene">
+      <Field label={outputMode === 'hook' ? 'SFX pembuka hook' : 'SFX pergantian scene'}>
         <select
           className={styles.select}
           value={audio.transitionSfx}
@@ -398,6 +505,7 @@ function ExportFields() {
         <span>Resolusi</span><strong>1080 × 1920</strong>
         <span>Format</span><strong>MP4 · H.264</strong>
         <span>Rasio</span><strong>9:16</strong>
+        <span>Output</span><strong>{props.outputMode === 'hook' ? 'Hook pendek' : 'Campaign lengkap'}</strong>
         <span>Durasi</span><strong>{seconds.toFixed(1)} detik</strong>
         <span>Audio</span><strong>AAC</strong>
       </div>
@@ -421,7 +529,10 @@ function InspectorContent({ section }: { section: BrandEditorSection }) {
 
 export default function BrandStudio() {
   const state = useBrandStudioStore();
-  const activeMeta = SECTIONS.find((section) => section.id === state.activeSection) ?? SECTIONS[0];
+  const visibleSections = state.outputMode === 'hook'
+    ? SECTIONS.filter((section) => section.id !== 'media')
+    : SECTIONS;
+  const activeMeta = visibleSections.find((section) => section.id === state.activeSection) ?? visibleSections[0];
   const ActiveIcon = activeMeta.icon;
   const currentTemplate = BRAND_TEMPLATE_LIST.find((template) => template.id === state.templateId)!;
   const props = getBrandVideoProps();
@@ -441,13 +552,13 @@ export default function BrandStudio() {
           <span className={styles.brandMark}><Sparkles size={18} /></span>
           <span>
             <strong>FYA Creator Studio</strong>
-            <small>Brand Video</small>
+            <small>{state.outputMode === 'hook' ? 'Hook Maker' : 'Brand Campaign'}</small>
           </span>
         </div>
 
         <nav className={styles.modeSwitch} aria-label="Pilih studio">
           <Link href="/" className={styles.modeLink}>WhatsApp Story</Link>
-          <span className={styles.modeActive}>Brand Video</span>
+          <span className={styles.modeActive}>Brand Studio</span>
         </nav>
 
         <div className={styles.topActions}>
@@ -455,7 +566,7 @@ export default function BrandStudio() {
             <RefreshCw size={15} /> Reset
           </button>
           <button type="button" className={styles.exportShortcut} onClick={() => state.setActiveSection('export')}>
-            <Film size={15} /> Export MP4
+            <Film size={15} /> {state.outputMode === 'hook' ? 'Export Hook' : 'Export MP4'}
           </button>
         </div>
       </header>
@@ -465,11 +576,29 @@ export default function BrandStudio() {
           <Link href="/" className={styles.backLink}><ArrowLeft size={15} /> Kembali ke WhatsApp</Link>
           <div className={styles.projectCard}>
             <span>{currentTemplate.badge}</span>
-            <strong>{state.copy.productName}</strong>
-            <small>{currentTemplate.name}</small>
+            <strong>{state.outputMode === 'hook' ? state.copy.hookTitle : state.copy.productName}</strong>
+            <small>{state.outputMode === 'hook' ? 'Hook video pendek' : currentTemplate.name}</small>
+          </div>
+          <div className={styles.outputModePicker} aria-label="Jenis output video">
+            <button
+              type="button"
+              className={state.outputMode === 'hook' ? styles.outputModeActive : ''}
+              onClick={() => state.setOutputMode('hook')}
+            >
+              <WandSparkles size={14} />
+              <span><strong>Hook Maker</strong><small>2–6 detik</small></span>
+            </button>
+            <button
+              type="button"
+              className={state.outputMode === 'campaign' ? styles.outputModeActive : ''}
+              onClick={() => state.setOutputMode('campaign')}
+            >
+              <Film size={14} />
+              <span><strong>Full Video</strong><small>Semua scene</small></span>
+            </button>
           </div>
           <nav className={styles.sectionNav}>
-            {SECTIONS.map((section) => {
+            {visibleSections.map((section) => {
               const Icon = section.icon;
               const active = state.activeSection === section.id;
               return (
@@ -482,7 +611,7 @@ export default function BrandStudio() {
                   <span><Icon size={16} /></span>
                   <div>
                     <strong>{section.label}</strong>
-                    <small>{section.description}</small>
+                    <small>{sectionDescription(section.id, state.outputMode)}</small>
                   </div>
                 </button>
               );
@@ -498,7 +627,7 @@ export default function BrandStudio() {
           <div className={styles.previewHeader}>
             <div>
               <span>LIVE PREVIEW</span>
-              <strong>{currentTemplate.name}</strong>
+              <strong>{state.outputMode === 'hook' ? `Hook Maker · ${currentTemplate.name}` : currentTemplate.name}</strong>
             </div>
             <div className={styles.previewBadges}>
               <span>9:16</span>
@@ -509,7 +638,7 @@ export default function BrandStudio() {
           <div className={styles.previewStage}>
             <div className={styles.playerFrame}>
               <Player
-                key={state.templateId}
+                key={`${state.templateId}-${state.outputMode}`}
                 component={BrandVideo}
                 inputProps={props}
                 durationInFrames={durationInFrames}
@@ -524,8 +653,8 @@ export default function BrandStudio() {
             </div>
           </div>
           <div className={styles.previewFooter}>
-            <span><Play size={14} /> Gunakan kontrol di preview untuk mengecek timing dan audio.</span>
-            <small>Perubahan langsung diterapkan.</small>
+            <span><Play size={14} /> {state.outputMode === 'hook' ? 'Preview ini adalah hasil hook yang akan diekspor.' : 'Gunakan kontrol untuk mengecek seluruh campaign.'}</span>
+            <small>Teks dan gaya berubah langsung.</small>
           </div>
         </section>
 
@@ -533,9 +662,9 @@ export default function BrandStudio() {
           <header className={styles.inspectorHeader}>
             <span className={styles.inspectorIcon}><ActiveIcon size={18} /></span>
             <div>
-              <span>BRAND VIDEO</span>
+              <span>{state.outputMode === 'hook' ? 'HOOK MAKER' : 'BRAND VIDEO'}</span>
               <h1>{activeMeta.label}</h1>
-              <p>{activeMeta.description}</p>
+              <p>{sectionDescription(activeMeta.id, state.outputMode)}</p>
             </div>
           </header>
           <div className={styles.inspectorBody}>

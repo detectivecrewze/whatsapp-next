@@ -103,7 +103,7 @@ function BrandHeader({ props, compact = false }: { props: BrandVideoProps; compa
   );
 }
 
-function SceneShell({ children }: { children: ReactNode }) {
+function SceneShell({ children, fadeIn = true }: { children: ReactNode; fadeIn?: boolean }) {
   const frame = useCurrentFrame();
   const { durationInFrames } = useVideoConfig();
   const endStart = Math.max(10, durationInFrames - 10);
@@ -111,11 +111,16 @@ function SceneShell({ children }: { children: ReactNode }) {
   return (
     <AbsoluteFill
       style={{
-        opacity: interpolate(frame, [0, 9, endStart, durationInFrames - 1], [0, 1, 1, 0], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
-          easing: Easing.bezier(0.16, 1, 0.3, 1),
-        }),
+        opacity: interpolate(
+          frame,
+          [0, 9, endStart, durationInFrames - 1],
+          [fadeIn ? 0 : 1, 1, 1, 0],
+          {
+            extrapolateLeft: 'clamp',
+            extrapolateRight: 'clamp',
+            easing: Easing.bezier(0.16, 1, 0.3, 1),
+          },
+        ),
       }}
     >
       {children}
@@ -150,8 +155,35 @@ function MediaVisual({ media }: { media: BrandMediaSlot }) {
 
 function HookScene({ props }: { props: BrandVideoProps }) {
   const frame = useCurrentFrame();
+  const isEditorial = props.hook.typography === 'editorial';
+  const isBold = props.hook.typography === 'bold';
+  const titleFont = isEditorial ? serif : sans;
+  const textLeft = props.hook.alignment === 'left' ? 96 : 115;
+  const textRight = props.hook.alignment === 'left' ? 180 : 115;
+  const entryTranslate = props.hook.motion === 'slide'
+    ? interpolate(frame, [0, 18], ['-70px 0px', '0px 0px'], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      })
+    : props.hook.motion === 'soft'
+      ? interpolate(frame, [0, 18], ['0px 34px', '0px 0px'], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+        })
+      : '0px 0px';
+  const entryScale = props.hook.motion === 'pop'
+    ? interpolate(frame, [0, 16], [0.88, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.34, 1.56, 0.64, 1),
+        output: 'perceptual-scale',
+      })
+    : 1;
+
   return (
-    <SceneShell>
+    <SceneShell fadeIn={props.outputMode !== 'hook'}>
       <BrandCanvas props={props} />
       <div
         style={{
@@ -172,43 +204,58 @@ function HookScene({ props }: { props: BrandVideoProps }) {
       <div
         style={{
           position: 'absolute',
-          left: 115,
-          right: 115,
-          top: 640,
-          textAlign: 'center',
+          left: textLeft,
+          right: textRight,
+          top: Math.round((props.hook.positionY / 100) * 1920),
+          textAlign: props.hook.alignment,
           color: props.palette.text,
-          fontFamily: serif,
-          translate: interpolate(frame, [0, 18], ['0px 34px', '0px 0px'], {
+          fontFamily: titleFont,
+          translate: entryTranslate,
+          scale: entryScale,
+          opacity: interpolate(frame, [0, 12], [0.35, 1], {
             extrapolateLeft: 'clamp',
             extrapolateRight: 'clamp',
             easing: Easing.bezier(0.16, 1, 0.3, 1),
           }),
         }}
       >
-        <div style={{ fontSize: 91, lineHeight: 1.02, letterSpacing: -3.1 }}>
+        <div
+          style={{
+            fontSize: (isBold ? 84 : 91) * props.hook.textScale,
+            lineHeight: isBold ? 0.98 : 1.02,
+            letterSpacing: isBold ? -2.2 : -3.1,
+            fontWeight: isBold ? 800 : 400,
+          }}
+        >
           {props.copy.hookTitle}
         </div>
         <div
           style={{
             marginTop: 18,
             color: props.palette.accent,
-            fontSize: 84,
+            fontFamily: isBold ? sans : serif,
+            fontSize: (isBold ? 78 : 84) * props.hook.textScale,
             lineHeight: 1.05,
             letterSpacing: -2,
-            fontStyle: 'italic',
+            fontStyle: isBold ? 'normal' : 'italic',
+            fontWeight: isBold ? 800 : 400,
           }}
         >
           {props.copy.hookAccent}
         </div>
-        <div
-          style={{
-            width: 84,
-            height: 2,
-            margin: '76px auto 0',
-            backgroundColor: props.palette.accent,
-            opacity: 0.45,
-          }}
-        />
+        {props.hook.showDivider ? (
+          <div
+            style={{
+              width: 84,
+              height: 2,
+              marginTop: 76,
+              marginRight: props.hook.alignment === 'center' ? 'auto' : 0,
+              marginLeft: props.hook.alignment === 'center' ? 'auto' : 0,
+              backgroundColor: props.palette.accent,
+              opacity: 0.45,
+            }}
+          />
+        ) : null}
       </div>
       <div
         style={{
@@ -224,7 +271,7 @@ function HookScene({ props }: { props: BrandVideoProps }) {
           letterSpacing: 7,
         }}
       >
-        DIGITAL ATELIER
+        {props.copy.hookFooter}
       </div>
     </SceneShell>
   );
@@ -478,17 +525,22 @@ function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStart
           volume={props.audio.musicVolume * fadeIn * fadeOut}
         />
       ) : null}
-      {sfxFile ? (
+      {props.outputMode === 'hook' && sfxFile ? (
+        <Sequence from={0} durationInFrames={fps} layout="none">
+          <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume} />
+        </Sequence>
+      ) : null}
+      {props.outputMode === 'campaign' && sfxFile ? (
         <Sequence from={sceneStarts[1]} durationInFrames={fps} layout="none">
           <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume} />
         </Sequence>
       ) : null}
-      {sfxFile ? (
+      {props.outputMode === 'campaign' && sfxFile ? (
         <Sequence from={sceneStarts[2]} durationInFrames={fps} layout="none">
           <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume * 0.85} />
         </Sequence>
       ) : null}
-      {sfxFile ? (
+      {props.outputMode === 'campaign' && sfxFile ? (
         <Sequence from={sceneStarts[3]} durationInFrames={fps} layout="none">
           <Audio src={staticFile(sfxFile)} volume={props.audio.transitionSfxVolume * 0.72} />
         </Sequence>
@@ -506,6 +558,17 @@ export const BrandVideo = (props: BrandVideoProps) => {
   const productStart = hookFrames;
   const storyStart = productStart + productFrames;
   const outroStart = storyStart + storyFrames;
+
+  if (props.outputMode === 'hook') {
+    return (
+      <AbsoluteFill style={{ backgroundColor: props.palette.background, overflow: 'hidden' }}>
+        <Sequence from={0} durationInFrames={hookFrames} name="Hook Maker">
+          <HookScene props={props} />
+        </Sequence>
+        <BrandAudio props={props} sceneStarts={[0, hookFrames, hookFrames, hookFrames]} />
+      </AbsoluteFill>
+    );
+  }
 
   return (
     <AbsoluteFill style={{ backgroundColor: props.palette.background, overflow: 'hidden' }}>

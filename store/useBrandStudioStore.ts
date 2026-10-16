@@ -8,7 +8,9 @@ import {
 import type {
   BrandAudioSettings,
   BrandCopy,
+  BrandHookSettings,
   BrandMediaSlot,
+  BrandOutputMode,
   BrandPalette,
   BrandTemplateId,
   BrandTiming,
@@ -27,8 +29,10 @@ export type BrandEditorSection =
 interface BrandStudioStore extends BrandVideoProps {
   activeSection: BrandEditorSection;
   setActiveSection: (section: BrandEditorSection) => void;
+  setOutputMode: (outputMode: BrandOutputMode) => void;
   setTemplate: (templateId: BrandTemplateId) => void;
   updateCopy: (key: keyof BrandCopy, value: string) => void;
+  updateHook: <K extends keyof BrandHookSettings>(key: K, value: BrandHookSettings[K]) => void;
   updatePalette: (key: keyof BrandPalette, value: string) => void;
   updateMedia: (
     slot: 'heroMedia' | 'detailMedia',
@@ -45,13 +49,19 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
   ...initial,
   activeSection: 'templates',
   setActiveSection: (activeSection) => set({ activeSection }),
-  setTemplate: (templateId) =>
+  setOutputMode: (outputMode) => set({ outputMode, activeSection: 'copy' }),
+  setTemplate: (templateId) => {
+    const outputMode = get().outputMode;
     set({
       ...cloneBrandProps(BRAND_TEMPLATES[templateId].defaults),
+      outputMode,
       activeSection: 'copy',
-    }),
+    });
+  },
   updateCopy: (key, value) =>
     set((state) => ({ copy: { ...state.copy, [key]: value } })),
+  updateHook: (key, value) =>
+    set((state) => ({ hook: { ...state.hook, [key]: value } })),
   updatePalette: (key, value) =>
     set((state) => ({ palette: { ...state.palette, [key]: value } })),
   updateMedia: (slot, updates) =>
@@ -61,16 +71,18 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
   updateAudio: (updates) =>
     set((state) => ({ audio: { ...state.audio, ...updates } })),
   resetTemplate: () => {
-    const templateId = get().templateId;
-    set({ ...cloneBrandProps(BRAND_TEMPLATES[templateId].defaults) });
+    const { templateId, outputMode } = get();
+    set({ ...cloneBrandProps(BRAND_TEMPLATES[templateId].defaults), outputMode });
   },
 }));
 
 export function getBrandVideoProps(): BrandVideoProps {
   const state = useBrandStudioStore.getState();
   return {
+    outputMode: state.outputMode,
     templateId: state.templateId,
     copy: state.copy,
+    hook: state.hook,
     palette: state.palette,
     heroMedia: state.heroMedia,
     detailMedia: state.detailMedia,

@@ -16,17 +16,27 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
     description: 'Hook tipografi yang tenang, dilanjutkan reveal produk digital.',
     badge: 'FYA SIGNATURE',
     defaults: {
+      outputMode: 'hook',
       templateId: 'editorial',
       copy: {
         eyebrow: 'FOR YOU. ALWAYS.',
         hookTitle: 'Ada banyak cara bilang,',
         hookAccent: '“kamu berarti buatku.”',
+        hookFooter: 'DIGITAL ATELIER',
         storyTitle: 'Bukan sekadar hadiah.',
         storyBody: 'Satu ruang digital berisi kata, foto, dan kenangan yang bisa dia buka kapan saja.',
         productName: 'Digital Gift — Letter Edition',
         productDetail: 'Dibuat personal, dikirim lewat link.',
         cta: 'Buat versimu untuk dia',
         domain: 'for-you-always.my.id',
+      },
+      hook: {
+        typography: 'editorial',
+        motion: 'soft',
+        alignment: 'center',
+        textScale: 1,
+        positionY: 33,
+        showDivider: true,
       },
       palette: {
         background: '#fbf7f2',
@@ -68,17 +78,27 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
     description: 'Hook yang ringan dengan panggung produk bergaya birthday card.',
     badge: 'BIRTHDAY EDITION',
     defaults: {
+      outputMode: 'hook',
       templateId: 'birthday',
       copy: {
         eyebrow: 'FOR YOU. ALWAYS.',
         hookTitle: 'Ulang tahunnya',
         hookAccent: 'sebentar lagi?',
+        hookFooter: 'BIRTHDAY EDITION',
         storyTitle: 'Ucapan yang terasa benar-benar dia.',
         storyBody: 'Gabungkan pesan, foto favorit, dan kejutan kecil dalam satu digital gift.',
         productName: 'Birthday Digital Gift',
         productDetail: 'Personal, manis, dan siap dibagikan.',
         cta: 'Siapkan kejutan ulang tahunnya',
         domain: 'for-you-always.my.id',
+      },
+      hook: {
+        typography: 'bold',
+        motion: 'pop',
+        alignment: 'center',
+        textScale: 1,
+        positionY: 34,
+        showDivider: true,
       },
       palette: {
         background: '#fff9ef',
@@ -120,17 +140,27 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
     description: 'Cerita hangat dengan footage kenangan dan CTA yang elegan.',
     badge: 'ANNIVERSARY EDITION',
     defaults: {
+      outputMode: 'hook',
       templateId: 'anniversary',
       copy: {
         eyebrow: 'FOR YOU. ALWAYS.',
         hookTitle: 'Masih ingat,',
         hookAccent: 'awal cerita kita?',
+        hookFooter: 'OUR STORY',
         storyTitle: 'Ternyata sudah sejauh ini.',
         storyBody: 'Simpan perjalanan kalian menjadi hadiah digital yang tetap terasa personal.',
         productName: 'Our Journey',
         productDetail: 'Tempat, foto, dan cerita dalam satu halaman.',
         cta: 'Rayakan cerita kalian',
         domain: 'for-you-always.my.id',
+      },
+      hook: {
+        typography: 'clean',
+        motion: 'slide',
+        alignment: 'left',
+        textScale: 1,
+        positionY: 32,
+        showDivider: true,
       },
       palette: {
         background: '#f7f0e8',
@@ -183,9 +213,13 @@ export function cloneBrandProps(props: BrandVideoProps): BrandVideoProps {
 }
 
 export function getBrandDurationInFrames(
-  props: Pick<BrandVideoProps, 'timing'>,
+  props: Pick<BrandVideoProps, 'outputMode' | 'timing'>,
   fps = BRAND_VIDEO_FPS,
 ) {
+  if (props.outputMode === 'hook') {
+    return Math.max(1, Math.round(props.timing.hookSeconds * fps));
+  }
+
   const totalSeconds =
     props.timing.hookSeconds +
     props.timing.productSeconds +
