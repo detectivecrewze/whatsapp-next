@@ -214,7 +214,99 @@ function textureFor(templateId: BrandTemplateId) {
   return 'radial-gradient(circle at 88% 4%, rgba(213,178,166,.18), transparent 31%), radial-gradient(circle at 3% 82%, rgba(232,213,195,.32), transparent 36%)';
 }
 
-function BrandCanvas({ props }: { props: BrandVideoProps }) {
+function HookBackgroundMedia({ props }: { props: BrandVideoProps }) {
+  const frame = useCurrentFrame();
+  const { durationInFrames, fps } = useVideoConfig();
+  const background = props.hookBackground;
+  const media = background?.media;
+  if (!background || background.mode !== 'media' || !media?.src) return null;
+
+  const progress = interpolate(frame, [0, Math.max(1, durationInFrames - 1)], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  const scale = background.motion === 'slow-zoom' ? 1.04 + progress * 0.1 : 1.06;
+  const translate = background.motion === 'drift'
+    ? `${-26 + progress * 52}px ${18 - progress * 36}px`
+    : '0px 0px';
+  const style = {
+    position: 'absolute' as const,
+    inset: -34,
+    width: 'calc(100% + 68px)',
+    height: 'calc(100% + 68px)',
+    objectPosition: `${media.focusX}% ${media.focusY}%`,
+    scale,
+    translate,
+    filter: background.blur > 0 ? `blur(${background.blur}px)` : 'none',
+  };
+
+  return (
+    <>
+      {media.kind === 'video' ? (
+        <Video
+          name="Hook background video"
+          src={media.src}
+          muted
+          loop
+          premountFor={fps}
+          objectFit={media.fit}
+          style={style}
+        />
+      ) : (
+        <CanvasImage
+          name="Hook background image"
+          src={media.src}
+          premountFor={fps}
+          fit={media.fit}
+          style={style}
+        />
+      )}
+      <AbsoluteFill
+        style={{
+          backgroundColor: props.palette.background,
+          opacity: background.overlayOpacity,
+        }}
+      />
+      <AbsoluteFill
+        style={{
+          background: 'radial-gradient(circle at 50% 42%, transparent 10%, rgba(0,0,0,.28) 100%)',
+          opacity: 0.72,
+        }}
+      />
+    </>
+  );
+}
+
+function BrandCanvas({ props, hook = false }: { props: BrandVideoProps; hook?: boolean }) {
+  const hookBackgroundMode = props.hookBackground?.mode ?? 'brand';
+
+  if (hook && hookBackgroundMode === 'media') {
+    return (
+      <AbsoluteFill style={{ backgroundColor: props.palette.background }}>
+        <HookBackgroundMedia props={props} />
+      </AbsoluteFill>
+    );
+  }
+
+  if (hook && hookBackgroundMode === 'gradient') {
+    return (
+      <AbsoluteFill
+        style={{
+          backgroundColor: props.palette.background,
+          backgroundImage: `radial-gradient(circle at 78% 18%, ${props.palette.surface} 0%, transparent 37%), linear-gradient(145deg, ${props.palette.background} 0%, ${props.palette.surface} 58%, ${props.palette.accent} 145%)`,
+        }}
+      >
+        <AbsoluteFill
+          style={{
+            opacity: 0.13,
+            backgroundImage:
+              'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'.12\'/%3E%3C/svg%3E")',
+          }}
+        />
+      </AbsoluteFill>
+    );
+  }
+
   return (
     <AbsoluteFill style={{ backgroundColor: props.palette.background }}>
       <AbsoluteFill style={{ background: textureFor(props.templateId) }} />
@@ -421,7 +513,7 @@ function HookScene({ props }: { props: BrandVideoProps }) {
       exitTransition={props.hook.exitTransition}
       transitionFrames={Math.round(props.hook.transitionSeconds * fps)}
     >
-      <BrandCanvas props={props} />
+      <BrandCanvas props={props} hook />
       <div
         style={{
           position: 'absolute',
@@ -763,13 +855,16 @@ function OutroScene({ props }: { props: BrandVideoProps }) {
 function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStarts: number[] }) {
   const frame = useCurrentFrame();
   const { durationInFrames, fps } = useVideoConfig();
-  const fadeIn = interpolate(frame, [0, Math.round(0.7 * fps)], [0, 1], {
+  const musicStartFrame = Math.max(0, Math.round((props.audio.musicStartSeconds ?? 0) * fps));
+  const musicFadeInFrames = Math.max(1, Math.round((props.audio.musicFadeInSeconds ?? 0.7) * fps));
+  const musicFadeOutFrames = Math.max(1, Math.round((props.audio.musicFadeOutSeconds ?? 1.2) * fps));
+  const fadeIn = interpolate(frame, [musicStartFrame, musicStartFrame + musicFadeInFrames], [0, 1], {
     extrapolateLeft: 'clamp',
     extrapolateRight: 'clamp',
   });
   const fadeOut = interpolate(
     frame,
-    [Math.max(0, durationInFrames - Math.round(1.2 * fps)), durationInFrames - 1],
+    [Math.max(0, durationInFrames - musicFadeOutFrames), durationInFrames - 1],
     [1, 0],
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
   );
@@ -780,6 +875,27 @@ function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStart
     Math.max(0, durationInFrames - 1),
     Math.max(0, Math.round(props.audio.sfxOffsetSeconds * fps)),
   );
+  const sfxStarts = props.outputMode === 'hook' ? [hookSfxStart] : sceneStarts.slice(1);
+  const duckLevel = props.audio.duckMusicForSfx === false
+    ? 1
+    : Math.max(0.08, Math.min(1, props.audio.musicDuckLevel ?? 0.42));
+  const duckFactor = sfxFile && props.audio.duckMusicForSfx !== false
+    ? sfxStarts.reduce((current, start) => {
+        const duckInStart = Math.max(0, start - Math.round(0.12 * fps));
+        const duckOutEnd = Math.min(durationInFrames - 1, start + Math.round(1.05 * fps));
+        if (frame < duckInStart || frame > duckOutEnd) return current;
+        const factor = frame < start
+          ? interpolate(frame, [duckInStart, Math.max(duckInStart + 1, start)], [1, duckLevel], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            })
+          : interpolate(frame, [start, Math.max(start + 1, duckOutEnd)], [duckLevel, 1], {
+              extrapolateLeft: 'clamp',
+              extrapolateRight: 'clamp',
+            });
+        return Math.min(current, factor);
+      }, 1)
+    : 1;
 
   return (
     <>
@@ -787,9 +903,10 @@ function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStart
         <Audio
           name={`Backsound · ${props.audio.musicName || 'musik latar'}`}
           src={props.audio.musicSrc}
+          from={musicStartFrame}
           loop
           premountFor={fps}
-          volume={props.audio.musicVolume * fadeIn * fadeOut}
+          volume={props.audio.musicVolume * fadeIn * fadeOut * duckFactor}
           delayRenderTimeoutInMilliseconds={120_000}
           delayRenderRetries={2}
         />

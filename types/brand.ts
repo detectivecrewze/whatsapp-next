@@ -29,6 +29,8 @@ export interface BrandHookPartMotions {
 
 export type BrandMediaKind = 'image' | 'video';
 export type BrandMediaFit = 'cover' | 'contain';
+export type BrandHookBackgroundMode = 'brand' | 'gradient' | 'media';
+export type BrandHookBackgroundMotion = 'none' | 'slow-zoom' | 'drift';
 export type BrandTransitionSfx =
   | 'none'
   | 'whoosh'
@@ -53,6 +55,14 @@ export interface BrandMediaSlot {
   fit: BrandMediaFit;
   focusX: number;
   focusY: number;
+}
+
+export interface BrandHookBackgroundSettings {
+  mode: BrandHookBackgroundMode;
+  media: BrandMediaSlot;
+  overlayOpacity: number;
+  blur: number;
+  motion: BrandHookBackgroundMotion;
 }
 
 export interface BrandCopy {
@@ -104,6 +114,11 @@ export interface BrandAudioSettings {
   musicSrc: string;
   musicName: string;
   musicVolume: number;
+  musicStartSeconds: number;
+  musicFadeInSeconds: number;
+  musicFadeOutSeconds: number;
+  duckMusicForSfx: boolean;
+  musicDuckLevel: number;
   transitionSfx: BrandTransitionSfx;
   transitionSfxVolume: number;
   sfxOffsetSeconds: number;
@@ -115,6 +130,7 @@ export interface BrandVideoProps extends Record<string, unknown> {
   copy: BrandCopy;
   hook: BrandHookSettings;
   palette: BrandPalette;
+  hookBackground: BrandHookBackgroundSettings;
   heroMedia: BrandMediaSlot;
   detailMedia: BrandMediaSlot;
   timing: BrandTiming;

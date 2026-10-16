@@ -14,7 +14,9 @@ import {
   Palette,
   Play,
   RefreshCw,
+  Save,
   Sparkles,
+  Trash2,
   Type,
   Upload,
   Video,
@@ -23,6 +25,7 @@ import {
 } from 'lucide-react';
 import {
   BRAND_HOOK_PRESETS,
+  BRAND_KIT_PRESETS,
   BRAND_PALETTE_PRESETS,
   BRAND_SFX_FILES,
   BRAND_SFX_GROUPS,
@@ -41,6 +44,8 @@ import {
 import type {
   BrandCopy,
   BrandHookAlignment,
+  BrandHookBackgroundMode,
+  BrandHookBackgroundMotion,
   BrandHookExit,
   BrandHookMotion,
   BrandHookPartMotions,
@@ -90,6 +95,7 @@ function sectionDescription(section: BrandEditorSection, outputMode: BrandOutput
   if (section === 'templates') return 'Pilih gaya visual hook';
   if (section === 'copy') return 'Teks, tipografi, dan animasi';
   if (section === 'effects') return 'Transisi masuk, keluar, dan SFX';
+  if (section === 'media') return 'Background foto atau video hook';
   if (section === 'style') return 'Warna hook sesuai brand';
   if (section === 'timing') return 'Durasi klip pembuka';
   if (section === 'audio') return 'Backsound dan SFX pembuka';
@@ -376,7 +382,159 @@ function MediaPicker({ slot, title }: { slot: 'heroMedia' | 'detailMedia'; title
   );
 }
 
+function HookBackgroundFields() {
+  const templateId = useBrandStudioStore((state) => state.templateId);
+  const storedBackground = useBrandStudioStore((state) => state.hookBackground);
+  const updateHookBackground = useBrandStudioStore((state) => state.updateHookBackground);
+  const updateHookBackgroundMedia = useBrandStudioStore((state) => state.updateHookBackgroundMedia);
+  const background = storedBackground ?? BRAND_TEMPLATE_LIST.find(
+    (template) => template.id === templateId,
+  )!.defaults.hookBackground;
+
+  function handleBackground(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (background.media.src.startsWith('blob:')) URL.revokeObjectURL(background.media.src);
+    updateHookBackgroundMedia({
+      src: URL.createObjectURL(file),
+      kind: file.type.startsWith('video/') ? 'video' : 'image',
+      name: file.name,
+    });
+    updateHookBackground({ mode: 'media' });
+  }
+
+  const modes: Array<{ id: BrandHookBackgroundMode; label: string; detail: string }> = [
+    { id: 'brand', label: 'Brand', detail: 'Tekstur original' },
+    { id: 'gradient', label: 'Gradient', detail: 'Dari palet aktif' },
+    { id: 'media', label: 'Foto / video', detail: 'Background sendiri' },
+  ];
+
+  return (
+    <div className={styles.sectionStack}>
+      <div className={styles.introCard}>
+        <ImageIcon size={18} />
+        <div>
+          <strong>Visual background hook</strong>
+          <p>Gunakan warna brand, gradient, atau footage sendiri tanpa mengubah media WhatsApp.</p>
+        </div>
+      </div>
+      <Field label="Tipe background">
+        <div className={styles.backgroundModeGrid}>
+          {modes.map((mode) => (
+            <button
+              type="button"
+              key={mode.id}
+              className={background.mode === mode.id ? styles.backgroundModeActive : ''}
+              onClick={() => updateHookBackground({ mode: mode.id })}
+            >
+              <strong>{mode.label}</strong>
+              <small>{mode.detail}</small>
+            </button>
+          ))}
+        </div>
+      </Field>
+      {background.mode === 'media' ? (
+        <section className={styles.mediaCard}>
+          <div className={styles.mediaCardHeader}>
+            <span className={styles.mediaIcon}>
+              {background.media.kind === 'video' ? <Video size={16} /> : <ImageIcon size={16} />}
+            </span>
+            <div>
+              <strong>Background hook</strong>
+              <p>{background.media.name || 'Belum ada media'}</p>
+            </div>
+          </div>
+          <label className={styles.uploadButton}>
+            <Upload size={15} />
+            Upload foto atau video
+            <input type="file" accept="image/*,video/*" hidden onChange={handleBackground} />
+          </label>
+          <div className={styles.twoColumns}>
+            <Field label="Tampilan">
+              <select
+                className={styles.select}
+                value={background.media.fit}
+                onChange={(event) => updateHookBackgroundMedia({
+                  fit: event.target.value as BrandMediaSlot['fit'],
+                })}
+              >
+                <option value="cover">Penuhi frame</option>
+                <option value="contain">Tampilkan utuh</option>
+              </select>
+            </Field>
+            <Field label="Gerakan">
+              <select
+                className={styles.select}
+                value={background.motion}
+                onChange={(event) => updateHookBackground({
+                  motion: event.target.value as BrandHookBackgroundMotion,
+                })}
+              >
+                <option value="none">Diam</option>
+                <option value="slow-zoom">Slow zoom</option>
+                <option value="drift">Drift lembut</option>
+              </select>
+            </Field>
+          </div>
+          <Field label={`Lapisan warna — ${Math.round(background.overlayOpacity * 100)}%`}>
+            <input
+              className={styles.slider}
+              type="range"
+              min={0}
+              max={0.9}
+              step={0.01}
+              value={background.overlayOpacity}
+              onChange={(event) => updateHookBackground({ overlayOpacity: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label={`Blur background — ${background.blur}px`}>
+            <input
+              className={styles.slider}
+              type="range"
+              min={0}
+              max={24}
+              step={1}
+              value={background.blur}
+              onChange={(event) => updateHookBackground({ blur: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label={`Fokus horizontal — ${background.media.focusX}%`}>
+            <input
+              className={styles.slider}
+              type="range"
+              min={0}
+              max={100}
+              value={background.media.focusX}
+              onChange={(event) => updateHookBackgroundMedia({ focusX: Number(event.target.value) })}
+            />
+          </Field>
+          <Field label={`Fokus vertikal — ${background.media.focusY}%`}>
+            <input
+              className={styles.slider}
+              type="range"
+              min={0}
+              max={100}
+              value={background.media.focusY}
+              onChange={(event) => updateHookBackgroundMedia({ focusY: Number(event.target.value) })}
+            />
+          </Field>
+        </section>
+      ) : (
+        <div className={styles.infoNote}>
+          {background.mode === 'gradient'
+            ? 'Gradient otomatis mengikuti warna Background, Kartu media, dan Aksen pada Brand Kit.'
+            : 'Tekstur brand tetap ringan agar teks menjadi fokus utama.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function MediaFields() {
+  const outputMode = useBrandStudioStore((state) => state.outputMode);
+  if (outputMode === 'hook') return <HookBackgroundFields />;
+
   return (
     <div className={styles.sectionStack}>
       <div className={styles.infoNote}>
@@ -388,9 +546,76 @@ function MediaFields() {
   );
 }
 
+interface SavedBrandKit {
+  id: string;
+  name: string;
+  description: string;
+  copy: Pick<BrandCopy, 'eyebrow' | 'hookFooter'>;
+  hook: Pick<BrandHookSettingsForKit, 'typography' | 'alignment'>;
+  palette: BrandPalette;
+}
+
+type BrandHookSettingsForKit = {
+  typography: BrandHookTypography;
+  alignment: BrandHookAlignment;
+};
+
+const SAVED_BRAND_KITS_KEY = 'fya-brand-studio-kits-v1';
+
 function PaletteFields() {
   const palette = useBrandStudioStore((state) => state.palette);
+  const copy = useBrandStudioStore((state) => state.copy);
+  const hook = useBrandStudioStore((state) => state.hook);
   const updatePalette = useBrandStudioStore((state) => state.updatePalette);
+  const updateCopy = useBrandStudioStore((state) => state.updateCopy);
+  const updateHook = useBrandStudioStore((state) => state.updateHook);
+  const [savedKits, setSavedKits] = useState<SavedBrandKit[]>([]);
+  const [kitName, setKitName] = useState('');
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      try {
+        const stored = window.localStorage.getItem(SAVED_BRAND_KITS_KEY);
+        setSavedKits(stored ? JSON.parse(stored) as SavedBrandKit[] : []);
+      } catch {
+        setSavedKits([]);
+      }
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, []);
+
+  function applyBrandKit(kit: SavedBrandKit) {
+    for (const [key, value] of Object.entries(kit.palette)) {
+      updatePalette(key as keyof BrandPalette, value);
+    }
+    updateCopy('eyebrow', kit.copy.eyebrow);
+    updateCopy('hookFooter', kit.copy.hookFooter);
+    updateHook('typography', kit.hook.typography);
+    updateHook('alignment', kit.hook.alignment);
+  }
+
+  function saveCurrentKit() {
+    const normalizedName = kitName.trim();
+    if (!normalizedName) return;
+    const nextKit: SavedBrandKit = {
+      id: `custom-${Date.now()}`,
+      name: normalizedName,
+      description: 'Brand Kit tersimpan di browser ini.',
+      copy: { eyebrow: copy.eyebrow, hookFooter: copy.hookFooter },
+      hook: { typography: hook.typography, alignment: hook.alignment },
+      palette: { ...palette },
+    };
+    const next = [...savedKits, nextKit];
+    setSavedKits(next);
+    window.localStorage.setItem(SAVED_BRAND_KITS_KEY, JSON.stringify(next));
+    setKitName('');
+  }
+
+  function deleteSavedKit(id: string) {
+    const next = savedKits.filter((kit) => kit.id !== id);
+    setSavedKits(next);
+    window.localStorage.setItem(SAVED_BRAND_KITS_KEY, JSON.stringify(next));
+  }
   // Keep the inspector usable during a stale Fast Refresh where the component
   // updates before the module that exports the presets has been replaced.
   const palettePresets = Array.isArray(BRAND_PALETTE_PRESETS)
@@ -417,6 +642,59 @@ function PaletteFields() {
           <p>Disusun dari Chalk White, Obsidian, Onyx, Honey Brown, dan Driftwood Tan.</p>
         </div>
       </div>
+      <Field label="Brand Kit siap pakai">
+        <div className={styles.brandKitGrid}>
+          {BRAND_KIT_PRESETS.map((kit) => (
+            <button type="button" key={kit.id} onClick={() => applyBrandKit(kit)}>
+              <span className={styles.brandKitDots}>
+                <i style={{ backgroundColor: kit.palette.background }} />
+                <i style={{ backgroundColor: kit.palette.accent }} />
+                <i style={{ backgroundColor: kit.palette.text }} />
+              </span>
+              <span><strong>{kit.name}</strong><small>{kit.description}</small></span>
+            </button>
+          ))}
+        </div>
+      </Field>
+      {savedKits.length > 0 ? (
+        <Field label="Brand Kit saya">
+          <div className={styles.savedKitList}>
+            {savedKits.map((kit) => (
+              <div key={kit.id}>
+                <button type="button" onClick={() => applyBrandKit(kit)}>
+                  <span className={styles.brandKitDots}>
+                    <i style={{ backgroundColor: kit.palette.background }} />
+                    <i style={{ backgroundColor: kit.palette.accent }} />
+                    <i style={{ backgroundColor: kit.palette.text }} />
+                  </span>
+                  <strong>{kit.name}</strong>
+                </button>
+                <button type="button" aria-label={`Hapus ${kit.name}`} onClick={() => deleteSavedKit(kit.id)}>
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </Field>
+      ) : null}
+      <div className={styles.saveKitRow}>
+        <input
+          className={styles.input}
+          value={kitName}
+          placeholder="Nama Brand Kit saya"
+          onChange={(event) => setKitName(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter') saveCurrentKit();
+          }}
+        />
+        <button type="button" disabled={!kitName.trim()} onClick={saveCurrentKit}>
+          <Save size={14} /> Simpan
+        </button>
+      </div>
+      <div className={styles.infoNote}>
+        Menyimpan warna, font, perataan, brand kecil, dan footer untuk dipakai ulang.
+      </div>
+      <div className={styles.divider} />
       <div className={styles.palettePresetGrid}>
         {palettePresets.map((preset) => (
           <button
@@ -701,6 +979,13 @@ function EffectsFields() {
 function AudioFields() {
   const audio = useBrandStudioStore((state) => state.audio);
   const updateAudio = useBrandStudioStore((state) => state.updateAudio);
+  const previewRef = useRef<HTMLAudioElement | null>(null);
+  const [isPreviewing, setIsPreviewing] = useState(false);
+
+  useEffect(() => () => {
+    previewRef.current?.pause();
+    previewRef.current = null;
+  }, []);
 
   function handleMusic(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -710,8 +995,62 @@ function AudioFields() {
     updateAudio({ musicSrc: URL.createObjectURL(file), musicName: file.name });
   }
 
+  function previewMusic() {
+    if (!audio.musicSrc) return;
+    if (isPreviewing) {
+      previewRef.current?.pause();
+      setIsPreviewing(false);
+      return;
+    }
+    const preview = new window.Audio(audio.musicSrc);
+    preview.volume = Math.min(1, audio.musicVolume);
+    preview.onended = () => setIsPreviewing(false);
+    preview.onerror = () => setIsPreviewing(false);
+    previewRef.current = preview;
+    setIsPreviewing(true);
+    void preview.play().catch(() => setIsPreviewing(false));
+  }
+
+  const audioPresets = [
+    {
+      id: 'intimate',
+      label: 'Intimate',
+      detail: 'Lembut dan emosional',
+      settings: { musicVolume: 0.14, musicFadeInSeconds: 1.2, musicFadeOutSeconds: 1.3, duckMusicForSfx: true, musicDuckLevel: 0.32 },
+    },
+    {
+      id: 'cinematic',
+      label: 'Cinematic',
+      detail: 'Lebih penuh dan dramatis',
+      settings: { musicVolume: 0.22, musicFadeInSeconds: 0.7, musicFadeOutSeconds: 1.5, duckMusicForSfx: true, musicDuckLevel: 0.4 },
+    },
+    {
+      id: 'comedy',
+      label: 'Comedy',
+      detail: 'Cepat dengan ruang untuk punchline',
+      settings: { musicVolume: 0.12, musicFadeInSeconds: 0.3, musicFadeOutSeconds: 0.6, duckMusicForSfx: true, musicDuckLevel: 0.22 },
+    },
+  ] as const;
+
   return (
     <div className={styles.sectionStack}>
+      <div className={styles.introCard}>
+        <Music2 size={18} />
+        <div>
+          <strong>Audio hook yang otomatis seimbang</strong>
+          <p>Backsound akan fade dengan halus dan mengecil sementara saat SFX masuk.</p>
+        </div>
+      </div>
+      <Field label="Preset mixing">
+        <div className={styles.audioPresetGrid}>
+          {audioPresets.map((preset) => (
+            <button type="button" key={preset.id} onClick={() => updateAudio(preset.settings)}>
+              <strong>{preset.label}</strong>
+              <small>{preset.detail}</small>
+            </button>
+          ))}
+        </div>
+      </Field>
       <section className={styles.mediaCard}>
         <div className={styles.mediaCardHeader}>
           <span className={styles.mediaIcon}><Music2 size={16} /></span>
@@ -726,16 +1065,23 @@ function AudioFields() {
           <input type="file" accept="audio/*" hidden onChange={handleMusic} />
         </label>
         {audio.musicSrc ? (
-          <button
-            type="button"
-            className={styles.clearButton}
-            onClick={() => {
-              if (audio.musicSrc.startsWith('blob:')) URL.revokeObjectURL(audio.musicSrc);
-              updateAudio({ musicSrc: '', musicName: '' });
-            }}
-          >
-            Hapus backsound
-          </button>
+          <div className={styles.twoColumns}>
+            <button type="button" className={styles.effectPreviewButton} onClick={previewMusic}>
+              {isPreviewing ? <><Volume2 size={14} /> Stop preview</> : <><Play size={14} /> Dengarkan</>}
+            </button>
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => {
+                previewRef.current?.pause();
+                setIsPreviewing(false);
+                if (audio.musicSrc.startsWith('blob:')) URL.revokeObjectURL(audio.musicSrc);
+                updateAudio({ musicSrc: '', musicName: '' });
+              }}
+            >
+              Hapus backsound
+            </button>
+          </div>
         ) : null}
       </section>
       <Field label={`Volume backsound — ${Math.round(audio.musicVolume * 100)}%`}>
@@ -749,7 +1095,66 @@ function AudioFields() {
           onChange={(event) => updateAudio({ musicVolume: Number(event.target.value) })}
         />
       </Field>
-      <div className={styles.infoNote}>SFX dan transisi sekarang tersedia di menu Efek.</div>
+      <Field label={`Musik masuk pada — ${(audio.musicStartSeconds ?? 0).toFixed(1)}s`}>
+        <input
+          className={styles.slider}
+          type="range"
+          min={0}
+          max={3}
+          step={0.1}
+          value={audio.musicStartSeconds ?? 0}
+          onChange={(event) => updateAudio({ musicStartSeconds: Number(event.target.value) })}
+        />
+      </Field>
+      <div className={styles.twoColumns}>
+        <Field label={`Fade masuk — ${(audio.musicFadeInSeconds ?? 0.7).toFixed(1)}s`}>
+          <input
+            className={styles.slider}
+            type="range"
+            min={0.1}
+            max={3}
+            step={0.1}
+            value={audio.musicFadeInSeconds ?? 0.7}
+            onChange={(event) => updateAudio({ musicFadeInSeconds: Number(event.target.value) })}
+          />
+        </Field>
+        <Field label={`Fade keluar — ${(audio.musicFadeOutSeconds ?? 1.2).toFixed(1)}s`}>
+          <input
+            className={styles.slider}
+            type="range"
+            min={0.1}
+            max={3}
+            step={0.1}
+            value={audio.musicFadeOutSeconds ?? 1.2}
+            onChange={(event) => updateAudio({ musicFadeOutSeconds: Number(event.target.value) })}
+          />
+        </Field>
+      </div>
+      <label className={styles.toggleRow}>
+        <span>
+          <strong>Ducking otomatis saat SFX</strong>
+          <small>Backsound mengecil sesaat supaya efek transisi tetap jelas.</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={audio.duckMusicForSfx ?? true}
+          onChange={(event) => updateAudio({ duckMusicForSfx: event.target.checked })}
+        />
+      </label>
+      {(audio.duckMusicForSfx ?? true) ? (
+        <Field label={`Volume musik saat SFX — ${Math.round((audio.musicDuckLevel ?? 0.42) * 100)}%`}>
+          <input
+            className={styles.slider}
+            type="range"
+            min={0.1}
+            max={0.8}
+            step={0.01}
+            value={audio.musicDuckLevel ?? 0.42}
+            onChange={(event) => updateAudio({ musicDuckLevel: Number(event.target.value) })}
+          />
+        </Field>
+      ) : null}
+      <div className={styles.infoNote}>SFX dan transisi tetap diatur dari menu Efek.</div>
     </div>
   );
 }
@@ -816,9 +1221,7 @@ function InspectorContent({ section }: { section: BrandEditorSection }) {
 
 export default function BrandStudio() {
   const state = useBrandStudioStore();
-  const visibleSections = state.outputMode === 'hook'
-    ? SECTIONS.filter((section) => section.id !== 'media')
-    : SECTIONS;
+  const visibleSections = SECTIONS;
   const activeMeta = visibleSections.find((section) => section.id === state.activeSection) ?? visibleSections[0];
   const ActiveIcon = activeMeta.icon;
   const currentTemplate = BRAND_TEMPLATE_LIST.find((template) => template.id === state.templateId)!;
@@ -826,6 +1229,9 @@ export default function BrandStudio() {
   const durationInFrames = getBrandDurationInFrames(props);
 
   function resetCurrentTemplate() {
+    if (state.hookBackground?.media.src.startsWith('blob:')) {
+      URL.revokeObjectURL(state.hookBackground.media.src);
+    }
     if (state.heroMedia.src.startsWith('blob:')) URL.revokeObjectURL(state.heroMedia.src);
     if (state.detailMedia.src.startsWith('blob:')) URL.revokeObjectURL(state.detailMedia.src);
     if (state.audio.musicSrc.startsWith('blob:')) URL.revokeObjectURL(state.audio.musicSrc);

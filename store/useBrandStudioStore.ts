@@ -9,6 +9,7 @@ import {
 import type {
   BrandAudioSettings,
   BrandCopy,
+  BrandHookBackgroundSettings,
   BrandHookSettings,
   BrandMediaSlot,
   BrandOutputMode,
@@ -40,6 +41,8 @@ interface BrandStudioStore extends BrandVideoProps {
   updateCopy: (key: keyof BrandCopy, value: string) => void;
   updateHook: <K extends keyof BrandHookSettings>(key: K, value: BrandHookSettings[K]) => void;
   updatePalette: (key: keyof BrandPalette, value: string) => void;
+  updateHookBackground: (updates: Partial<BrandHookBackgroundSettings>) => void;
+  updateHookBackgroundMedia: (updates: Partial<BrandMediaSlot>) => void;
   updateMedia: (
     slot: 'heroMedia' | 'detailMedia',
     updates: Partial<BrandMediaSlot>,
@@ -99,6 +102,23 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
     set((state) => ({ hook: { ...state.hook, [key]: value }, activeHookPresetId: null })),
   updatePalette: (key, value) =>
     set((state) => ({ palette: { ...state.palette, [key]: value }, activeHookPresetId: null })),
+  updateHookBackground: (updates) =>
+    set((state) => ({
+      hookBackground: {
+        ...(state.hookBackground ?? BRAND_TEMPLATES[state.templateId].defaults.hookBackground),
+        ...updates,
+      },
+    })),
+  updateHookBackgroundMedia: (updates) =>
+    set((state) => ({
+      hookBackground: {
+        ...(state.hookBackground ?? BRAND_TEMPLATES[state.templateId].defaults.hookBackground),
+        media: {
+          ...(state.hookBackground?.media ?? BRAND_TEMPLATES[state.templateId].defaults.hookBackground.media),
+          ...updates,
+        },
+      },
+    })),
   updateMedia: (slot, updates) =>
     set((state) => ({ [slot]: { ...state[slot], ...updates } })),
   updateTiming: (key, value) =>
@@ -123,6 +143,7 @@ export function getBrandVideoProps(): BrandVideoProps {
     copy: state.copy,
     hook: state.hook,
     palette: state.palette,
+    hookBackground: state.hookBackground ?? BRAND_TEMPLATES[state.templateId].defaults.hookBackground,
     heroMedia: state.heroMedia,
     detailMedia: state.detailMedia,
     timing: state.timing,

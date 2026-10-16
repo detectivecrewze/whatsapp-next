@@ -755,6 +755,169 @@
   background: rgba(255, 255, 255, 0.018);
 }
 
+.backgroundModeGrid,
+.audioPresetGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.backgroundModeGrid button,
+.audioPresetGrid button {
+  display: flex;
+  min-height: 54px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 8px;
+  background: #181f26;
+  color: #8b827d;
+  cursor: pointer;
+  text-align: left;
+}
+
+.backgroundModeGrid button:hover,
+.audioPresetGrid button:hover,
+.backgroundModeGrid .backgroundModeActive {
+  border-color: rgba(215, 154, 135, 0.48);
+  background: rgba(215, 154, 135, 0.09);
+  color: #dda18d;
+}
+
+.backgroundModeGrid strong,
+.audioPresetGrid strong {
+  color: inherit;
+  font-size: 8.5px;
+}
+
+.backgroundModeGrid small,
+.audioPresetGrid small {
+  margin-top: 4px;
+  color: #77706b;
+  font-size: 6.8px;
+  line-height: 1.35;
+}
+
+.brandKitGrid {
+  display: grid;
+  gap: 7px;
+}
+
+.brandKitGrid > button {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  padding: 9px;
+  background: rgba(255, 255, 255, 0.018);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.brandKitGrid > button:hover {
+  border-color: rgba(205, 171, 143, 0.52);
+  background: rgba(205, 171, 143, 0.07);
+}
+
+.brandKitGrid > button > span:last-child {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.brandKitGrid strong,
+.savedKitList strong {
+  color: #e8dfda;
+  font-size: 9px;
+}
+
+.brandKitGrid small {
+  margin-top: 3px;
+  color: #77706b;
+  font-size: 7.2px;
+  line-height: 1.35;
+}
+
+.brandKitDots {
+  display: flex;
+  align-items: center;
+  padding-left: 5px;
+}
+
+.brandKitDots i {
+  width: 21px;
+  height: 21px;
+  margin-left: -5px;
+  border: 2px solid #181f26;
+  border-radius: 999px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.18);
+}
+
+.savedKitList {
+  display: grid;
+  gap: 6px;
+}
+
+.savedKitList > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 34px;
+  gap: 5px;
+}
+
+.savedKitList button {
+  display: flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  background: #181f26;
+  color: #8b827d;
+  cursor: pointer;
+}
+
+.savedKitList > div > button:first-child {
+  padding: 6px 9px;
+  text-align: left;
+}
+
+.savedKitList > div > button:last-child {
+  justify-content: center;
+  color: #8d6763;
+}
+
+.saveKitRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+}
+
+.saveKitRow button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid rgba(215, 154, 135, 0.28);
+  border-radius: 9px;
+  padding: 0 12px;
+  background: rgba(215, 154, 135, 0.08);
+  color: #dca18e;
+  cursor: pointer;
+  font-size: 8.5px;
+  font-weight: 750;
+}
+
+.saveKitRow button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .divider {
   height: 1px;
   background: rgba(255, 255, 255, 0.07);

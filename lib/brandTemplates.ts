@@ -62,6 +62,20 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         accent: '#A67C52',
         muted: '#78665B',
       },
+      hookBackground: {
+        mode: 'brand',
+        media: {
+          src: '/brand-studio/letter-open.webp',
+          kind: 'image',
+          name: 'Digital letter background',
+          fit: 'cover',
+          focusX: 50,
+          focusY: 50,
+        },
+        overlayOpacity: 0.58,
+        blur: 0,
+        motion: 'slow-zoom',
+      },
       heroMedia: {
         src: '/brand-studio/letter-closed.webp',
         kind: 'image',
@@ -83,6 +97,11 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         musicSrc: '',
         musicName: '',
         musicVolume: 0.18,
+        musicStartSeconds: 0,
+        musicFadeInSeconds: 0.7,
+        musicFadeOutSeconds: 1.2,
+        duckMusicForSfx: true,
+        musicDuckLevel: 0.42,
         transitionSfx: 'whoosh',
         transitionSfxVolume: 0.24,
         sfxOffsetSeconds: 0.2,
@@ -138,6 +157,20 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         accent: '#d47773',
         muted: '#8c756a',
       },
+      hookBackground: {
+        mode: 'brand',
+        media: {
+          src: '/brand-studio/retro-cake.mp4',
+          kind: 'video',
+          name: 'Birthday motion background',
+          fit: 'cover',
+          focusX: 50,
+          focusY: 50,
+        },
+        overlayOpacity: 0.54,
+        blur: 0,
+        motion: 'slow-zoom',
+      },
       heroMedia: {
         src: '/brand-studio/retro-cake.mp4',
         kind: 'video',
@@ -159,6 +192,11 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         musicSrc: '',
         musicName: '',
         musicVolume: 0.18,
+        musicStartSeconds: 0,
+        musicFadeInSeconds: 0.45,
+        musicFadeOutSeconds: 0.8,
+        duckMusicForSfx: true,
+        musicDuckLevel: 0.38,
         transitionSfx: 'ding',
         transitionSfxVolume: 0.24,
         sfxOffsetSeconds: 0.2,
@@ -214,6 +252,20 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         accent: '#9b6a50',
         muted: '#89766d',
       },
+      hookBackground: {
+        mode: 'brand',
+        media: {
+          src: '/brand-studio/atlas-first-date-warm.mp4',
+          kind: 'video',
+          name: 'Warm memory background',
+          fit: 'cover',
+          focusX: 50,
+          focusY: 50,
+        },
+        overlayOpacity: 0.62,
+        blur: 0,
+        motion: 'drift',
+      },
       heroMedia: {
         src: '/brand-studio/atlas-first-date-warm.mp4',
         kind: 'video',
@@ -235,6 +287,11 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         musicSrc: '',
         musicName: '',
         musicVolume: 0.18,
+        musicStartSeconds: 0,
+        musicFadeInSeconds: 0.8,
+        musicFadeOutSeconds: 1.2,
+        duckMusicForSfx: true,
+        musicDuckLevel: 0.44,
         transitionSfx: 'page-turn',
         transitionSfxVolume: 0.24,
         sfxOffsetSeconds: 0.2,
@@ -310,6 +367,62 @@ export const BRAND_PALETTE_PRESETS: Array<{
       accent: '#382A24',
       muted: '#6F5649',
     },
+  },
+];
+
+export interface BrandKitPreset {
+  id: string;
+  name: string;
+  description: string;
+  copy: Pick<BrandCopy, 'eyebrow' | 'hookFooter'>;
+  hook: Pick<BrandHookSettings, 'typography' | 'alignment'>;
+  palette: BrandPalette;
+}
+
+export const BRAND_KIT_PRESETS: BrandKitPreset[] = [
+  {
+    id: 'fya-signature',
+    name: 'FYA Signature',
+    description: 'Editorial hangat untuk digital letter dan soft selling.',
+    copy: { eyebrow: 'FOR YOU. ALWAYS.', hookFooter: 'DIGITAL ATELIER' },
+    hook: { typography: 'brand-serif', alignment: 'center' },
+    palette: BRAND_PALETTE_PRESETS[0].palette,
+  },
+  {
+    id: 'romance-studio',
+    name: 'Romance Studio',
+    description: 'Lembut, personal, dan cocok untuk momen romantis.',
+    copy: { eyebrow: 'MADE WITH LOVE', hookFooter: 'A DIGITAL GIFT FOR YOU' },
+    hook: { typography: 'editorial', alignment: 'center' },
+    palette: {
+      background: '#F8ECE9',
+      surface: '#EBD0CC',
+      text: '#402B2B',
+      accent: '#B8646F',
+      muted: '#8C6D6D',
+    },
+  },
+  {
+    id: 'bold-social',
+    name: 'Bold Social',
+    description: 'Kontras kuat untuk komedi, tren, dan hook cepat.',
+    copy: { eyebrow: 'WAIT FOR IT.', hookFooter: 'DIGITAL GIFT REVEAL' },
+    hook: { typography: 'bold', alignment: 'center' },
+    palette: {
+      background: '#F4E64C',
+      surface: '#FFFFFF',
+      text: '#161616',
+      accent: '#E9503E',
+      muted: '#5A5222',
+    },
+  },
+  {
+    id: 'midnight-letter',
+    name: 'Midnight Letter',
+    description: 'Cinematic gelap untuk LDR, apology, dan cerita emosional.',
+    copy: { eyebrow: 'A LETTER AFTER MIDNIGHT', hookFooter: 'READ WHEN YOU ARE READY' },
+    hook: { typography: 'classic', alignment: 'left' },
+    palette: BRAND_PALETTE_PRESETS[1].palette,
   },
 ];
 
