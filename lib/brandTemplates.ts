@@ -1,4 +1,7 @@
 import type {
+  BrandAudioSettings,
+  BrandCopy,
+  BrandHookSettings,
   BrandPalette,
   BrandTemplateDefinition,
   BrandTemplateId,
@@ -23,6 +26,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         eyebrow: 'FOR YOU. ALWAYS.',
         hookTitle: 'Ada banyak cara bilang,',
         hookAccent: '“kamu berarti buatku.”',
+        hookBridge: 'Bukan sekadar pesan yang lewat.',
+        hookReveal: 'Jadikan perasaanmu sebuah digital gift.',
         hookFooter: 'DIGITAL ATELIER',
         storyTitle: 'Bukan sekadar hadiah.',
         storyBody: 'Satu ruang digital berisi kata, foto, dan kenangan yang bisa dia buka kapan saja.',
@@ -34,12 +39,20 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
       hook: {
         typography: 'brand-serif',
         motion: 'soft',
+        partMotions: {
+          eyebrow: 'fade',
+          title: 'soft',
+          accent: 'word-reveal',
+          footer: 'fade',
+        },
+        sequenceMode: 'single',
         exitTransition: 'fade',
         transitionSeconds: 0.55,
         alignment: 'center',
         textScale: 1,
         positionY: 33,
         showDivider: true,
+        autoFit: true,
         typewriterCps: 20,
       },
       palette: {
@@ -89,6 +102,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         eyebrow: 'FOR YOU. ALWAYS.',
         hookTitle: 'Ulang tahunnya',
         hookAccent: 'sebentar lagi?',
+        hookBridge: 'Kadomu jangan cuma berhenti di bungkus.',
+        hookReveal: 'Bikin ucapan digital yang benar-benar personal.',
         hookFooter: 'BIRTHDAY EDITION',
         storyTitle: 'Ucapan yang terasa benar-benar dia.',
         storyBody: 'Gabungkan pesan, foto favorit, dan kejutan kecil dalam satu digital gift.',
@@ -100,12 +115,20 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
       hook: {
         typography: 'bold',
         motion: 'pop',
+        partMotions: {
+          eyebrow: 'fade',
+          title: 'pop',
+          accent: 'pop',
+          footer: 'soft',
+        },
+        sequenceMode: 'single',
         exitTransition: 'zoom',
         transitionSeconds: 0.5,
         alignment: 'center',
         textScale: 1,
         positionY: 34,
         showDivider: true,
+        autoFit: true,
         typewriterCps: 22,
       },
       palette: {
@@ -155,6 +178,8 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         eyebrow: 'FOR YOU. ALWAYS.',
         hookTitle: 'Masih ingat,',
         hookAccent: 'awal cerita kita?',
+        hookBridge: 'Ternyata kita sudah melewati banyak hal.',
+        hookReveal: 'Simpan perjalanannya dalam satu digital gift.',
         hookFooter: 'OUR STORY',
         storyTitle: 'Ternyata sudah sejauh ini.',
         storyBody: 'Simpan perjalanan kalian menjadi hadiah digital yang tetap terasa personal.',
@@ -166,12 +191,20 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
       hook: {
         typography: 'clean',
         motion: 'slide',
+        partMotions: {
+          eyebrow: 'fade',
+          title: 'slide',
+          accent: 'soft',
+          footer: 'fade',
+        },
+        sequenceMode: 'single',
         exitTransition: 'slide-up',
         transitionSeconds: 0.6,
         alignment: 'left',
         textScale: 1,
         positionY: 32,
         showDivider: true,
+        autoFit: true,
         typewriterCps: 19,
       },
       palette: {
@@ -277,6 +310,238 @@ export const BRAND_PALETTE_PRESETS: Array<{
       accent: '#382A24',
       muted: '#6F5649',
     },
+  },
+];
+
+export interface BrandHookPreset {
+  id: string;
+  label: string;
+  tone: string;
+  description: string;
+  copy: Pick<
+    BrandCopy,
+    'hookTitle' | 'hookAccent' | 'hookBridge' | 'hookReveal' | 'hookFooter'
+  >;
+  hook: Partial<BrandHookSettings>;
+  palette: BrandPalette;
+  audio: Pick<
+    BrandAudioSettings,
+    'transitionSfx' | 'transitionSfxVolume' | 'sfxOffsetSeconds'
+  >;
+  hookSeconds: number;
+}
+
+export const BRAND_HOOK_PRESETS: BrandHookPreset[] = [
+  {
+    id: 'romantic-letter',
+    label: 'Romantis',
+    tone: 'Lembut · Personal',
+    description: 'Hook emosional yang berakhir pada digital letter.',
+    copy: {
+      hookTitle: 'Ada yang ingin aku bilang,',
+      hookAccent: 'tapi chat terasa terlalu biasa.',
+      hookBridge: 'Beberapa perasaan layak disimpan lebih lama.',
+      hookReveal: 'Jadi aku membuat digital gift ini untukmu.',
+      hookFooter: 'FOR YOU, ALWAYS.',
+    },
+    hook: {
+      typography: 'brand-serif',
+      motion: 'soft',
+      partMotions: { eyebrow: 'fade', title: 'soft', accent: 'word-reveal', footer: 'fade' },
+      sequenceMode: 'three-beat',
+      alignment: 'center',
+      autoFit: true,
+    },
+    palette: {
+      background: '#FAF7F2',
+      surface: '#E8D9CB',
+      text: '#1D1816',
+      accent: '#A67C52',
+      muted: '#78665B',
+    },
+    audio: { transitionSfx: 'page-turn', transitionSfxVolume: 0.2, sfxOffsetSeconds: 0.1 },
+    hookSeconds: 5.4,
+  },
+  {
+    id: 'birthday-surprise',
+    label: 'Ulang tahun',
+    tone: 'Playful · Manis',
+    description: 'Pembuka cepat untuk kejutan ulang tahun digital.',
+    copy: {
+      hookTitle: 'Kadomu sudah siap?',
+      hookAccent: 'Jangan jawab “belum”.',
+      hookBridge: 'Tahun ini bikin sesuatu yang benar-benar dia.',
+      hookReveal: 'Ucapan, foto, dan kejutan dalam satu digital gift.',
+      hookFooter: 'BIRTHDAY EDITION',
+    },
+    hook: {
+      typography: 'bold',
+      motion: 'pop',
+      partMotions: { eyebrow: 'fade', title: 'pop', accent: 'pop', footer: 'soft' },
+      sequenceMode: 'three-beat',
+      alignment: 'center',
+      autoFit: true,
+    },
+    palette: {
+      background: '#FFF9EF',
+      surface: '#E9F4EF',
+      text: '#3F2C26',
+      accent: '#D47773',
+      muted: '#8C756A',
+    },
+    audio: { transitionSfx: 'ding', transitionSfxVolume: 0.22, sfxOffsetSeconds: 0.1 },
+    hookSeconds: 5.1,
+  },
+  {
+    id: 'ldr-message',
+    label: 'LDR',
+    tone: 'Rindu · Hangat',
+    description: 'Cerita jarak jauh dengan reveal yang tidak memaksa.',
+    copy: {
+      hookTitle: 'Jarak memang jauh,',
+      hookAccent: 'tapi aku masih menyimpan semuanya.',
+      hookBridge: 'Foto, suara, dan cerita kecil kita.',
+      hookReveal: 'Sekarang semuanya ada dalam digital gift ini.',
+      hookFooter: 'CLOSER THAN DISTANCE',
+    },
+    hook: {
+      typography: 'editorial',
+      motion: 'cinematic',
+      partMotions: { eyebrow: 'fade', title: 'cinematic', accent: 'soft', footer: 'fade' },
+      sequenceMode: 'three-beat',
+      alignment: 'center',
+      autoFit: true,
+    },
+    palette: {
+      background: '#1D1816',
+      surface: '#382A24',
+      text: '#FAF7F2',
+      accent: '#CDAB8F',
+      muted: '#B9A392',
+    },
+    audio: { transitionSfx: 'whoosh', transitionSfxVolume: 0.18, sfxOffsetSeconds: 0.2 },
+    hookSeconds: 5.7,
+  },
+  {
+    id: 'apology-letter',
+    label: 'Minta maaf',
+    tone: 'Tulus · Tenang',
+    description: 'Hook permintaan maaf yang terasa dewasa dan natural.',
+    copy: {
+      hookTitle: 'Aku tahu kata “maaf”',
+      hookAccent: 'tidak langsung memperbaiki semuanya.',
+      hookBridge: 'Tapi aku ingin menjelaskannya dengan sungguh-sungguh.',
+      hookReveal: 'Aku menulis semuanya di digital letter ini.',
+      hookFooter: 'A LETTER FOR YOU',
+    },
+    hook: {
+      typography: 'classic',
+      motion: 'fade',
+      partMotions: { eyebrow: 'fade', title: 'fade', accent: 'typewriter', footer: 'fade' },
+      sequenceMode: 'three-beat',
+      alignment: 'center',
+      autoFit: true,
+      typewriterCps: 24,
+    },
+    palette: {
+      background: '#CDAB8F',
+      surface: '#E5D2C1',
+      text: '#1D1816',
+      accent: '#382A24',
+      muted: '#6F5649',
+    },
+    audio: { transitionSfx: 'page-turn', transitionSfxVolume: 0.16, sfxOffsetSeconds: 0.15 },
+    hookSeconds: 6,
+  },
+  {
+    id: 'graduation-circle',
+    label: 'Wisuda',
+    tone: 'Circle wish · Bangga',
+    description: 'Teman-teman menyiapkan kumpulan ucapan digital.',
+    copy: {
+      hookTitle: 'Satu teman akhirnya wisuda,',
+      hookAccent: 'satu circle langsung sibuk.',
+      hookBridge: 'Bukan cari buket—kami mengumpulkan semua ucapan.',
+      hookReveal: 'Lalu menjadikannya satu circle wish digital.',
+      hookFooter: 'GRADUATION WISHES',
+    },
+    hook: {
+      typography: 'clean',
+      motion: 'word-reveal',
+      partMotions: { eyebrow: 'fade', title: 'word-reveal', accent: 'pop', footer: 'soft' },
+      sequenceMode: 'three-beat',
+      alignment: 'left',
+      autoFit: true,
+    },
+    palette: {
+      background: '#FAF7F2',
+      surface: '#E8D9CB',
+      text: '#1D1816',
+      accent: '#A67C52',
+      muted: '#78665B',
+    },
+    audio: { transitionSfx: 'shutter-modern', transitionSfxVolume: 0.2, sfxOffsetSeconds: 0.1 },
+    hookSeconds: 5.7,
+  },
+  {
+    id: 'absurd-romance',
+    label: 'Bucin absurd',
+    tone: 'Komedi · Viral',
+    description: 'Setup receh yang tetap masuk ke reveal produk digital.',
+    copy: {
+      hookTitle: 'Dia bilang aku kurang romantis.',
+      hookAccent: 'Aku panik selama 3 menit.',
+      hookBridge: 'Beli bunga? Layu. Kirim chat? Tenggelam.',
+      hookReveal: 'Akhirnya aku bikin digital gift. Aman.',
+      hookFooter: 'PANIC, BUT MAKE IT ROMANTIC',
+    },
+    hook: {
+      typography: 'bold',
+      motion: 'pop',
+      partMotions: { eyebrow: 'slide', title: 'pop', accent: 'word-reveal', footer: 'pop' },
+      sequenceMode: 'three-beat',
+      alignment: 'center',
+      autoFit: true,
+    },
+    palette: {
+      background: '#382A24',
+      surface: '#4A3931',
+      text: '#FAF7F2',
+      accent: '#CDAB8F',
+      muted: '#C6AE9A',
+    },
+    audio: { transitionSfx: 'record-scratch', transitionSfxVolume: 0.22, sfxOffsetSeconds: 0.1 },
+    hookSeconds: 5.4,
+  },
+  {
+    id: 'soft-selling',
+    label: 'Soft selling',
+    tone: 'Premium · Minimal',
+    description: 'Hook satu layar untuk memperkenalkan digital gift.',
+    copy: {
+      hookTitle: 'Hadiah terbaik tidak selalu',
+      hookAccent: 'datang dalam sebuah kotak.',
+      hookBridge: 'Ia bisa berisi kata, foto, dan kenangan.',
+      hookReveal: 'Digital gift yang dibuat khusus untuk dia.',
+      hookFooter: 'DIGITAL ATELIER',
+    },
+    hook: {
+      typography: 'brand-serif',
+      motion: 'soft',
+      partMotions: { eyebrow: 'fade', title: 'soft', accent: 'word-reveal', footer: 'fade' },
+      sequenceMode: 'single',
+      alignment: 'center',
+      autoFit: true,
+    },
+    palette: {
+      background: '#FAF7F2',
+      surface: '#E8D9CB',
+      text: '#1D1816',
+      accent: '#A67C52',
+      muted: '#78665B',
+    },
+    audio: { transitionSfx: 'whoosh', transitionSfxVolume: 0.18, sfxOffsetSeconds: 0.2 },
+    hookSeconds: 3.8,
   },
 ];
 

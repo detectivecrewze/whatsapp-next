@@ -13,6 +13,7 @@ import {
 import { BRAND_SFX_FILES } from '@/lib/brandTemplates';
 import type {
   BrandHookExit,
+  BrandHookMotion,
   BrandHookTypography,
   BrandMediaSlot,
   BrandTemplateId,
@@ -98,6 +99,108 @@ function WordRevealText({
         );
       })}
     </>
+  );
+}
+
+function autoFitScale(title: string, accent: string) {
+  const longestLine = Math.max(
+    1,
+    ...`${title}\n${accent}`.split('\n').map((line) => line.trim().length),
+  );
+  const totalCharacters = Math.max(1, title.trim().length + accent.trim().length);
+  const longestScale = Math.sqrt(34 / Math.max(34, longestLine));
+  const totalScale = Math.sqrt(70 / Math.max(70, totalCharacters));
+  return Math.max(0.62, Math.min(1, longestScale, totalScale));
+}
+
+function AnimatedHookText({
+  text,
+  motion,
+  frame,
+  fps,
+  delayFrames = 0,
+  charactersPerSecond,
+}: {
+  text: string;
+  motion: BrandHookMotion;
+  frame: number;
+  fps: number;
+  delayFrames?: number;
+  charactersPerSecond: number;
+}) {
+  const revealEnd = delayFrames + (motion === 'cinematic' ? 24 : 14);
+  const opacity = motion === 'typewriter' || motion === 'word-reveal'
+    ? 1
+    : interpolate(frame, [delayFrames, revealEnd], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      });
+  const translate = motion === 'slide'
+    ? interpolate(frame, [delayFrames, delayFrames + 18], ['-60px 0px', '0px 0px'], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.16, 1, 0.3, 1),
+      })
+    : motion === 'soft'
+      ? interpolate(frame, [delayFrames, delayFrames + 18], ['0px 30px', '0px 0px'], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+        })
+      : '0px 0px';
+  const scale = motion === 'pop'
+    ? interpolate(frame, [delayFrames, delayFrames + 16], [0.86, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.34, 1.56, 0.64, 1),
+        output: 'perceptual-scale',
+      })
+    : motion === 'cinematic'
+      ? interpolate(frame, [delayFrames, delayFrames + 24], [1.07, 1], {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+          output: 'perceptual-scale',
+        })
+      : 1;
+  const blur = motion === 'blur' || motion === 'cinematic'
+    ? interpolate(
+        frame,
+        [delayFrames, delayFrames + (motion === 'cinematic' ? 24 : 16)],
+        [motion === 'cinematic' ? 9 : 16, 0],
+        {
+          extrapolateLeft: 'clamp',
+          extrapolateRight: 'clamp',
+          easing: Easing.bezier(0.16, 1, 0.3, 1),
+        },
+      )
+    : 0;
+  const typingFrames = Math.ceil((text.length / charactersPerSecond) * fps);
+
+  return (
+    <span
+      style={{
+        display: 'block',
+        opacity,
+        translate,
+        scale,
+        filter: blur > 0 ? `blur(${blur}px)` : 'none',
+      }}
+    >
+      {motion === 'typewriter' ? (
+        <TypewriterText
+          text={text}
+          frame={frame}
+          fps={fps}
+          startFrame={delayFrames}
+          charactersPerSecond={charactersPerSecond}
+          showCursor={frame >= delayFrames && frame < delayFrames + typingFrames}
+        />
+      ) : motion === 'word-reveal' ? (
+        <WordRevealText text={text} frame={frame} startFrame={delayFrames} />
+      ) : text}
+    </span>
   );
 }
 
@@ -250,7 +353,7 @@ function MediaVisual({ media }: { media: BrandMediaSlot }) {
 
 function HookScene({ props }: { props: BrandVideoProps }) {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, durationInFrames } = useVideoConfig();
   const isEditorial =
     props.hook.typography === 'editorial' ||
     props.hook.typography === 'brand-serif' ||
@@ -259,64 +362,58 @@ function HookScene({ props }: { props: BrandVideoProps }) {
   const isTypewriterFont = props.hook.typography === 'typewriter';
   const titleFont = hookFont(props.hook.typography);
   const typingCps = Math.max(6, props.hook.typewriterCps || 20);
-  const textLeft = props.hook.alignment === 'left' ? 96 : 115;
-  const textRight = props.hook.alignment === 'left' ? 180 : 115;
-  const entryTranslate = props.hook.motion === 'slide'
-    ? interpolate(frame, [0, 18], ['-70px 0px', '0px 0px'], {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp',
-        easing: Easing.bezier(0.16, 1, 0.3, 1),
-      })
-    : props.hook.motion === 'soft'
-      ? interpolate(frame, [0, 18], ['0px 34px', '0px 0px'], {
+  const textLeft = props.hook.alignment === 'left' ? 96 : 150;
+  const textRight = props.hook.alignment === 'left' ? 200 : 170;
+  const partMotions = props.hook.partMotions ?? {
+    eyebrow: props.hook.motion,
+    title: props.hook.motion,
+    accent: props.hook.motion,
+    footer: props.hook.motion,
+  };
+  const isThreeBeat = (props.hook.sequenceMode ?? 'single') === 'three-beat';
+  const beatOneFrames = isThreeBeat ? Math.max(1, Math.floor(durationInFrames / 3)) : durationInFrames;
+  const beatTwoFrames = isThreeBeat ? Math.max(1, Math.floor(durationInFrames / 3)) : 0;
+  const beatThreeStart = beatOneFrames + beatTwoFrames;
+  const beatIndex = !isThreeBeat
+    ? 0
+    : frame < beatOneFrames
+      ? 0
+      : frame < beatThreeStart
+        ? 1
+        : 2;
+  const beatStart = beatIndex === 0 ? 0 : beatIndex === 1 ? beatOneFrames : beatThreeStart;
+  const beatFrame = frame - beatStart;
+  const beatDuration = beatIndex === 0
+    ? beatOneFrames
+    : beatIndex === 1
+      ? beatTwoFrames
+      : Math.max(1, durationInFrames - beatThreeStart);
+  const currentTitle = beatIndex === 0
+    ? props.copy.hookTitle
+    : beatIndex === 1
+      ? props.copy.hookBridge || props.copy.storyTitle || props.copy.hookTitle
+      : props.copy.hookReveal || props.copy.cta || props.copy.hookAccent;
+  const currentAccent = beatIndex === 0 ? props.copy.hookAccent : '';
+  const titleTypingFrames = Math.ceil((currentTitle.length / typingCps) * fps);
+  const accentDelay = partMotions.title === 'typewriter'
+    ? Math.max(8, titleTypingFrames + 4)
+    : 10;
+  const fitScale = props.hook.autoFit === false
+    ? 1
+    : autoFitScale(currentTitle, currentAccent);
+  const beatFadeOutStart = Math.max(7, beatDuration - 7);
+  const beatOpacity = isThreeBeat
+    ? interpolate(
+        beatFrame,
+        [0, 5, beatFadeOutStart, Math.max(beatFadeOutStart + 1, beatDuration - 1)],
+        [0, 1, 1, 0],
+        {
           extrapolateLeft: 'clamp',
           extrapolateRight: 'clamp',
           easing: Easing.bezier(0.16, 1, 0.3, 1),
-        })
-      : '0px 0px';
-  const entryScale = props.hook.motion === 'pop'
-    ? interpolate(frame, [0, 16], [0.88, 1], {
-        extrapolateLeft: 'clamp',
-        extrapolateRight: 'clamp',
-        easing: Easing.bezier(0.34, 1.56, 0.64, 1),
-        output: 'perceptual-scale',
-      })
-    : props.hook.motion === 'cinematic'
-      ? interpolate(frame, [0, 28], [1.08, 1], {
-          extrapolateLeft: 'clamp',
-          extrapolateRight: 'clamp',
-          easing: Easing.bezier(0.16, 1, 0.3, 1),
-          output: 'perceptual-scale',
-        })
+        },
+      )
     : 1;
-  const titleTypingFrames = Math.ceil(
-    (props.copy.hookTitle.length / typingCps) * fps,
-  );
-  const accentTypingStart = Math.max(8, titleTypingFrames + 4);
-  const accentTypingFrames = Math.ceil(
-    (props.copy.hookAccent.length / typingCps) * fps,
-  );
-  const titleTypingDone = frame >= titleTypingFrames;
-  const accentTypingDone = frame >= accentTypingStart + accentTypingFrames;
-
-  function renderHookText(text: string, line: 'title' | 'accent') {
-    if (props.hook.motion === 'typewriter') {
-      return (
-        <TypewriterText
-          text={text}
-          frame={frame}
-          fps={fps}
-          startFrame={line === 'title' ? 0 : accentTypingStart}
-          charactersPerSecond={typingCps}
-          showCursor={line === 'title' ? !titleTypingDone : titleTypingDone && !accentTypingDone}
-        />
-      );
-    }
-    if (props.hook.motion === 'word-reveal') {
-      return <WordRevealText text={text} frame={frame} startFrame={line === 'title' ? 0 : 12} />;
-    }
-    return text;
-  }
 
   return (
     <SceneShell
@@ -328,9 +425,9 @@ function HookScene({ props }: { props: BrandVideoProps }) {
       <div
         style={{
           position: 'absolute',
-          left: 0,
-          right: 0,
-          top: 174,
+          left: 72,
+          right: 180,
+          top: 220,
           textAlign: 'center',
           color: props.palette.muted,
           fontFamily: sans,
@@ -339,7 +436,14 @@ function HookScene({ props }: { props: BrandVideoProps }) {
           letterSpacing: 8,
         }}
       >
-        {props.copy.eyebrow.toUpperCase()}
+        <AnimatedHookText
+          text={props.copy.eyebrow.toUpperCase()}
+          motion={partMotions.eyebrow}
+          frame={frame}
+          fps={fps}
+          delayFrames={2}
+          charactersPerSecond={typingCps}
+        />
       </div>
       <div
         style={{
@@ -348,58 +452,52 @@ function HookScene({ props }: { props: BrandVideoProps }) {
           right: textRight,
           top: Math.round((props.hook.positionY / 100) * 1920),
           textAlign: props.hook.alignment,
-          color: props.palette.text,
+          color: beatIndex === 2 ? props.palette.accent : props.palette.text,
           fontFamily: titleFont,
-          translate: entryTranslate,
-          scale: entryScale,
-          opacity: interpolate(frame, [0, props.hook.motion === 'cinematic' ? 24 : 12], [
-            props.hook.motion === 'fade' || props.hook.motion === 'cinematic'
-              ? 0
-              : props.hook.motion === 'typewriter' || props.hook.motion === 'word-reveal'
-                ? 1
-                : 0.35,
-            1,
-          ], {
-            extrapolateLeft: 'clamp',
-            extrapolateRight: 'clamp',
-            easing: Easing.bezier(0.16, 1, 0.3, 1),
-          }),
-          filter: props.hook.motion === 'blur' || props.hook.motion === 'cinematic'
-            ? `blur(${interpolate(frame, [0, props.hook.motion === 'cinematic' ? 24 : 16], [
-                props.hook.motion === 'cinematic' ? 10 : 18,
-                0,
-              ], {
-                extrapolateLeft: 'clamp',
-                extrapolateRight: 'clamp',
-                easing: Easing.bezier(0.16, 1, 0.3, 1),
-              })}px)`
-            : 'none',
+          opacity: beatOpacity,
         }}
       >
         <div
           style={{
-            fontSize: (isBold ? 84 : isTypewriterFont ? 73 : 91) * props.hook.textScale,
+            fontSize: (isBold ? 84 : isTypewriterFont ? 73 : 91) * props.hook.textScale * fitScale,
             lineHeight: isBold ? 0.98 : isTypewriterFont ? 1.14 : 1.02,
             letterSpacing: isBold ? -2.2 : isTypewriterFont ? -1 : -3.1,
             fontWeight: isBold ? 800 : isTypewriterFont ? 500 : 400,
+            overflowWrap: 'anywhere',
           }}
         >
-          {renderHookText(props.copy.hookTitle, 'title')}
+          <AnimatedHookText
+            text={currentTitle}
+            motion={partMotions.title}
+            frame={beatFrame}
+            fps={fps}
+            charactersPerSecond={typingCps}
+          />
         </div>
-        <div
-          style={{
-            marginTop: 18,
-            color: props.palette.accent,
-            fontFamily: titleFont,
-            fontSize: (isBold ? 78 : isTypewriterFont ? 65 : 84) * props.hook.textScale,
-            lineHeight: isTypewriterFont ? 1.16 : 1.05,
-            letterSpacing: isTypewriterFont ? -0.8 : -2,
-            fontStyle: isEditorial ? 'italic' : 'normal',
-            fontWeight: isBold ? 800 : isTypewriterFont ? 500 : 400,
-          }}
-        >
-          {renderHookText(props.copy.hookAccent, 'accent')}
-        </div>
+        {currentAccent ? (
+          <div
+            style={{
+              marginTop: 18,
+              color: props.palette.accent,
+              fontFamily: titleFont,
+              fontSize: (isBold ? 78 : isTypewriterFont ? 65 : 84) * props.hook.textScale * fitScale,
+              lineHeight: isTypewriterFont ? 1.16 : 1.05,
+              letterSpacing: isTypewriterFont ? -0.8 : -2,
+              fontStyle: isEditorial ? 'italic' : 'normal',
+              fontWeight: isBold ? 800 : isTypewriterFont ? 500 : 400,
+              overflowWrap: 'anywhere',
+            }}
+          >
+            <AnimatedHookText
+              text={currentAccent}
+              motion={partMotions.accent}
+              frame={beatFrame}
+              fps={fps}
+              delayFrames={accentDelay}
+              charactersPerSecond={typingCps}
+            />
+          </div>
+        ) : null}
         {props.hook.showDivider ? (
           <div
             style={{
@@ -417,9 +515,9 @@ function HookScene({ props }: { props: BrandVideoProps }) {
       <div
         style={{
           position: 'absolute',
-          bottom: 104,
-          left: 0,
-          right: 0,
+          bottom: 360,
+          left: 72,
+          right: 180,
           textAlign: 'center',
           color: props.palette.muted,
           fontFamily: sans,
@@ -428,7 +526,14 @@ function HookScene({ props }: { props: BrandVideoProps }) {
           letterSpacing: 7,
         }}
       >
-        {props.copy.hookFooter}
+        <AnimatedHookText
+          text={props.copy.hookFooter}
+          motion={partMotions.footer}
+          frame={frame}
+          fps={fps}
+          delayFrames={12}
+          charactersPerSecond={typingCps}
+        />
       </div>
     </SceneShell>
   );
@@ -754,7 +859,7 @@ export const BrandVideo = (props: BrandVideoProps) => {
   if (props.outputMode === 'hook') {
     return (
       <AbsoluteFill style={{ backgroundColor: props.palette.background, overflow: 'hidden' }}>
-        <Sequence from={0} durationInFrames={hookFrames} name="Hook Maker">
+        <Sequence from={0} durationInFrames={hookFrames} premountFor={fps} name="Hook Maker">
           <HookScene props={props} />
         </Sequence>
         <BrandAudio props={props} sceneStarts={[0, hookFrames, hookFrames, hookFrames]} />
@@ -764,16 +869,16 @@ export const BrandVideo = (props: BrandVideoProps) => {
 
   return (
     <AbsoluteFill style={{ backgroundColor: props.palette.background, overflow: 'hidden' }}>
-      <Sequence from={0} durationInFrames={hookFrames} name="01 — Editorial hook">
+      <Sequence from={0} durationInFrames={hookFrames} premountFor={fps} name="01 — Editorial hook">
         <HookScene props={props} />
       </Sequence>
-      <Sequence from={productStart} durationInFrames={productFrames} name="02 — Product reveal">
+      <Sequence from={productStart} durationInFrames={productFrames} premountFor={fps} name="02 — Product reveal">
         <ProductScene props={props} />
       </Sequence>
-      <Sequence from={storyStart} durationInFrames={storyFrames} name="03 — Story and benefits">
+      <Sequence from={storyStart} durationInFrames={storyFrames} premountFor={fps} name="03 — Story and benefits">
         <StoryScene props={props} />
       </Sequence>
-      <Sequence from={outroStart} durationInFrames={outroFrames} name="04 — CTA and brand outro">
+      <Sequence from={outroStart} durationInFrames={outroFrames} premountFor={fps} name="04 — CTA and brand outro">
         <OutroScene props={props} />
       </Sequence>
       <BrandAudio props={props} sceneStarts={[0, productStart, storyStart, outroStart]} />

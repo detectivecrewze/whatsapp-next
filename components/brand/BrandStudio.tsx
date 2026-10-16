@@ -22,7 +22,7 @@ import {
   WandSparkles,
 } from 'lucide-react';
 import {
-  BRAND_HOOK_VARIANTS,
+  BRAND_HOOK_PRESETS,
   BRAND_PALETTE_PRESETS,
   BRAND_SFX_FILES,
   BRAND_SFX_GROUPS,
@@ -43,6 +43,8 @@ import type {
   BrandHookAlignment,
   BrandHookExit,
   BrandHookMotion,
+  BrandHookPartMotions,
+  BrandHookSequenceMode,
   BrandHookTypography,
   BrandMediaSlot,
   BrandOutputMode,
@@ -67,6 +69,17 @@ const SECTIONS: Array<{
   { id: 'timing', label: 'Timing', description: 'Durasi setiap scene', icon: Clock3 },
   { id: 'audio', label: 'Audio', description: 'Backsound dan SFX', icon: Music2 },
   { id: 'export', label: 'Export', description: 'Render MP4 vertikal', icon: Download },
+];
+
+const HOOK_MOTION_OPTIONS: Array<{ value: BrandHookMotion; label: string }> = [
+  { value: 'fade', label: 'Fade' },
+  { value: 'soft', label: 'Soft rise' },
+  { value: 'pop', label: 'Pop' },
+  { value: 'slide', label: 'Slide' },
+  { value: 'blur', label: 'Blur reveal' },
+  { value: 'typewriter', label: 'Typewriter' },
+  { value: 'word-reveal', label: 'Kata per kata' },
+  { value: 'cinematic', label: 'Cinematic focus' },
 ];
 
 function sectionDescription(section: BrandEditorSection, outputMode: BrandOutputMode) {
@@ -97,13 +110,26 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 function CopyFields() {
   const copy = useBrandStudioStore((state) => state.copy);
   const hook = useBrandStudioStore((state) => state.hook);
+  const timing = useBrandStudioStore((state) => state.timing);
   const outputMode = useBrandStudioStore((state) => state.outputMode);
+  const activeHookPresetId = useBrandStudioStore((state) => state.activeHookPresetId);
+  const showSafeArea = useBrandStudioStore((state) => state.showSafeArea);
   const updateCopy = useBrandStudioStore((state) => state.updateCopy);
   const updateHook = useBrandStudioStore((state) => state.updateHook);
+  const updateTiming = useBrandStudioStore((state) => state.updateTiming);
+  const applyHookPreset = useBrandStudioStore((state) => state.applyHookPreset);
+  const setShowSafeArea = useBrandStudioStore((state) => state.setShowSafeArea);
+  const sequenceMode = hook.sequenceMode ?? 'single';
   const hookFields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
     { key: 'eyebrow', label: 'Brand kecil di atas' },
-    { key: 'hookTitle', label: 'Hook utama' },
-    { key: 'hookAccent', label: 'Hook aksen / italic' },
+    { key: 'hookTitle', label: sequenceMode === 'three-beat' ? 'Beat 1 · Hook utama' : 'Hook utama' },
+    { key: 'hookAccent', label: sequenceMode === 'three-beat' ? 'Beat 1 · Aksen' : 'Hook aksen / italic' },
+    ...(sequenceMode === 'three-beat'
+      ? [
+          { key: 'hookBridge' as keyof BrandCopy, label: 'Beat 2 · Penguat / konflik' },
+          { key: 'hookReveal' as keyof BrandCopy, label: 'Beat 3 · Reveal digital gift' },
+        ]
+      : []),
     { key: 'hookFooter', label: 'Teks kecil di bawah' },
   ];
   const campaignFields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
@@ -121,26 +147,56 @@ function CopyFields() {
       <div className={styles.introCard}>
         <WandSparkles size={18} />
         <div>
-          <strong>Variasi hook siap pakai</strong>
-          <p>Pilih inspirasi, lalu edit lagi supaya sesuai produknya.</p>
+          <strong>Preset hook siap produksi</strong>
+          <p>Satu klik mengatur naskah, font, motion, warna, durasi, dan SFX.</p>
         </div>
       </div>
-      <div className={styles.hookGrid}>
-        {BRAND_HOOK_VARIANTS.map((variant) => (
+      <div className={styles.hookPresetGrid}>
+        {BRAND_HOOK_PRESETS.map((preset) => (
           <button
             type="button"
-            key={variant.label}
-            className={styles.hookChip}
-            onClick={() => {
-              updateCopy('hookTitle', variant.title);
-              updateCopy('hookAccent', variant.accent);
-            }}
+            key={preset.id}
+            className={`${styles.hookPresetCard} ${activeHookPresetId === preset.id ? styles.hookPresetCardActive : ''}`}
+            aria-pressed={activeHookPresetId === preset.id}
+            onClick={() => applyHookPreset(preset.id)}
           >
-            {variant.label}
+            <span>
+              <strong>{preset.label}</strong>
+              <small>{preset.tone}</small>
+            </span>
+            <p>{preset.description}</p>
           </button>
         ))}
       </div>
       <div className={styles.divider} />
+      {outputMode === 'hook' ? (
+        <>
+          <Field label="Struktur hook">
+            <div className={styles.segmentedPicker}>
+              <button
+                type="button"
+                className={sequenceMode === 'single' ? styles.segmentedActive : ''}
+                onClick={() => updateHook('sequenceMode', 'single' as BrandHookSequenceMode)}
+              >
+                <strong>Single</strong>
+                <small>Satu komposisi</small>
+              </button>
+              <button
+                type="button"
+                className={sequenceMode === 'three-beat' ? styles.segmentedActive : ''}
+                onClick={() => {
+                  updateHook('sequenceMode', 'three-beat' as BrandHookSequenceMode);
+                  if (timing.hookSeconds < 4.5) updateTiming('hookSeconds', 5.4);
+                }}
+              >
+                <strong>3 Beat</strong>
+                <small>Hook → konflik → reveal</small>
+              </button>
+            </div>
+          </Field>
+          <div className={styles.divider} />
+        </>
+      ) : null}
       {fields.map((field) => (
         <Field key={field.key} label={field.label}>
           {field.multiline ? (
@@ -219,6 +275,28 @@ function CopyFields() {
               type="checkbox"
               checked={hook.showDivider}
               onChange={(event) => updateHook('showDivider', event.target.checked)}
+            />
+          </label>
+          <label className={styles.toggleRow}>
+            <span>
+              <strong>Auto-fit teks</strong>
+              <small>Ukuran menyesuaikan otomatis agar hook panjang tidak terpotong.</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={hook.autoFit ?? true}
+              onChange={(event) => updateHook('autoFit', event.target.checked)}
+            />
+          </label>
+          <label className={styles.toggleRow}>
+            <span>
+              <strong>Safe-area TikTok / Reels</strong>
+              <small>Panduan hanya tampil di preview dan tidak ikut diekspor.</small>
+            </span>
+            <input
+              type="checkbox"
+              checked={showSafeArea}
+              onChange={(event) => setShowSafeArea(event.target.checked)}
             />
           </label>
         </>
@@ -392,10 +470,16 @@ function PaletteFields() {
 
 function TimingFields() {
   const timing = useBrandStudioStore((state) => state.timing);
+  const hook = useBrandStudioStore((state) => state.hook);
   const outputMode = useBrandStudioStore((state) => state.outputMode);
   const updateTiming = useBrandStudioStore((state) => state.updateTiming);
   const campaignRows: Array<{ key: keyof BrandTiming; label: string; min: number; max: number }> = [
-    { key: 'hookSeconds', label: 'Hook awal', min: 2, max: 6 },
+    {
+      key: 'hookSeconds',
+      label: hook.sequenceMode === 'three-beat' ? 'Hook 3 beat' : 'Hook awal',
+      min: hook.sequenceMode === 'three-beat' ? 4.5 : 2,
+      max: 6,
+    },
     { key: 'productSeconds', label: 'Product reveal', min: 3, max: 10 },
     { key: 'storySeconds', label: 'Cerita dan benefit', min: 3, max: 9 },
     { key: 'outroSeconds', label: 'CTA akhir', min: 2.5, max: 7 },
@@ -439,6 +523,19 @@ function EffectsFields() {
   const updateAudio = useBrandStudioStore((state) => state.updateAudio);
   const previewRef = useRef<HTMLAudioElement | null>(null);
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const partMotions: BrandHookPartMotions = hook.partMotions ?? {
+    eyebrow: hook.motion,
+    title: hook.motion,
+    accent: hook.motion,
+    footer: hook.motion,
+  };
+  const motionRows: Array<{ key: keyof BrandHookPartMotions; label: string }> = [
+    { key: 'eyebrow', label: 'Brand kecil' },
+    { key: 'title', label: 'Judul utama' },
+    { key: 'accent', label: 'Teks aksen' },
+    { key: 'footer', label: 'Footer kecil' },
+  ];
+  const usesTypewriter = Object.values(partMotions).includes('typewriter');
 
   useEffect(() => () => {
     previewRef.current?.pause();
@@ -473,20 +570,24 @@ function EffectsFields() {
         </div>
       </div>
       <div className={styles.twoColumns}>
-        <Field label="Transisi masuk">
+        <Field label="Preset gerak semua teks">
           <select
             className={styles.select}
             value={hook.motion}
-            onChange={(event) => updateHook('motion', event.target.value as BrandHookMotion)}
+            onChange={(event) => {
+              const motion = event.target.value as BrandHookMotion;
+              updateHook('motion', motion);
+              updateHook('partMotions', {
+                eyebrow: motion,
+                title: motion,
+                accent: motion,
+                footer: motion,
+              });
+            }}
           >
-            <option value="fade">Fade</option>
-            <option value="soft">Soft rise</option>
-            <option value="pop">Pop</option>
-            <option value="slide">Slide</option>
-            <option value="blur">Blur reveal</option>
-            <option value="typewriter">Typewriter</option>
-            <option value="word-reveal">Kata per kata</option>
-            <option value="cinematic">Cinematic focus</option>
+            {HOOK_MOTION_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
           </select>
         </Field>
         <Field label="Transisi keluar">
@@ -502,7 +603,25 @@ function EffectsFields() {
           </select>
         </Field>
       </div>
-      {hook.motion === 'typewriter' ? (
+      <div className={styles.motionPartGrid}>
+        {motionRows.map((row) => (
+          <Field key={row.key} label={row.label}>
+            <select
+              className={styles.select}
+              value={partMotions[row.key]}
+              onChange={(event) => updateHook('partMotions', {
+                ...partMotions,
+                [row.key]: event.target.value as BrandHookMotion,
+              })}
+            >
+              {HOOK_MOTION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </Field>
+        ))}
+      </div>
+      {usesTypewriter ? (
         <Field label={`Kecepatan mengetik — ${hook.typewriterCps || 20} karakter/detik`}>
           <input
             className={styles.slider}
@@ -818,6 +937,11 @@ export default function BrandStudio() {
                 clickToPlay
                 style={{ width: '100%', height: '100%' }}
               />
+              {state.showSafeArea ? (
+                <div className={styles.safeAreaGuide} aria-hidden="true">
+                  <span>AREA AMAN TEKS</span>
+                </div>
+              ) : null}
             </div>
           </div>
           <div className={styles.previewFooter}>

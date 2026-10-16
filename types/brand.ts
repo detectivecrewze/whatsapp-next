@@ -18,6 +18,14 @@ export type BrandHookMotion =
   | 'cinematic';
 export type BrandHookExit = 'none' | 'fade' | 'zoom' | 'slide-up';
 export type BrandHookAlignment = 'left' | 'center';
+export type BrandHookSequenceMode = 'single' | 'three-beat';
+
+export interface BrandHookPartMotions {
+  eyebrow: BrandHookMotion;
+  title: BrandHookMotion;
+  accent: BrandHookMotion;
+  footer: BrandHookMotion;
+}
 
 export type BrandMediaKind = 'image' | 'video';
 export type BrandMediaFit = 'cover' | 'contain';
@@ -51,6 +59,8 @@ export interface BrandCopy {
   eyebrow: string;
   hookTitle: string;
   hookAccent: string;
+  hookBridge: string;
+  hookReveal: string;
   hookFooter: string;
   storyTitle: string;
   storyBody: string;
@@ -63,12 +73,15 @@ export interface BrandCopy {
 export interface BrandHookSettings {
   typography: BrandHookTypography;
   motion: BrandHookMotion;
+  partMotions: BrandHookPartMotions;
+  sequenceMode: BrandHookSequenceMode;
   exitTransition: BrandHookExit;
   transitionSeconds: number;
   alignment: BrandHookAlignment;
   textScale: number;
   positionY: number;
   showDivider: boolean;
+  autoFit: boolean;
   typewriterCps: number;
 }
 
