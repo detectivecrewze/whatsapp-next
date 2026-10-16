@@ -1,4 +1,5 @@
 import type {
+  BrandPalette,
   BrandTemplateDefinition,
   BrandTemplateId,
   BrandVideoProps,
@@ -31,7 +32,7 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         domain: 'for-you-always.my.id',
       },
       hook: {
-        typography: 'editorial',
+        typography: 'brand-serif',
         motion: 'soft',
         exitTransition: 'fade',
         transitionSeconds: 0.55,
@@ -39,13 +40,14 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         textScale: 1,
         positionY: 33,
         showDivider: true,
+        typewriterCps: 20,
       },
       palette: {
-        background: '#fbf7f2',
-        surface: '#f1e8dc',
-        text: '#382a24',
-        accent: '#a75d67',
-        muted: '#8d776b',
+        background: '#FAF7F2',
+        surface: '#E8D9CB',
+        text: '#1D1816',
+        accent: '#A67C52',
+        muted: '#78665B',
       },
       heroMedia: {
         src: '/brand-studio/letter-closed.webp',
@@ -104,6 +106,7 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         textScale: 1,
         positionY: 34,
         showDivider: true,
+        typewriterCps: 22,
       },
       palette: {
         background: '#fff9ef',
@@ -169,6 +172,7 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
         textScale: 1,
         positionY: 32,
         showDivider: true,
+        typewriterCps: 19,
       },
       palette: {
         background: '#f7f0e8',
@@ -207,6 +211,74 @@ export const BRAND_TEMPLATES: Record<BrandTemplateId, BrandTemplateDefinition> =
 };
 
 export const BRAND_TEMPLATE_LIST = Object.values(BRAND_TEMPLATES);
+
+export const BRAND_PALETTE_PRESETS: Array<{
+  id: string;
+  name: string;
+  description: string;
+  palette: BrandPalette;
+}> = [
+  {
+    id: 'chalk-editorial',
+    name: 'Chalk Editorial',
+    description: 'Palet utama brand · terang dan premium',
+    palette: {
+      background: '#FAF7F2',
+      surface: '#E8D9CB',
+      text: '#1D1816',
+      accent: '#A67C52',
+      muted: '#78665B',
+    },
+  },
+  {
+    id: 'obsidian-night',
+    name: 'Obsidian Night',
+    description: 'Gelap, romantis, dan cinematic',
+    palette: {
+      background: '#1D1816',
+      surface: '#382A24',
+      text: '#FAF7F2',
+      accent: '#CDAB8F',
+      muted: '#B9A392',
+    },
+  },
+  {
+    id: 'onyx-boutique',
+    name: 'Onyx Boutique',
+    description: 'Hangat, dewasa, dan sophisticated',
+    palette: {
+      background: '#382A24',
+      surface: '#4A3931',
+      text: '#FAF7F2',
+      accent: '#CDAB8F',
+      muted: '#C6AE9A',
+    },
+  },
+  {
+    id: 'honey-letter',
+    name: 'Honey Letter',
+    description: 'Nostalgic dengan nuansa surat lama',
+    palette: {
+      background: '#A67C52',
+      surface: '#CDAB8F',
+      text: '#1D1816',
+      accent: '#FAF7F2',
+      muted: '#382A24',
+    },
+  },
+  {
+    id: 'driftwood-soft',
+    name: 'Driftwood Soft',
+    description: 'Lembut dan sentimental untuk hadiah',
+    palette: {
+      background: '#CDAB8F',
+      surface: '#E5D2C1',
+      text: '#1D1816',
+      accent: '#382A24',
+      muted: '#6F5649',
+    },
+  },
+];
 
 export const BRAND_HOOK_VARIANTS = [
   { label: 'Romantis', title: 'Ada banyak cara bilang,', accent: '“kamu berarti buatku.”' },

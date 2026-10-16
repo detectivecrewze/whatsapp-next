@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import {
   BRAND_HOOK_VARIANTS,
+  BRAND_PALETTE_PRESETS,
   BRAND_SFX_FILES,
   BRAND_SFX_GROUPS,
   BRAND_TEMPLATE_LIST,
@@ -168,9 +169,11 @@ function CopyFields() {
                 value={hook.typography}
                 onChange={(event) => updateHook('typography', event.target.value as BrandHookTypography)}
               >
-                <option value="editorial">Editorial</option>
-                <option value="bold">Bold / Viral</option>
-                <option value="clean">Clean</option>
+                <option value="brand-serif">Cormorant Garamond · Brand</option>
+                <option value="editorial">Playfair Display · Editorial</option>
+                <option value="clean">Inter · Modern clean</option>
+                <option value="bold">Inter · Bold / Viral</option>
+                <option value="typewriter">IBM Plex Mono · Typewriter</option>
               </select>
             </Field>
             <Field label="Perataan teks">
@@ -309,6 +312,10 @@ function MediaFields() {
 function PaletteFields() {
   const palette = useBrandStudioStore((state) => state.palette);
   const updatePalette = useBrandStudioStore((state) => state.updatePalette);
+  const isPresetActive = (preset: BrandPalette) =>
+    (Object.keys(preset) as Array<keyof BrandPalette>).every(
+      (key) => preset[key].toLowerCase() === palette[key].toLowerCase(),
+    );
   const entries: Array<{ key: keyof BrandPalette; label: string }> = [
     { key: 'background', label: 'Background' },
     { key: 'surface', label: 'Kartu media' },
@@ -319,6 +326,39 @@ function PaletteFields() {
 
   return (
     <div className={styles.sectionStack}>
+      <div className={styles.introCard}>
+        <Palette size={18} />
+        <div>
+          <strong>Palet resmi For you, Always.</strong>
+          <p>Disusun dari Chalk White, Obsidian, Onyx, Honey Brown, dan Driftwood Tan.</p>
+        </div>
+      </div>
+      <div className={styles.palettePresetGrid}>
+        {BRAND_PALETTE_PRESETS.map((preset) => (
+          <button
+            type="button"
+            key={preset.id}
+            className={`${styles.palettePreset} ${isPresetActive(preset.palette) ? styles.palettePresetActive : ''}`}
+            aria-pressed={isPresetActive(preset.palette)}
+            onClick={() => {
+              for (const [key, value] of Object.entries(preset.palette)) {
+                updatePalette(key as keyof BrandPalette, value);
+              }
+            }}
+          >
+            <span className={styles.palettePresetColors}>
+              {Object.values(preset.palette).map((color, index) => (
+                <i key={`${preset.id}-${index}`} style={{ backgroundColor: color }} />
+              ))}
+            </span>
+            <span>
+              <strong>{preset.name}</strong>
+              <small>{preset.description}</small>
+            </span>
+          </button>
+        ))}
+      </div>
+      <div className={styles.divider} />
       <div className={styles.palettePreview}>
         {entries.map((entry) => (
           <span key={entry.key} style={{ backgroundColor: palette[entry.key] }} />
@@ -438,6 +478,9 @@ function EffectsFields() {
             <option value="pop">Pop</option>
             <option value="slide">Slide</option>
             <option value="blur">Blur reveal</option>
+            <option value="typewriter">Typewriter</option>
+            <option value="word-reveal">Kata per kata</option>
+            <option value="cinematic">Cinematic focus</option>
           </select>
         </Field>
         <Field label="Transisi keluar">
@@ -453,6 +496,19 @@ function EffectsFields() {
           </select>
         </Field>
       </div>
+      {hook.motion === 'typewriter' ? (
+        <Field label={`Kecepatan mengetik — ${hook.typewriterCps || 20} karakter/detik`}>
+          <input
+            className={styles.slider}
+            type="range"
+            min={8}
+            max={32}
+            step={1}
+            value={hook.typewriterCps || 20}
+            onChange={(event) => updateHook('typewriterCps', Number(event.target.value))}
+          />
+        </Field>
+      ) : null}
       <Field label={`Durasi transisi keluar — ${hook.transitionSeconds.toFixed(2)}s`}>
         <input
           className={styles.slider}

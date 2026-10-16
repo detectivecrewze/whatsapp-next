@@ -1,7 +1,20 @@
 export type BrandTemplateId = 'editorial' | 'birthday' | 'anniversary';
 export type BrandOutputMode = 'hook' | 'campaign';
-export type BrandHookTypography = 'editorial' | 'bold' | 'clean';
-export type BrandHookMotion = 'fade' | 'soft' | 'pop' | 'slide' | 'blur';
+export type BrandHookTypography =
+  | 'brand-serif'
+  | 'editorial'
+  | 'bold'
+  | 'clean'
+  | 'typewriter';
+export type BrandHookMotion =
+  | 'fade'
+  | 'soft'
+  | 'pop'
+  | 'slide'
+  | 'blur'
+  | 'typewriter'
+  | 'word-reveal'
+  | 'cinematic';
 export type BrandHookExit = 'none' | 'fade' | 'zoom' | 'slide-up';
 export type BrandHookAlignment = 'left' | 'center';
 
@@ -55,6 +68,7 @@ export interface BrandHookSettings {
   textScale: number;
   positionY: number;
   showDivider: boolean;
+  typewriterCps: number;
 }
 
 export interface BrandPalette {

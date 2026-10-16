@@ -852,6 +852,71 @@
   border-radius: 12px;
 }
 
+.palettePresetGrid {
+  display: grid;
+  gap: 8px;
+}
+
+.palettePreset {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 11px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.018);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.palettePreset:hover {
+  border-color: rgba(205, 171, 143, 0.55);
+  background: rgba(205, 171, 143, 0.07);
+}
+
+.palettePresetActive {
+  border-color: rgba(205, 171, 143, 0.78);
+  background: rgba(205, 171, 143, 0.12);
+  box-shadow: inset 3px 0 0 #cdab8f;
+}
+
+.palettePresetColors {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  height: 40px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.palettePresetColors i {
+  display: block;
+}
+
+.palettePreset > span:last-child {
+  min-width: 0;
+}
+
+.palettePreset strong,
+.palettePreset small {
+  display: block;
+}
+
+.palettePreset strong {
+  color: #ece4df;
+  font-size: 9.5px;
+}
+
+.palettePreset small {
+  margin-top: 3px;
+  color: #8f8580;
+  font-size: 7.5px;
+  line-height: 1.35;
+}
+
 .colorInputRow {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
