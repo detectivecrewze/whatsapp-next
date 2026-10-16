@@ -455,7 +455,7 @@ function HookScene({ props }: { props: BrandVideoProps }) {
   const titleFont = hookFont(props.hook.typography);
   const typingCps = Math.max(6, props.hook.typewriterCps || 20);
   const textLeft = props.hook.alignment === 'left' ? 96 : 150;
-  const textRight = props.hook.alignment === 'left' ? 200 : 170;
+  const textRight = props.hook.alignment === 'left' ? 200 : 150;
   const partMotions = props.hook.partMotions ?? {
     eyebrow: props.hook.motion,
     title: props.hook.motion,
@@ -517,10 +517,10 @@ function HookScene({ props }: { props: BrandVideoProps }) {
       <div
         style={{
           position: 'absolute',
-          left: 72,
-          right: 180,
+          left: textLeft,
+          right: textRight,
           top: 220,
-          textAlign: 'center',
+          textAlign: props.hook.alignment,
           color: props.palette.muted,
           fontFamily: sans,
           fontSize: 22,
@@ -608,9 +608,9 @@ function HookScene({ props }: { props: BrandVideoProps }) {
         style={{
           position: 'absolute',
           bottom: 360,
-          left: 72,
-          right: 180,
-          textAlign: 'center',
+          left: textLeft,
+          right: textRight,
+          textAlign: props.hook.alignment,
           color: props.palette.muted,
           fontFamily: sans,
           fontSize: 20,
