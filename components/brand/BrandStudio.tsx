@@ -170,6 +170,7 @@ function CopyFields() {
                 onChange={(event) => updateHook('typography', event.target.value as BrandHookTypography)}
               >
                 <option value="brand-serif">Cormorant Garamond · Brand</option>
+                <option value="classic">Georgia · Editorial lama</option>
                 <option value="editorial">Playfair Display · Editorial</option>
                 <option value="clean">Inter · Modern clean</option>
                 <option value="bold">Inter · Bold / Viral</option>
@@ -312,6 +313,11 @@ function MediaFields() {
 function PaletteFields() {
   const palette = useBrandStudioStore((state) => state.palette);
   const updatePalette = useBrandStudioStore((state) => state.updatePalette);
+  // Keep the inspector usable during a stale Fast Refresh where the component
+  // updates before the module that exports the presets has been replaced.
+  const palettePresets = Array.isArray(BRAND_PALETTE_PRESETS)
+    ? BRAND_PALETTE_PRESETS
+    : [];
   const isPresetActive = (preset: BrandPalette) =>
     (Object.keys(preset) as Array<keyof BrandPalette>).every(
       (key) => preset[key].toLowerCase() === palette[key].toLowerCase(),
@@ -334,7 +340,7 @@ function PaletteFields() {
         </div>
       </div>
       <div className={styles.palettePresetGrid}>
-        {BRAND_PALETTE_PRESETS.map((preset) => (
+        {palettePresets.map((preset) => (
           <button
             type="button"
             key={preset.id}

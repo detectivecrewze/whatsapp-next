@@ -21,10 +21,12 @@ import type {
 
 const serif = 'var(--font-cormorant), "Cormorant Garamond", Georgia, serif';
 const editorialSerif = 'var(--font-playfair), "Playfair Display", Georgia, serif';
+const classicSerif = 'Georgia, Cambria, "Times New Roman", serif';
 const sans = 'var(--font-inter), Inter, Arial, Helvetica, sans-serif';
 const mono = 'var(--font-ibm-plex-mono), "IBM Plex Mono", "Courier New", monospace';
 
 function hookFont(typography: BrandHookTypography) {
+  if (typography === 'classic') return classicSerif;
   if (typography === 'editorial') return editorialSerif;
   if (typography === 'typewriter') return mono;
   if (typography === 'brand-serif') return serif;
@@ -249,7 +251,10 @@ function MediaVisual({ media }: { media: BrandMediaSlot }) {
 function HookScene({ props }: { props: BrandVideoProps }) {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
-  const isEditorial = props.hook.typography === 'editorial' || props.hook.typography === 'brand-serif';
+  const isEditorial =
+    props.hook.typography === 'editorial' ||
+    props.hook.typography === 'brand-serif' ||
+    props.hook.typography === 'classic';
   const isBold = props.hook.typography === 'bold';
   const isTypewriterFont = props.hook.typography === 'typewriter';
   const titleFont = hookFont(props.hook.typography);

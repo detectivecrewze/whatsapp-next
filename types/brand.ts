@@ -2,6 +2,7 @@ export type BrandTemplateId = 'editorial' | 'birthday' | 'anniversary';
 export type BrandOutputMode = 'hook' | 'campaign';
 export type BrandHookTypography =
   | 'brand-serif'
+  | 'classic'
   | 'editorial'
   | 'bold'
   | 'clean'
