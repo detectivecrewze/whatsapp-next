@@ -576,6 +576,15 @@
   box-shadow: 0 0 0 3px rgba(215, 154, 135, 0.07);
 }
 
+.accentTextField {
+  border-color: rgba(215, 154, 135, 0.28);
+  background: linear-gradient(135deg, rgba(215, 154, 135, 0.08), #1a2128 55%);
+}
+
+.accentTextField::placeholder {
+  color: #76645e;
+}
+
 .select {
   appearance: none;
   cursor: pointer;

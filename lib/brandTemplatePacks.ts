@@ -28,7 +28,7 @@ export interface BrandTemplatePackDefinition {
   copy: Pick<
     BrandCopy,
     'eyebrow' | 'hookTitle' | 'hookAccent' | 'hookBridge' | 'hookReveal' | 'hookFooter'
-  >;
+  > & Partial<Pick<BrandCopy, 'hookBridgeAccent' | 'hookRevealAccent'>>;
   hook: Partial<BrandHookSettings>;
   palette: BrandPalette;
   audio: Pick<
@@ -479,8 +479,10 @@ export const BRAND_TEMPLATE_PACKS: BrandTemplatePackDefinition[] = [
       eyebrow: 'MORE THAN A MESSAGE',
       hookTitle: 'Kelihatannya memang cuma satu link,',
       hookAccent: 'sampai {nama} membukanya.',
-      hookBridge: 'Di dalamnya ada pesan, foto, dan momen yang dibuat personal.',
-      hookReveal: 'Itulah kenapa {produk} terasa seperti hadiah, bukan sekadar halaman.',
+      hookBridge: 'Di dalamnya ada pesan, foto,',
+      hookBridgeAccent: 'dan momen yang dibuat personal.',
+      hookReveal: 'Itulah kenapa {produk} terasa seperti hadiah,',
+      hookRevealAccent: 'bukan sekadar halaman.',
       hookFooter: 'MADE PERSONAL. SENT INSTANTLY.',
     },
     hook: {

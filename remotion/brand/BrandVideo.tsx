@@ -485,7 +485,11 @@ function HookScene({ props }: { props: BrandVideoProps }) {
     : beatIndex === 1
       ? props.copy.hookBridge || props.copy.storyTitle || props.copy.hookTitle
       : props.copy.hookReveal || props.copy.cta || props.copy.hookAccent;
-  const currentAccent = beatIndex === 0 ? props.copy.hookAccent : '';
+  const currentAccent = beatIndex === 0
+    ? props.copy.hookAccent
+    : beatIndex === 1
+      ? props.copy.hookBridgeAccent ?? ''
+      : props.copy.hookRevealAccent ?? '';
   const titleTypingFrames = Math.ceil((currentTitle.length / typingCps) * fps);
   const accentDelay = partMotions.title === 'typewriter'
     ? Math.max(8, titleTypingFrames + 4)
@@ -544,7 +548,7 @@ function HookScene({ props }: { props: BrandVideoProps }) {
           right: textRight,
           top: Math.round((props.hook.positionY / 100) * 1920),
           textAlign: props.hook.alignment,
-          color: beatIndex === 2 ? props.palette.accent : props.palette.text,
+          color: beatIndex === 2 && !currentAccent ? props.palette.accent : props.palette.text,
           fontFamily: titleFont,
           opacity: beatOpacity,
         }}

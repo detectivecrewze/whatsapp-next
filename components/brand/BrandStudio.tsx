@@ -137,19 +137,43 @@ function CopyFields() {
   const applyHookPreset = useBrandStudioStore((state) => state.applyHookPreset);
   const setShowSafeArea = useBrandStudioStore((state) => state.setShowSafeArea);
   const sequenceMode = hook.sequenceMode ?? 'single';
-  const hookFields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
+  type CopyField = {
+    key: keyof BrandCopy;
+    label: string;
+    multiline?: boolean;
+    hint?: string;
+    placeholder?: string;
+    accent?: boolean;
+  };
+  const hookFields: CopyField[] = [
     { key: 'eyebrow', label: 'Brand kecil di atas' },
     { key: 'hookTitle', label: sequenceMode === 'three-beat' ? 'Beat 1 · Hook utama' : 'Hook utama' },
     { key: 'hookAccent', label: sequenceMode === 'three-beat' ? 'Beat 1 · Aksen' : 'Hook aksen / italic' },
     ...(sequenceMode === 'three-beat'
       ? [
-          { key: 'hookBridge' as keyof BrandCopy, label: 'Beat 2 · Penguat / konflik' },
-          { key: 'hookReveal' as keyof BrandCopy, label: 'Beat 3 · Reveal digital gift' },
+          { key: 'hookBridge' as keyof BrandCopy, label: 'Beat 2 · Teks utama', multiline: true },
+          {
+            key: 'hookBridgeAccent' as keyof BrandCopy,
+            label: 'Beat 2 · Highlight warna',
+            multiline: true,
+            hint: 'Opsional · tampil sebagai baris kedua dengan warna accent.',
+            placeholder: 'Contoh: dan momen yang dibuat personal.',
+            accent: true,
+          },
+          { key: 'hookReveal' as keyof BrandCopy, label: 'Beat 3 · Teks utama', multiline: true },
+          {
+            key: 'hookRevealAccent' as keyof BrandCopy,
+            label: 'Beat 3 · Highlight warna',
+            multiline: true,
+            hint: 'Opsional · kosongkan jika seluruh beat ingin satu warna.',
+            placeholder: 'Contoh: bukan sekadar halaman.',
+            accent: true,
+          },
         ]
       : []),
     { key: 'hookFooter', label: 'Teks kecil di bawah' },
   ];
-  const campaignFields: Array<{ key: keyof BrandCopy; label: string; multiline?: boolean }> = [
+  const campaignFields: CopyField[] = [
     { key: 'storyTitle', label: 'Judul cerita' },
     { key: 'storyBody', label: 'Penjelasan singkat', multiline: true },
     { key: 'productName', label: 'Nama produk digital' },
@@ -157,7 +181,7 @@ function CopyFields() {
     { key: 'cta', label: 'Call to action' },
     { key: 'domain', label: 'Domain / username' },
   ];
-  const fields = outputMode === 'hook' ? hookFields : [...hookFields, ...campaignFields];
+  const fields: CopyField[] = outputMode === 'hook' ? hookFields : [...hookFields, ...campaignFields];
 
   return (
     <div className={styles.sectionStack}>
@@ -215,18 +239,20 @@ function CopyFields() {
         </>
       ) : null}
       {fields.map((field) => (
-        <Field key={field.key} label={field.label}>
+        <Field key={field.key} label={field.label} hint={field.hint}>
           {field.multiline ? (
             <textarea
-              className={styles.textarea}
-              value={copy[field.key]}
-              rows={4}
+              className={`${styles.textarea} ${field.accent ? styles.accentTextField : ''}`}
+              value={copy[field.key] ?? ''}
+              placeholder={field.placeholder}
+              rows={field.accent ? 2 : 3}
               onChange={(event) => updateCopy(field.key, event.target.value)}
             />
           ) : (
             <input
-              className={styles.input}
-              value={copy[field.key]}
+              className={`${styles.input} ${field.accent ? styles.accentTextField : ''}`}
+              value={copy[field.key] ?? ''}
+              placeholder={field.placeholder}
               onChange={(event) => updateCopy(field.key, event.target.value)}
             />
           )}
@@ -1314,10 +1340,26 @@ function VariantsFields() {
                         />
                       </label>
                       <label className={styles.variantInput}>
+                        <span>Highlight build-up · opsional</span>
+                        <textarea
+                          value={variant.props.copy.hookBridgeAccent ?? ''}
+                          placeholder="Baris berwarna accent"
+                          onChange={(event) => updateVariantCopy(variant.id, 'hookBridgeAccent', event.target.value)}
+                        />
+                      </label>
+                      <label className={styles.variantInput}>
                         <span>Reveal</span>
                         <textarea
                           value={variant.props.copy.hookReveal}
                           onChange={(event) => updateVariantCopy(variant.id, 'hookReveal', event.target.value)}
+                        />
+                      </label>
+                      <label className={styles.variantInput}>
+                        <span>Highlight reveal · opsional</span>
+                        <textarea
+                          value={variant.props.copy.hookRevealAccent ?? ''}
+                          placeholder="Baris berwarna accent"
+                          onChange={(event) => updateVariantCopy(variant.id, 'hookRevealAccent', event.target.value)}
                         />
                       </label>
                     </details>

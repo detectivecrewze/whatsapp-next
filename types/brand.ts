@@ -71,7 +71,9 @@ export interface BrandCopy {
   hookTitle: string;
   hookAccent: string;
   hookBridge: string;
+  hookBridgeAccent: string;
   hookReveal: string;
+  hookRevealAccent: string;
   hookFooter: string;
   storyTitle: string;
   storyBody: string;

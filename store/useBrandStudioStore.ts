@@ -70,7 +70,15 @@ interface BrandStudioStore extends BrandVideoProps {
   toggleVariant: (variantId: BrandHookVariant['id']) => void;
   updateVariantCopy: (
     variantId: BrandHookVariant['id'],
-    key: keyof Pick<BrandCopy, 'hookTitle' | 'hookAccent' | 'hookBridge' | 'hookReveal'>,
+    key: keyof Pick<
+      BrandCopy,
+      | 'hookTitle'
+      | 'hookAccent'
+      | 'hookBridge'
+      | 'hookBridgeAccent'
+      | 'hookReveal'
+      | 'hookRevealAccent'
+    >,
     value: string,
   ) => void;
   applyVariant: (variantId: BrandHookVariant['id']) => void;
@@ -110,7 +118,12 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
     const preset = BRAND_HOOK_PRESETS.find((entry) => entry.id === presetId);
     if (!preset) return;
     set((state) => ({
-      copy: { ...state.copy, ...preset.copy },
+      copy: {
+        ...state.copy,
+        hookBridgeAccent: '',
+        hookRevealAccent: '',
+        ...preset.copy,
+      },
       hook: {
         ...state.hook,
         ...preset.hook,
@@ -145,6 +158,8 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       outputMode: 'hook',
       copy: {
         ...state.copy,
+        hookBridgeAccent: '',
+        hookRevealAccent: '',
         ...personalizedCopy,
         productName: personalization.productName.trim() || state.copy.productName,
       },
