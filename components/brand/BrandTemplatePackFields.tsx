@@ -1,13 +1,19 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { CheckCircle2, Search, Sparkles, Users } from 'lucide-react';
+import { CheckCircle2, Clock3, PencilLine, Search, Sparkles, Users } from 'lucide-react';
 import {
   BRAND_TEMPLATE_PACK_CATEGORIES,
   BRAND_TEMPLATE_PACKS,
   type BrandTemplatePackCategory,
 } from '@/lib/brandTemplatePacks';
 import { useBrandStudioStore } from '@/store/useBrandStudioStore';
+import {
+  BRAND_BEAT_MAX_SECONDS,
+  BRAND_BEAT_MIN_SECONDS,
+  resolveBrandHookBeatDurations,
+} from '@/lib/brandBeatTiming';
+import type { BrandCopy } from '@/types/brand';
 import styles from '@/app/brand/brand.module.css';
 
 type PackFilter = 'all' | BrandTemplatePackCategory;
@@ -18,8 +24,23 @@ export default function BrandTemplatePackFields() {
   const [recipientName, setRecipientName] = useState('');
   const [productName, setProductName] = useState('Digital Gift');
   const activeTemplatePackId = useBrandStudioStore((state) => state.activeTemplatePackId);
+  const copy = useBrandStudioStore((state) => state.copy);
+  const hook = useBrandStudioStore((state) => state.hook);
+  const timing = useBrandStudioStore((state) => state.timing);
   const applyTemplatePack = useBrandStudioStore((state) => state.applyTemplatePack);
+  const updateCopy = useBrandStudioStore((state) => state.updateCopy);
+  const updateBeatDuration = useBrandStudioStore((state) => state.updateBeatDuration);
   const setActiveSection = useBrandStudioStore((state) => state.setActiveSection);
+  const beatDurations = resolveBrandHookBeatDurations(hook.beatDurations, timing.hookSeconds);
+  const editableBeats: Array<{
+    label: string;
+    mainKey: keyof BrandCopy;
+    accentKey: keyof BrandCopy;
+  }> = [
+    { label: 'Beat 1 · Hook', mainKey: 'hookTitle', accentKey: 'hookAccent' },
+    { label: 'Beat 2 · Build-up', mainKey: 'hookBridge', accentKey: 'hookBridgeAccent' },
+    { label: 'Beat 3 · Reveal', mainKey: 'hookReveal', accentKey: 'hookRevealAccent' },
+  ];
 
   const filteredPacks = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -75,14 +96,67 @@ export default function BrandTemplatePackFields() {
       </div>
 
       {activeTemplatePackId ? (
-        <div className={styles.templatePackApplied}>
-          <CheckCircle2 size={15} />
-          <div>
-            <strong>Template sudah masuk ke preview</strong>
-            <small>Media dan musik sebelumnya tetap dipertahankan.</small>
+        <>
+          <div className={styles.templatePackApplied}>
+            <CheckCircle2 size={15} />
+            <div>
+              <strong>Template sudah masuk ke preview</strong>
+              <small>Teks dan durasi sekarang bebas kamu ubah.</small>
+            </div>
+            <button type="button" onClick={() => setActiveSection('copy')}>Editor lengkap</button>
           </div>
-          <button type="button" onClick={() => setActiveSection('copy')}>Edit naskah</button>
-        </div>
+          <details className={styles.templatePackQuickEditor} open>
+            <summary>
+              <span><PencilLine size={14} /></span>
+              <div>
+                <strong>Edit teks & durasi</strong>
+                <small>Perubahan langsung terlihat di preview dan ikut saat export.</small>
+              </div>
+            </summary>
+            <div className={styles.templatePackQuickEditorBody}>
+              {editableBeats.map((beat, index) => (
+                <section className={styles.templatePackBeatEditor} key={beat.label}>
+                  <header>
+                    <strong>{beat.label}</strong>
+                    <span>{beatDurations[index].toFixed(1)}s</span>
+                  </header>
+                  <label>
+                    <span>Teks utama</span>
+                    <textarea
+                      rows={2}
+                      value={copy[beat.mainKey] ?? ''}
+                      onChange={(event) => updateCopy(beat.mainKey, event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    <span>Highlight warna · opsional</span>
+                    <textarea
+                      rows={2}
+                      value={copy[beat.accentKey] ?? ''}
+                      onChange={(event) => updateCopy(beat.accentKey, event.target.value)}
+                    />
+                  </label>
+                  <label className={styles.templatePackBeatDuration}>
+                    <span><Clock3 size={12} /> Lama tampil</span>
+                    <input
+                      className={styles.slider}
+                      type="range"
+                      min={BRAND_BEAT_MIN_SECONDS}
+                      max={BRAND_BEAT_MAX_SECONDS}
+                      step={0.1}
+                      value={beatDurations[index]}
+                      onChange={(event) => updateBeatDuration(index as 0 | 1 | 2, Number(event.target.value))}
+                    />
+                  </label>
+                </section>
+              ))}
+              <div className={styles.templatePackDurationTotal}>
+                <span>Total durasi hook</span>
+                <strong>{timing.hookSeconds.toFixed(1)} detik</strong>
+              </div>
+            </div>
+          </details>
+        </>
       ) : null}
 
       <label className={styles.templatePackSearch}>

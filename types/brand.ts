@@ -19,6 +19,7 @@ export type BrandHookMotion =
 export type BrandHookExit = 'none' | 'fade' | 'zoom' | 'slide-up';
 export type BrandHookAlignment = 'left' | 'center';
 export type BrandHookSequenceMode = 'single' | 'three-beat';
+export type BrandHookBeatDurations = [number, number, number];
 export type BrandContentGoal = 'retention' | 'emotion' | 'conversion' | 'comedy';
 
 export interface BrandHookPartMotions {
@@ -88,6 +89,7 @@ export interface BrandHookSettings {
   motion: BrandHookMotion;
   partMotions: BrandHookPartMotions;
   sequenceMode: BrandHookSequenceMode;
+  beatDurations: BrandHookBeatDurations;
   exitTransition: BrandHookExit;
   transitionSeconds: number;
   alignment: BrandHookAlignment;

@@ -28,6 +28,12 @@ import {
 } from 'lucide-react';
 import { BRAND_CONTENT_GOALS, getRecommendedVariant } from '@/lib/brandVariants';
 import {
+  BRAND_BEAT_MAX_SECONDS,
+  BRAND_BEAT_MIN_SECONDS,
+  resolveBrandHookBeatDurations,
+  splitBrandHookBeatDurations,
+} from '@/lib/brandBeatTiming';
+import {
   BRAND_HOOK_PRESETS,
   BRAND_KIT_PRESETS,
   BRAND_PALETTE_PRESETS,
@@ -226,8 +232,10 @@ function CopyFields() {
                 type="button"
                 className={sequenceMode === 'three-beat' ? styles.segmentedActive : ''}
                 onClick={() => {
+                  const nextHookSeconds = timing.hookSeconds < 4.5 ? 5.4 : timing.hookSeconds;
                   updateHook('sequenceMode', 'three-beat' as BrandHookSequenceMode);
-                  if (timing.hookSeconds < 4.5) updateTiming('hookSeconds', 5.4);
+                  updateHook('beatDurations', splitBrandHookBeatDurations(nextHookSeconds));
+                  if (timing.hookSeconds < 4.5) updateTiming('hookSeconds', nextHookSeconds);
                 }}
               >
                 <strong>3 Beat</strong>
@@ -788,21 +796,27 @@ function TimingFields() {
   const hook = useBrandStudioStore((state) => state.hook);
   const outputMode = useBrandStudioStore((state) => state.outputMode);
   const updateTiming = useBrandStudioStore((state) => state.updateTiming);
+  const updateBeatDuration = useBrandStudioStore((state) => state.updateBeatDuration);
+  const isThreeBeat = hook.sequenceMode === 'three-beat';
+  const beatDurations = resolveBrandHookBeatDurations(hook.beatDurations, timing.hookSeconds);
+  const beatLabels = ['Beat 1 · Hook', 'Beat 2 · Build-up', 'Beat 3 · Reveal'] as const;
   const campaignRows: Array<{ key: keyof BrandTiming; label: string; min: number; max: number }> = [
     {
       key: 'hookSeconds',
-      label: hook.sequenceMode === 'three-beat' ? 'Hook 3 beat' : 'Hook awal',
-      min: hook.sequenceMode === 'three-beat' ? 4.5 : 2,
+      label: 'Hook awal',
+      min: 2,
       max: 6,
     },
     { key: 'productSeconds', label: 'Product reveal', min: 3, max: 10 },
     { key: 'storySeconds', label: 'Cerita dan benefit', min: 3, max: 9 },
     { key: 'outroSeconds', label: 'CTA akhir', min: 2.5, max: 7 },
   ];
-  const rows = outputMode === 'hook' ? [campaignRows[0]] : campaignRows;
+  const rows = outputMode === 'hook'
+    ? isThreeBeat ? [] : [campaignRows[0]]
+    : isThreeBeat ? campaignRows.slice(1) : campaignRows;
   const total = outputMode === 'hook'
     ? timing.hookSeconds
-    : Object.values(timing).reduce((sum, value) => sum + value, 0);
+    : timing.hookSeconds + timing.productSeconds + timing.storySeconds + timing.outroSeconds;
 
   return (
     <div className={styles.sectionStack}>
@@ -813,8 +827,32 @@ function TimingFields() {
           <strong>{total.toFixed(1)} detik</strong>
         </div>
       </div>
+      {isThreeBeat ? (
+        <div className={styles.beatTimingGroup}>
+          <div className={styles.beatTimingHeading}>
+            <strong>Durasi per teks</strong>
+            <span>Total hook otomatis mengikuti ketiga beat.</span>
+          </div>
+          {beatDurations.map((seconds, index) => (
+            <Field key={beatLabels[index]} label={`${beatLabels[index]} — ${seconds.toFixed(1)}s`}>
+              <input
+                className={styles.slider}
+                type="range"
+                min={BRAND_BEAT_MIN_SECONDS}
+                max={BRAND_BEAT_MAX_SECONDS}
+                step={0.1}
+                value={seconds}
+                onChange={(event) => updateBeatDuration(index as 0 | 1 | 2, Number(event.target.value))}
+              />
+            </Field>
+          ))}
+        </div>
+      ) : null}
       {rows.map((row, index) => (
-        <Field key={row.key} label={`${index + 1}. ${row.label} — ${timing[row.key].toFixed(1)}s`}>
+        <Field
+          key={row.key}
+          label={`${index + (isThreeBeat && outputMode === 'campaign' ? 2 : 1)}. ${row.label} — ${timing[row.key].toFixed(1)}s`}
+        >
           <input
             className={styles.slider}
             type="range"

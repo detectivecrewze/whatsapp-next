@@ -11,6 +11,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 import { BRAND_SFX_FILES } from '@/lib/brandTemplates';
+import { resolveBrandHookBeatDurations } from '@/lib/brandBeatTiming';
 import type {
   BrandHookExit,
   BrandHookMotion,
@@ -463,8 +464,23 @@ function HookScene({ props }: { props: BrandVideoProps }) {
     footer: props.hook.motion,
   };
   const isThreeBeat = (props.hook.sequenceMode ?? 'single') === 'three-beat';
-  const beatOneFrames = isThreeBeat ? Math.max(1, Math.floor(durationInFrames / 3)) : durationInFrames;
-  const beatTwoFrames = isThreeBeat ? Math.max(1, Math.floor(durationInFrames / 3)) : 0;
+  const beatDurations = resolveBrandHookBeatDurations(
+    props.hook.beatDurations,
+    props.timing.hookSeconds,
+  );
+  const beatDurationTotal = beatDurations.reduce((sum, value) => sum + value, 0);
+  const beatOneFrames = isThreeBeat
+    ? Math.min(
+        Math.max(1, durationInFrames - 2),
+        Math.max(1, Math.round(durationInFrames * (beatDurations[0] / beatDurationTotal))),
+      )
+    : durationInFrames;
+  const beatTwoFrames = isThreeBeat
+    ? Math.min(
+        Math.max(1, durationInFrames - beatOneFrames - 1),
+        Math.max(1, Math.round(durationInFrames * (beatDurations[1] / beatDurationTotal))),
+      )
+    : 0;
   const beatThreeStart = beatOneFrames + beatTwoFrames;
   const beatIndex = !isThreeBeat
     ? 0
