@@ -7,6 +7,7 @@ import {
   BRAND_TEMPLATE_PACKS,
   type BrandTemplatePackCategory,
 } from '@/lib/brandTemplatePacks';
+import { BRAND_TEMPLATE_LIST } from '@/lib/brandTemplates';
 import { useBrandStudioStore } from '@/store/useBrandStudioStore';
 import {
   BRAND_BEAT_MAX_SECONDS,
@@ -24,10 +25,13 @@ export default function BrandTemplatePackFields() {
   const [recipientName, setRecipientName] = useState('');
   const [productName, setProductName] = useState('Digital Gift');
   const activeTemplatePackId = useBrandStudioStore((state) => state.activeTemplatePackId);
+  const templateId = useBrandStudioStore((state) => state.templateId);
   const copy = useBrandStudioStore((state) => state.copy);
   const hook = useBrandStudioStore((state) => state.hook);
   const timing = useBrandStudioStore((state) => state.timing);
+  const palette = useBrandStudioStore((state) => state.palette);
   const applyTemplatePack = useBrandStudioStore((state) => state.applyTemplatePack);
+  const applyVisualTemplate = useBrandStudioStore((state) => state.applyVisualTemplate);
   const updateCopy = useBrandStudioStore((state) => state.updateCopy);
   const updateBeatDuration = useBrandStudioStore((state) => state.updateBeatDuration);
   const setActiveSection = useBrandStudioStore((state) => state.setActiveSection);
@@ -61,11 +65,45 @@ export default function BrandTemplatePackFields() {
 
   return (
     <div className={styles.sectionStack}>
+      <div className={styles.templatePackVisualPicker}>
+        <div className={styles.templatePackVisualPickerHeading}>
+          <span>1</span>
+          <div>
+            <strong>Pilih visual video</strong>
+            <small>Warna, font, motion, dan background berubah. Cerita serta durasi Template Pack tetap aman.</small>
+          </div>
+        </div>
+        <div className={styles.templatePackVisualList}>
+          {BRAND_TEMPLATE_LIST.map((template) => {
+            const active = template.id === templateId;
+            return (
+              <button
+                type="button"
+                key={template.id}
+                className={`${styles.templatePackVisualOption} ${active ? styles.templatePackVisualOptionActive : ''}`}
+                onClick={() => applyVisualTemplate(template.id)}
+              >
+                <span
+                  className={styles.templatePackVisualSwatch}
+                  style={{ background: template.defaults.palette.background }}
+                >
+                  <i style={{ color: template.defaults.palette.text }}>Aa</i>
+                  <b style={{ background: template.defaults.palette.accent }} />
+                </span>
+                <span>
+                  <strong>{template.name}</strong>
+                  <small>{template.category}</small>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
       <div className={styles.templatePackIntro}>
         <span><Sparkles size={18} /></span>
         <div>
-          <strong>12 cerita siap produksi</strong>
-          <p>Setiap pack mengatur naskah, motion, warna, timing, dan SFX tanpa menghapus media atau backsound Anda.</p>
+          <strong>2. Pilih cerita siap produksi</strong>
+          <p>Setiap pack mengatur naskah, struktur 3 beat, durasi, dan SFX tanpa menimpa visual yang kamu pilih di atas.</p>
         </div>
       </div>
 
@@ -197,14 +235,14 @@ export default function BrandTemplatePackFields() {
               >
                 <div
                   className={styles.templatePackVisual}
-                  style={{ background: pack.palette.background, color: pack.palette.text }}
+                  style={{ background: palette.background, color: palette.text }}
                 >
-                  <span style={{ color: pack.palette.muted }}>{pack.copy.eyebrow}</span>
+                  <span style={{ color: palette.muted }}>{pack.copy.eyebrow}</span>
                   <strong>{pack.copy.hookTitle.replace('{nama}', recipientName.trim() || 'dia')}</strong>
-                  <em style={{ color: pack.palette.accent }}>
+                  <em style={{ color: palette.accent }}>
                     {pack.copy.hookAccent.replace('{nama}', recipientName.trim() || 'dia')}
                   </em>
-                  <i style={{ background: pack.palette.accent }} />
+                  <i style={{ background: palette.accent }} />
                 </div>
                 <div className={styles.templatePackBody}>
                   <header>

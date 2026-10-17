@@ -57,6 +57,7 @@ interface BrandStudioStore extends BrandVideoProps {
   setShowSafeArea: (showSafeArea: boolean) => void;
   setOutputMode: (outputMode: BrandOutputMode) => void;
   setTemplate: (templateId: BrandTemplateId) => void;
+  applyVisualTemplate: (templateId: BrandTemplateId) => void;
   applyHookPreset: (presetId: string) => void;
   applyTemplatePack: (
     packId: string,
@@ -123,6 +124,21 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       variants: [],
     });
   },
+  applyVisualTemplate: (templateId) => {
+    const visual = BRAND_TEMPLATES[templateId].defaults;
+    set((state) => ({
+      templateId,
+      palette: { ...visual.palette },
+      hookBackground: cloneBrandProps(visual).hookBackground,
+      hook: {
+        ...visual.hook,
+        sequenceMode: state.hook.sequenceMode,
+        beatDurations: state.hook.beatDurations,
+      },
+      activeHookPresetId: null,
+      variants: [],
+    }));
+  },
   applyHookPreset: (presetId) => {
     const preset = BRAND_HOOK_PRESETS.find((entry) => entry.id === presetId);
     if (!preset) return;
@@ -177,14 +193,9 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       },
       hook: {
         ...state.hook,
-        ...pack.hook,
+        sequenceMode: pack.hook.sequenceMode ?? state.hook.sequenceMode,
         beatDurations,
-        partMotions: {
-          ...state.hook.partMotions,
-          ...(pack.hook.partMotions ?? {}),
-        },
       },
-      palette: { ...pack.palette },
       timing: { ...state.timing, hookSeconds: pack.hookSeconds },
       audio: { ...state.audio, ...pack.audio },
       contentGoal: pack.goal,
