@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Audio, Video } from '@remotion/media';
+import { Gif } from '@remotion/gif';
 import {
   AbsoluteFill,
   CanvasImage,
@@ -1028,7 +1029,61 @@ function getSafeGifUrl(url?: string): string {
   ) {
     return trimmed;
   }
+  if (trimmed.includes('/api/brand/proxy-media')) {
+    return trimmed;
+  }
   return `/api/brand/proxy-media?url=${encodeURIComponent(trimmed)}`;
+}
+
+function BrandGifItem({ item }: { item: BrandGifOverlayItem }) {
+  const [loadError, setLoadError] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const targetWidth = item.width ?? 260;
+  const targetHeight = aspectRatio ? Math.round(targetWidth * aspectRatio) : targetWidth;
+  const safeUrl = getSafeGifUrl(item.url);
+
+  if (loadError) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={safeUrl}
+        crossOrigin="anonymous"
+        alt={item.label || 'GIF Sticker'}
+        style={{
+          width: '100%',
+          height: 'auto',
+          display: 'block',
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 10px 26px rgba(0,0,0,0.45))',
+        }}
+      />
+    );
+  }
+
+  return (
+    <Gif
+      src={safeUrl}
+      width={targetWidth}
+      height={targetHeight}
+      fit="contain"
+      loopBehavior="loop"
+      onLoad={(info) => {
+        if (info.width > 0 && info.height > 0) {
+          setAspectRatio(info.height / info.width);
+        }
+      }}
+      onError={(err) => {
+        console.warn(`[BrandGifOverlay] Gagal memuat animasi GIF (${item.url}):`, err.message);
+        setLoadError(true);
+      }}
+      style={{
+        width: '100%',
+        height: 'auto',
+        display: 'block',
+        filter: 'drop-shadow(0 10px 26px rgba(0,0,0,0.45))',
+      }}
+    />
+  );
 }
 
 function BrandGifOverlays({
@@ -1077,19 +1132,7 @@ function BrandGifOverlays({
               justifyContent: 'center',
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={getSafeGifUrl(item.url)}
-              crossOrigin="anonymous"
-              alt={item.label || 'GIF Sticker'}
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block',
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 10px 26px rgba(0,0,0,0.45))',
-              }}
-            />
+            <BrandGifItem item={item} />
           </div>
         );
       })}
