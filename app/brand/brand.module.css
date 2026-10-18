@@ -1801,10 +1801,295 @@
   background: #181f26;
 }
 
+.brandCloudHero {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  border: 1px solid rgba(37, 211, 102, 0.25);
+  border-radius: 14px;
+  padding: 15px;
+  background: linear-gradient(135deg, rgba(37, 211, 102, 0.11), rgba(37, 211, 102, 0.025));
+}
+
+.brandCloudHero > span {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  place-items: center;
+  border-radius: 11px;
+  color: #25d366;
+  background: rgba(37, 211, 102, 0.14);
+}
+
+.brandCloudHero strong,
+.brandCloudSectionTitle strong {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  color: #f4eee9;
+}
+
+.brandCloudHero p {
+  margin: 5px 0 0;
+  color: #a89a91;
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+.brandCloudSectionTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.brandCloudSectionTitle small {
+  display: block;
+  margin-top: 4px;
+  color: #a89a91;
+  font-size: 10.5px;
+}
+
+.brandCloudActiveBadge {
+  border: 1px solid rgba(37, 211, 102, 0.28);
+  border-radius: 999px;
+  padding: 4px 9px;
+  color: #25d366;
+  background: rgba(37, 211, 102, 0.08);
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.brandCloudActions,
+.brandCloudProjectActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.brandCloudPrimary,
+.brandCloudSecondary {
+  display: inline-flex;
+  min-height: 37px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 9px;
+  padding: 0 12px;
+  font-size: 10.5px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.brandCloudPrimary {
+  border: 1px solid rgba(37, 211, 102, 0.45);
+  color: #08130d;
+  background: #25d366;
+}
+
+.brandCloudSecondary {
+  border: 1px solid rgba(37, 211, 102, 0.32);
+  color: #78e5a0;
+  background: rgba(37, 211, 102, 0.07);
+}
+
+.brandCloudPrimary:disabled,
+.brandCloudSecondary:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.brandCloudFootnote {
+  margin: 0;
+  color: #8d9a9d;
+  font-size: 9.5px;
+  line-height: 1.5;
+}
+
+.brandCloudList {
+  display: grid;
+  gap: 8px;
+}
+
+.brandCloudProject {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 11px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.brandCloudProjectActive {
+  border-color: rgba(37, 211, 102, 0.35);
+  background: rgba(37, 211, 102, 0.055);
+}
+
+.brandCloudProjectInfo {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.brandCloudProjectInfo > strong {
+  display: block;
+  overflow: hidden;
+  color: #f4eee9;
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brandCloudProjectInfo > small {
+  display: block;
+  margin-top: 4px;
+  color: #8d9a9d;
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.brandCloudProjectActions {
+  flex: 0 0 auto;
+  justify-content: flex-end;
+}
+
+.brandCloudProjectActions button,
+.brandCloudRename button {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 7px;
+  padding: 0 8px;
+  color: #bbc4c5;
+  background: rgba(255, 255, 255, 0.025);
+  font-size: 9.5px;
+  cursor: pointer;
+}
+
+.brandCloudProjectActions button:first-child {
+  border-color: rgba(37, 211, 102, 0.28);
+  color: #78e5a0;
+}
+
+.brandCloudProjectActions button:last-child {
+  color: #f49a9a;
+}
+
+.brandCloudRename {
+  display: flex;
+  gap: 5px;
+}
+
+.brandCloudRename .input {
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 8px;
+  font-size: 10px;
+}
+
+.brandCloudError,
+.brandCloudNotice {
+  margin: 0;
+  border-radius: 9px;
+  padding: 9px 10px;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.brandCloudError {
+  border: 1px solid rgba(248, 113, 113, 0.28);
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.12);
+}
+
+.brandCloudNotice {
+  border: 1px solid rgba(37, 211, 102, 0.2);
+  color: #8de5ad;
+  background: rgba(37, 211, 102, 0.055);
+}
+
+.brandCloudEmpty {
+  display: flex;
+  min-height: 78px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 14px;
+  color: #8d9a9d;
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.brandCloudSpinner {
+  animation: brandCloudSpin 1s linear infinite;
+}
+
+@keyframes brandCloudSpin {
+  to { transform: rotate(360deg); }
+}
+
 .mediaCardHeader {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.gifCardHeader {
+  flex-wrap: wrap;
+}
+
+.gifCardInfo {
+  display: flex;
+  flex: 1 1 220px;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.gifCardActions {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  min-width: 0;
+}
+
+.gifCardActions > button {
+  max-width: 100%;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.gifCardInfo > div:last-child {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.gifCardInfo > div:last-child > span:last-child {
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.gifOverlapWarning {
+  margin: 0;
+  border: 1px solid rgba(244, 177, 85, 0.22);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(244, 177, 85, 0.06);
+  color: #d9b784;
+  font-size: 11px;
+  line-height: 1.5;
 }
 
 .mediaIcon {

@@ -1,5 +1,6 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Audio, Video } from '@remotion/media';
+import { Gif } from '@remotion/gif';
 import {
   AbsoluteFill,
   CanvasImage,
@@ -11,15 +12,19 @@ import {
   useVideoConfig,
 } from 'remotion';
 import { BRAND_SFX_FILES } from '@/lib/brandTemplates';
+import { getBrandGifStartSeconds } from '@/lib/brandGifTiming';
 import {
   resolveBrandHookBeatDurations,
   resolveBrandHookEnabledBeats,
 } from '@/lib/brandBeatTiming';
 import type {
+  BrandGifOverlayItem,
+  BrandGifPositionPreset,
   BrandHookExit,
   BrandHookMotion,
   BrandHookTypography,
   BrandMediaSlot,
+  BrandOutputMode,
   BrandTemplateId,
   BrandVideoProps,
 } from '@/types/brand';
@@ -989,6 +994,167 @@ function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStart
   );
 }
 
+function getGifPresetPosition(preset: BrandGifPositionPreset): { x: number; y: number } {
+  switch (preset) {
+    case 'top-left':
+      return { x: 18, y: 15 };
+    case 'top-center':
+      return { x: 50, y: 15 };
+    case 'top-right':
+      return { x: 82, y: 15 };
+    case 'center-left':
+      return { x: 18, y: 50 };
+    case 'center':
+      return { x: 50, y: 50 };
+    case 'center-right':
+      return { x: 82, y: 50 };
+    case 'bottom-left':
+      return { x: 18, y: 82 };
+    case 'bottom-center':
+      return { x: 50, y: 82 };
+    case 'bottom-right':
+      return { x: 82, y: 82 };
+    default:
+      return { x: 50, y: 50 };
+  }
+}
+
+function getSafeGifUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./')
+  ) {
+    return trimmed;
+  }
+  if (trimmed.includes('/api/brand/proxy-media')) {
+    return trimmed;
+  }
+  return `/api/brand/proxy-media?url=${encodeURIComponent(trimmed)}`;
+}
+
+function BrandGifItem({ item }: { item: BrandGifOverlayItem }) {
+  const [loadError, setLoadError] = useState(false);
+  const [aspectRatio, setAspectRatio] = useState<number | null>(null);
+  const targetWidth = item.width ?? 260;
+  const targetHeight = aspectRatio ? Math.round(targetWidth * aspectRatio) : targetWidth;
+  const safeUrl = getSafeGifUrl(item.url);
+
+  if (loadError) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={safeUrl}
+        crossOrigin="anonymous"
+        alt={item.label || 'GIF Sticker'}
+        style={{
+          width: '100%',
+          height: 'auto',
+          display: 'block',
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 10px 26px rgba(0,0,0,0.45))',
+        }}
+      />
+    );
+  }
+
+  return (
+    <Gif
+      id={item.id}
+      src={safeUrl}
+      width={targetWidth}
+      height={targetHeight}
+      fit="contain"
+      playbackRate={1}
+      loopBehavior="loop"
+      delayRenderTimeoutInMilliseconds={120_000}
+      onLoad={(info) => {
+        if (info.width > 0 && info.height > 0) {
+          setAspectRatio(info.height / info.width);
+        }
+      }}
+      onError={(err) => {
+        console.warn(`[BrandGifOverlay] Gagal memuat animasi GIF (${item.url}):`, err.message);
+        setLoadError(true);
+      }}
+      style={{
+        width: '100%',
+        height: 'auto',
+        display: 'block',
+        filter: 'drop-shadow(0 10px 26px rgba(0,0,0,0.45))',
+      }}
+    />
+  );
+}
+
+function BrandGifOverlays({
+  overlays,
+  hookFrames,
+  outputMode,
+}: {
+  overlays?: BrandGifOverlayItem[];
+  hookFrames: number;
+  outputMode: BrandOutputMode;
+}) {
+  const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
+  if (!overlays || overlays.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 100,
+      }}
+    >
+      {overlays.map((item, index) => {
+        if (!item.enabled || !item.url) return null;
+        const visibleDuration = item.scope === 'hook' || outputMode === 'hook'
+          ? hookFrames
+          : durationInFrames;
+        const startFrame = Math.min(
+          Math.round(getBrandGifStartSeconds(item, index) * fps),
+          Math.max(0, visibleDuration - 1),
+        );
+        if (frame < startFrame) return null;
+        if (item.scope === 'hook' && outputMode !== 'hook' && frame >= hookFrames) {
+          return null;
+        }
+
+        const base = getGifPresetPosition(item.preset);
+        const left = `calc(${base.x}% + ${item.offsetX ?? 0}%)`;
+        const top = `calc(${base.y}% + ${item.offsetY ?? 0}%)`;
+
+        return (
+          <Sequence key={item.id} from={startFrame} layout="none" name={`GIF — ${item.label || index + 1}`}>
+            <div
+              style={{
+              position: 'absolute',
+              left,
+              top,
+              transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg) scaleX(${item.flipHorizontal ? -1 : 1}) scaleY(${item.flipVertical ? -1 : 1})`,
+              width: `${item.width ?? 260}px`,
+              opacity: item.opacity ?? 1,
+              zIndex: index + 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              }}
+            >
+              <BrandGifItem item={item} />
+            </div>
+          </Sequence>
+        );
+      })}
+    </div>
+  );
+}
+
 export const BrandVideo = (props: BrandVideoProps) => {
   const { fps } = useVideoConfig();
   const hookFrames = Math.max(1, Math.round(props.timing.hookSeconds * fps));
@@ -1005,6 +1171,11 @@ export const BrandVideo = (props: BrandVideoProps) => {
         <Sequence from={0} durationInFrames={hookFrames} premountFor={fps} name="Hook Maker">
           <HookScene props={props} />
         </Sequence>
+        <BrandGifOverlays
+          overlays={props.gifOverlays}
+          hookFrames={hookFrames}
+          outputMode={props.outputMode}
+        />
         <BrandAudio props={props} sceneStarts={[0, hookFrames, hookFrames, hookFrames]} />
       </AbsoluteFill>
     );
@@ -1024,6 +1195,11 @@ export const BrandVideo = (props: BrandVideoProps) => {
       <Sequence from={outroStart} durationInFrames={outroFrames} premountFor={fps} name="04 — CTA and brand outro">
         <OutroScene props={props} />
       </Sequence>
+      <BrandGifOverlays
+        overlays={props.gifOverlays}
+        hookFrames={hookFrames}
+        outputMode={props.outputMode}
+      />
       <BrandAudio props={props} sceneStarts={[0, productStart, storyStart, outroStart]} />
     </AbsoluteFill>
   );

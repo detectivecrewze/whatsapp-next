@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
+  Cloud,
   Download,
   Film,
   Image as ImageIcon,
@@ -72,6 +73,8 @@ import type {
 import BrandExportButton from './BrandExportButton';
 import BrandBatchExport from './BrandBatchExport';
 import BrandTemplatePackFields from './BrandTemplatePackFields';
+import BrandGifStickersSection from './BrandGifStickersSection';
+import BrandCloudSection from './BrandCloudSection';
 import styles from '@/app/brand/brand.module.css';
 
 const SECTIONS: Array<{
@@ -81,10 +84,12 @@ const SECTIONS: Array<{
   icon: typeof LayoutTemplate;
 }> = [
   { id: 'templates', label: 'Template', description: 'Pilih gaya campaign', icon: LayoutTemplate },
+  { id: 'cloud-projects', label: 'Cloud Project', description: 'Simpan dan lanjutkan edit', icon: Cloud },
   { id: 'template-packs', label: 'Template Pack', description: 'Cerita siap produksi', icon: PackageOpen },
   { id: 'copy', label: 'Naskah', description: 'Hook, cerita, dan CTA', icon: Type },
   { id: 'effects', label: 'Efek', description: 'Transisi dan SFX', icon: WandSparkles },
   { id: 'media', label: 'Media', description: 'Foto atau video produk', icon: ImageIcon },
+  { id: 'stickers', label: 'GIF / Stiker', description: 'Overlay animasi stiker GIF', icon: Sparkles },
   { id: 'style', label: 'Warna', description: 'Palet visual brand', icon: Palette },
   { id: 'timing', label: 'Timing', description: 'Durasi setiap scene', icon: Clock3 },
   { id: 'audio', label: 'Audio', description: 'Backsound dan SFX', icon: Music2 },
@@ -109,10 +114,12 @@ function sectionDescription(section: BrandEditorSection, outputMode: BrandOutput
   }
 
   if (section === 'templates') return 'Pilih gaya visual hook';
+  if (section === 'cloud-projects') return 'Simpan dan lanjutkan edit dari cloud';
   if (section === 'template-packs') return 'Cerita lengkap siap dipersonalisasi';
   if (section === 'copy') return 'Teks, tipografi, dan animasi';
   if (section === 'effects') return 'Transisi masuk, keluar, dan SFX';
   if (section === 'media') return 'Background foto atau video hook';
+  if (section === 'stickers') return 'Stiker GIF animasi di atas video';
   if (section === 'style') return 'Warna hook sesuai brand';
   if (section === 'timing') return 'Durasi klip pembuka';
   if (section === 'audio') return 'Backsound dan SFX pembuka';
@@ -1489,10 +1496,12 @@ function ExportFields() {
 
 function InspectorContent({ section }: { section: BrandEditorSection }) {
   if (section === 'templates') return <TemplateFields />;
+  if (section === 'cloud-projects') return <BrandCloudSection />;
   if (section === 'template-packs') return <BrandTemplatePackFields />;
   if (section === 'copy') return <CopyFields />;
   if (section === 'effects') return <EffectsFields />;
   if (section === 'media') return <MediaFields />;
+  if (section === 'stickers') return <BrandGifStickersSection />;
   if (section === 'style') return <PaletteFields />;
   if (section === 'timing') return <TimingFields />;
   if (section === 'audio') return <AudioFields />;

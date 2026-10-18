@@ -142,6 +142,47 @@ export interface BrandVideoProps extends Record<string, unknown> {
   detailMedia: BrandMediaSlot;
   timing: BrandTiming;
   audio: BrandAudioSettings;
+  gifOverlays?: BrandGifOverlayItem[];
+}
+
+export interface BrandCloudPreset {
+  id: string;
+  name: string;
+  updatedAt: number;
+  schemaVersion: 1;
+  data: BrandVideoProps;
+  contentGoal?: BrandContentGoal;
+  activeTemplatePackId?: string | null;
+  activeHookPresetId?: string | null;
+  showSafeArea?: boolean;
+}
+
+export type BrandGifPositionPreset =
+  | 'top-left'
+  | 'top-center'
+  | 'top-right'
+  | 'center-left'
+  | 'center'
+  | 'center-right'
+  | 'bottom-left'
+  | 'bottom-center'
+  | 'bottom-right';
+
+export interface BrandGifOverlayItem {
+  id: string;
+  url: string;
+  label?: string;
+  enabled: boolean;
+  preset: BrandGifPositionPreset;
+  offsetX: number; // percentage -50 to +50
+  offsetY: number; // percentage -50 to +50
+  width: number; // in pixels (e.g. 80 to 600, default 260)
+  rotation: number; // in degrees (-180 to 180, default 0)
+  flipHorizontal?: boolean;
+  flipVertical?: boolean;
+  startAtSeconds?: number;
+  opacity: number; // 0.1 to 1.0 (default 1)
+  scope: 'hook' | 'always'; // 'hook' = only in hook scene, 'always' = throughout entire video
 }
 
 export interface BrandHookVariant {
