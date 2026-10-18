@@ -83,11 +83,11 @@ export default function BrandGifStickersSection() {
 
   return (
     <div className={styles.sectionStack}>
-      <div className={styles.introCard}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+      <div className={styles.mediaCard} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Stiker & GIF Overlay</h3>
-            <p style={{ margin: '4px 0 0', fontSize: 12, opacity: 0.76 }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f5ebe6' }}>Stiker & GIF Overlay</h3>
+            <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#a89a91', lineHeight: 1.45 }}>
               Tempel animasi GIF di atas video preview dan hasil export MP4. Cukup paste link URL tanpa perlu upload.
             </p>
           </div>
@@ -95,18 +95,18 @@ export default function BrandGifStickersSection() {
             type="button"
             className={styles.effectPreviewButton}
             onClick={handleAddCustom}
-            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px' }}
+            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', whiteSpace: 'nowrap' }}
           >
             <Plus size={14} /> Tambah GIF
           </button>
         </div>
 
         {/* Quick Sample Presets */}
-        <div style={{ marginTop: 14 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', opacity: 0.65 }}>
+        <div style={{ paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+          <span style={{ display: 'block', fontSize: 10.5, fontWeight: 800, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#bbaea6', marginBottom: 8 }}>
             Contoh Cepat (Eksperimen Langsung):
           </span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 8 }}>
             {SAMPLE_GIFS.map((sample) => {
               const Icon = sample.icon;
               return (
@@ -115,10 +115,10 @@ export default function BrandGifStickersSection() {
                   type="button"
                   className={styles.audioPresetCard}
                   onClick={() => handleAddSample(sample)}
-                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', textAlign: 'left' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', textAlign: 'left', width: '100%' }}
                 >
-                  <Icon size={14} style={{ opacity: 0.85 }} />
-                  <span style={{ fontSize: 11.5, fontWeight: 600 }}>{sample.label}</span>
+                  <Icon size={14} style={{ opacity: 0.85, flexShrink: 0 }} />
+                  <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sample.label}</span>
                 </button>
               );
             })}
