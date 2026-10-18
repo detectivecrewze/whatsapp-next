@@ -23,6 +23,7 @@ import type {
   BrandAudioSettings,
   BrandContentGoal,
   BrandCopy,
+  BrandGifOverlayItem,
   BrandHookBackgroundSettings,
   BrandHookBeatDurations,
   BrandHookEnabledBeats,
@@ -42,6 +43,7 @@ export type BrandEditorSection =
   | 'copy'
   | 'effects'
   | 'media'
+  | 'stickers'
   | 'style'
   | 'timing'
   | 'audio'
@@ -78,6 +80,11 @@ interface BrandStudioStore extends BrandVideoProps {
   updateBeatDuration: (index: 0 | 1 | 2, value: number) => void;
   setBeatEnabled: (index: 1 | 2, enabled: boolean) => void;
   updateAudio: (updates: Partial<BrandAudioSettings>) => void;
+  gifOverlays: BrandGifOverlayItem[];
+  addGifOverlay: (item?: Partial<BrandGifOverlayItem>) => void;
+  updateGifOverlay: (id: string, updates: Partial<BrandGifOverlayItem>) => void;
+  removeGifOverlay: (id: string) => void;
+  toggleGifOverlay: (id: string) => void;
   setContentGoal: (contentGoal: BrandContentGoal) => void;
   generateVariants: () => void;
   toggleVariant: (variantId: BrandHookVariant['id']) => void;
@@ -102,6 +109,7 @@ const initial = cloneBrandProps(BRAND_TEMPLATES.editorial.defaults);
 
 export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
   ...initial,
+  gifOverlays: [],
   activeSection: 'templates',
   activeHookPresetId: null,
   activeTemplatePackId: null,
@@ -338,10 +346,45 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
       activeTemplatePackId: null,
     });
   },
+  addGifOverlay: (item) =>
+    set((state) => {
+      const newId = `gif-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      const newItem: BrandGifOverlayItem = {
+        id: newId,
+        url: item?.url || '',
+        label: item?.label || 'GIF Sticker',
+        enabled: item?.enabled ?? true,
+        preset: item?.preset || 'top-right',
+        offsetX: item?.offsetX ?? 0,
+        offsetY: item?.offsetY ?? 0,
+        width: item?.width ?? 260,
+        rotation: item?.rotation ?? 0,
+        opacity: item?.opacity ?? 1,
+        scope: item?.scope || 'hook',
+      };
+      return { gifOverlays: [...(state.gifOverlays ?? []), newItem] };
+    }),
+  updateGifOverlay: (id, updates) =>
+    set((state) => ({
+      gifOverlays: (state.gifOverlays ?? []).map((entry) =>
+        entry.id === id ? { ...entry, ...updates } : entry,
+      ),
+    })),
+  removeGifOverlay: (id) =>
+    set((state) => ({
+      gifOverlays: (state.gifOverlays ?? []).filter((entry) => entry.id !== id),
+    })),
+  toggleGifOverlay: (id) =>
+    set((state) => ({
+      gifOverlays: (state.gifOverlays ?? []).map((entry) =>
+        entry.id === id ? { ...entry, enabled: !entry.enabled } : entry,
+      ),
+    })),
   resetTemplate: () => {
     const { templateId, outputMode } = get();
     set({
       ...cloneBrandProps(BRAND_TEMPLATES[templateId].defaults),
+      gifOverlays: [],
       outputMode,
       activeHookPresetId: null,
       activeTemplatePackId: null,
@@ -363,6 +406,7 @@ export function getBrandVideoProps(): BrandVideoProps {
     detailMedia: state.detailMedia,
     timing: state.timing,
     audio: state.audio,
+    gifOverlays: state.gifOverlays ?? [],
   };
 }
 

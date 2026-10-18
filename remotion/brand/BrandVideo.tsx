@@ -16,10 +16,13 @@ import {
   resolveBrandHookEnabledBeats,
 } from '@/lib/brandBeatTiming';
 import type {
+  BrandGifOverlayItem,
+  BrandGifPositionPreset,
   BrandHookExit,
   BrandHookMotion,
   BrandHookTypography,
   BrandMediaSlot,
+  BrandOutputMode,
   BrandTemplateId,
   BrandVideoProps,
 } from '@/types/brand';
@@ -989,6 +992,96 @@ function BrandAudio({ props, sceneStarts }: { props: BrandVideoProps; sceneStart
   );
 }
 
+function getGifPresetPosition(preset: BrandGifPositionPreset): { x: number; y: number } {
+  switch (preset) {
+    case 'top-left':
+      return { x: 18, y: 15 };
+    case 'top-center':
+      return { x: 50, y: 15 };
+    case 'top-right':
+      return { x: 82, y: 15 };
+    case 'center-left':
+      return { x: 18, y: 50 };
+    case 'center':
+      return { x: 50, y: 50 };
+    case 'center-right':
+      return { x: 82, y: 50 };
+    case 'bottom-left':
+      return { x: 18, y: 82 };
+    case 'bottom-center':
+      return { x: 50, y: 82 };
+    case 'bottom-right':
+      return { x: 82, y: 82 };
+    default:
+      return { x: 50, y: 50 };
+  }
+}
+
+function BrandGifOverlays({
+  overlays,
+  hookFrames,
+  outputMode,
+}: {
+  overlays?: BrandGifOverlayItem[];
+  hookFrames: number;
+  outputMode: BrandOutputMode;
+}) {
+  const frame = useCurrentFrame();
+  if (!overlays || overlays.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 100,
+      }}
+    >
+      {overlays.map((item) => {
+        if (!item.enabled || !item.url) return null;
+        if (item.scope === 'hook' && outputMode !== 'hook' && frame >= hookFrames) {
+          return null;
+        }
+
+        const base = getGifPresetPosition(item.preset);
+        const left = `calc(${base.x}% + ${item.offsetX ?? 0}%)`;
+        const top = `calc(${base.y}% + ${item.offsetY ?? 0}%)`;
+
+        return (
+          <div
+            key={item.id}
+            style={{
+              position: 'absolute',
+              left,
+              top,
+              transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg)`,
+              width: `${item.width ?? 260}px`,
+              opacity: item.opacity ?? 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.url}
+              alt={item.label || 'GIF Sticker'}
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 10px 26px rgba(0,0,0,0.45))',
+              }}
+            />
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export const BrandVideo = (props: BrandVideoProps) => {
   const { fps } = useVideoConfig();
   const hookFrames = Math.max(1, Math.round(props.timing.hookSeconds * fps));
@@ -1005,6 +1098,11 @@ export const BrandVideo = (props: BrandVideoProps) => {
         <Sequence from={0} durationInFrames={hookFrames} premountFor={fps} name="Hook Maker">
           <HookScene props={props} />
         </Sequence>
+        <BrandGifOverlays
+          overlays={props.gifOverlays}
+          hookFrames={hookFrames}
+          outputMode={props.outputMode}
+        />
         <BrandAudio props={props} sceneStarts={[0, hookFrames, hookFrames, hookFrames]} />
       </AbsoluteFill>
     );
@@ -1024,6 +1122,11 @@ export const BrandVideo = (props: BrandVideoProps) => {
       <Sequence from={outroStart} durationInFrames={outroFrames} premountFor={fps} name="04 — CTA and brand outro">
         <OutroScene props={props} />
       </Sequence>
+      <BrandGifOverlays
+        overlays={props.gifOverlays}
+        hookFrames={hookFrames}
+        outputMode={props.outputMode}
+      />
       <BrandAudio props={props} sceneStarts={[0, productStart, storyStart, outroStart]} />
     </AbsoluteFill>
   );
