@@ -1,10 +1,38 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter } from 'next/font/google';
+import {
+  Cormorant_Garamond,
+  IBM_Plex_Mono,
+  Inter,
+  Playfair_Display,
+} from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+});
+
+const cormorant = Cormorant_Garamond({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  style: ['normal', 'italic'],
+  variable: '--font-cormorant',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({
+  subsets: ['latin'],
+  weight: ['400', '600', '700', '800'],
+  style: ['normal', 'italic'],
+  variable: '--font-playfair',
+  display: 'swap',
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-ibm-plex-mono',
   display: 'swap',
 });
 
@@ -28,7 +56,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="id" className={inter.variable}>
+    <html
+      lang="id"
+      className={`${inter.variable} ${cormorant.variable} ${playfair.variable} ${ibmPlexMono.variable}`}
+    >
       <body className="font-sans bg-wa-bg text-white antialiased">
         {children}
       </body>
