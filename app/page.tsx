@@ -256,6 +256,10 @@ export default function EditorPage() {
           <Smartphone size={19} />
           Preview
         </button>
+        <Link href="/brand" className={styles.mobileBrandTab}>
+          <Sparkles size={19} />
+          Brand
+        </Link>
       </nav>
     </main>
   );
