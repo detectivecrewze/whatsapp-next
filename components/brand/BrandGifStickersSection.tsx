@@ -2,6 +2,10 @@
 
 import React from 'react';
 import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
   ExternalLink,
   Flame,
   Heart,
@@ -42,16 +46,16 @@ const SAMPLE_GIFS: Array<{ label: string; url: string; preset: BrandGifPositionP
   },
 ];
 
-const POSITION_PRESETS: Array<{ id: BrandGifPositionPreset; label: string; row: number; col: number }> = [
-  { id: 'top-left', label: 'TL', row: 0, col: 0 },
-  { id: 'top-center', label: 'TC', row: 0, col: 1 },
-  { id: 'top-right', label: 'TR', row: 0, col: 2 },
-  { id: 'center-left', label: 'CL', row: 1, col: 0 },
-  { id: 'center', label: 'C', row: 1, col: 1 },
-  { id: 'center-right', label: 'CR', row: 1, col: 2 },
-  { id: 'bottom-left', label: 'BL', row: 2, col: 0 },
-  { id: 'bottom-center', label: 'BC', row: 2, col: 1 },
-  { id: 'bottom-right', label: 'BR', row: 2, col: 2 },
+const POSITION_PRESETS: Array<{ id: BrandGifPositionPreset; label: string; title: string }> = [
+  { id: 'top-left', label: '↖ Kiri', title: 'Atas Kiri' },
+  { id: 'top-center', label: '↑ Tengah', title: 'Atas Tengah' },
+  { id: 'top-right', label: '↗ Kanan', title: 'Atas Kanan' },
+  { id: 'center-left', label: '← Kiri', title: 'Tengah Kiri' },
+  { id: 'center', label: '• Pusat', title: 'Tengah Layar' },
+  { id: 'center-right', label: '→ Kanan', title: 'Tengah Kanan' },
+  { id: 'bottom-left', label: '↙ Kiri', title: 'Bawah Kiri' },
+  { id: 'bottom-center', label: '↓ Tengah', title: 'Bawah Tengah' },
+  { id: 'bottom-right', label: '↘ Kanan', title: 'Bawah Kanan' },
 ];
 
 export default function BrandGifStickersSection() {
@@ -293,18 +297,21 @@ function GifOverlayCard({
       {/* Grid Posisi 9-Titik */}
       <div style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span className={styles.fieldLabel} style={{ margin: 0 }}>Penempatan Cepat (9 Titik)</span>
-          <span style={{ fontSize: 11, opacity: 0.65 }}>Aktif: {item.preset}</span>
+          <span className={styles.fieldLabel} style={{ margin: 0 }}>Penempatan Dasar (9 Posisi Layar)</span>
+          <span style={{ fontSize: 11, color: 'var(--brand-accent, #efb6a4)', fontWeight: 600 }}>
+            {POSITION_PRESETS.find((p) => p.id === item.preset)?.title || item.preset}
+          </span>
         </div>
         <div
           style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 6,
-            maxWidth: 240,
-            background: 'rgba(0,0,0,0.18)',
-            padding: 6,
+            maxWidth: 270,
+            background: 'rgba(0,0,0,0.22)',
+            padding: 7,
             borderRadius: 10,
+            border: '1px solid rgba(255,255,255,0.06)',
           }}
         >
           {POSITION_PRESETS.map((pos) => {
@@ -314,16 +321,21 @@ function GifOverlayCard({
                 key={pos.id}
                 type="button"
                 onClick={() => onUpdate({ preset: pos.id })}
+                title={pos.title}
                 style={{
-                  height: 34,
+                  height: 32,
                   borderRadius: 6,
                   border: isActive ? '1.5px solid var(--brand-accent, #e8789a)' : '1px solid rgba(255,255,255,0.08)',
-                  background: isActive ? 'rgba(232, 120, 154, 0.22)' : 'rgba(255,255,255,0.04)',
-                  color: isActive ? '#fff' : 'rgba(255,255,255,0.65)',
-                  fontSize: 11,
-                  fontWeight: 700,
+                  background: isActive ? 'rgba(232, 120, 154, 0.22)' : 'rgba(255,255,255,0.03)',
+                  color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
+                  fontSize: 10.5,
+                  fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 3,
                 }}
               >
                 {pos.label}
@@ -333,8 +345,141 @@ function GifOverlayCard({
         </div>
       </div>
 
-      {/* Sliders: Size, Offset X, Offset Y */}
-      <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+      {/* Atur Presisi: Naik / Turun & Geser Kiri / Kanan */}
+      <div style={{ display: 'grid', gap: 14, marginTop: 16 }}>
+        {/* Slider 1: Naik / Turun (Vertikal) */}
+        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, marginBottom: 6 }}>
+            <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ opacity: 0.7 }}>↕</span> Posisi Naik / Turun
+            </span>
+            <span style={{ fontWeight: 700, color: item.offsetY !== 0 ? 'var(--brand-accent, #efb6a4)' : 'rgba(255,255,255,0.5)' }}>
+              {item.offsetY < 0
+                ? `↑ Naik ${Math.abs(item.offsetY)}% (Ke Atas)`
+                : item.offsetY > 0
+                  ? `↓ Turun ${item.offsetY}% (Ke Bawah)`
+                  : 'Tengah (0%)'}
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min={-60}
+            max={60}
+            step={1}
+            value={item.offsetY}
+            onChange={(e) => onUpdate({ offsetY: Number(e.target.value) })}
+            className={styles.slider}
+            style={{ width: '100%' }}
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, opacity: 0.45, marginTop: 4, marginBottom: 8 }}>
+            <span>↑ Naik ke Atas (-60%)</span>
+            <span>Nol (0%)</span>
+            <span>Turun ke Bawah (+60%) ↓</span>
+          </div>
+
+          {/* Quick Step Buttons Vertikal */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => onUpdate({ offsetY: Math.max(-60, item.offsetY - 5) })}
+              style={{ flex: 1, padding: '5px 8px', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+              title="Geser naik 5%"
+            >
+              <ArrowUp size={12} /> Naik 5%
+            </button>
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => onUpdate({ offsetY: Math.min(60, item.offsetY + 5) })}
+              style={{ flex: 1, padding: '5px 8px', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+              title="Geser turun 5%"
+            >
+              <ArrowDown size={12} /> Turun 5%
+            </button>
+            {item.offsetY !== 0 && (
+              <button
+                type="button"
+                className={styles.clearButton}
+                onClick={() => onUpdate({ offsetY: 0 })}
+                style={{ padding: '5px 8px', fontSize: 10.5, opacity: 0.8 }}
+                title="Kembalikan vertikal ke 0%"
+              >
+                Reset Y
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Slider 2: Geser Kiri / Kanan (Horizontal) */}
+        <div style={{ background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, marginBottom: 6 }}>
+            <span style={{ fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ opacity: 0.7 }}>↔</span> Geser Kiri / Kanan
+            </span>
+            <span style={{ fontWeight: 700, color: item.offsetX !== 0 ? 'var(--brand-accent, #efb6a4)' : 'rgba(255,255,255,0.5)' }}>
+              {item.offsetX < 0
+                ? `← Geser Kiri ${Math.abs(item.offsetX)}%`
+                : item.offsetX > 0
+                  ? `Geser Kanan ${item.offsetX}% →`
+                  : 'Tengah (0%)'}
+            </span>
+          </div>
+
+          <input
+            type="range"
+            min={-50}
+            max={50}
+            step={1}
+            value={item.offsetX}
+            onChange={(e) => onUpdate({ offsetX: Number(e.target.value) })}
+            className={styles.slider}
+            style={{ width: '100%' }}
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9.5, opacity: 0.45, marginTop: 4, marginBottom: 8 }}>
+            <span>← Geser Kiri (-50%)</span>
+            <span>Nol (0%)</span>
+            <span>Geser Kanan (+50%) →</span>
+          </div>
+
+          {/* Quick Step Buttons Horizontal */}
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => onUpdate({ offsetX: Math.max(-50, item.offsetX - 5) })}
+              style={{ flex: 1, padding: '5px 8px', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+              title="Geser ke kiri 5%"
+            >
+              <ArrowLeft size={12} /> Kiri 5%
+            </button>
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => onUpdate({ offsetX: Math.min(50, item.offsetX + 5) })}
+              style={{ flex: 1, padding: '5px 8px', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+              title="Geser ke kanan 5%"
+            >
+              <ArrowRight size={12} /> Kanan 5%
+            </button>
+            {item.offsetX !== 0 && (
+              <button
+                type="button"
+                className={styles.clearButton}
+                onClick={() => onUpdate({ offsetX: 0 })}
+                style={{ padding: '5px 8px', fontSize: 10.5, opacity: 0.8 }}
+                title="Kembalikan horizontal ke 0%"
+              >
+                Reset X
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Ukuran GIF (Lebar) */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
             <span>Ukuran GIF (Lebar)</span>
@@ -351,40 +496,7 @@ function GifOverlayCard({
           />
         </div>
 
-        <div className={styles.twoColumns}>
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-              <span>Geser X</span>
-              <span>{item.offsetX > 0 ? `+${item.offsetX}%` : `${item.offsetX}%`}</span>
-            </div>
-            <input
-              type="range"
-              min={-40}
-              max={40}
-              step={1}
-              value={item.offsetX}
-              onChange={(e) => onUpdate({ offsetX: Number(e.target.value) })}
-              className={styles.slider}
-            />
-          </div>
-
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
-              <span>Geser Y</span>
-              <span>{item.offsetY > 0 ? `+${item.offsetY}%` : `${item.offsetY}%`}</span>
-            </div>
-            <input
-              type="range"
-              min={-40}
-              max={40}
-              step={1}
-              value={item.offsetY}
-              onChange={(e) => onUpdate({ offsetY: Number(e.target.value) })}
-              className={styles.slider}
-            />
-          </div>
-        </div>
-
+        {/* Rotasi & Transparansi */}
         <div className={styles.twoColumns}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
