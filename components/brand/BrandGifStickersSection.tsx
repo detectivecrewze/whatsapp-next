@@ -127,19 +127,33 @@ export default function BrandGifStickersSection() {
       </div>
 
       {gifOverlays.length === 0 ? (
-        <div className={styles.variantEmptyState}>
-          <Sparkles size={28} style={{ opacity: 0.4, margin: '0 auto 8px', display: 'block' }} />
-          <h4 style={{ margin: '0 0 4px', fontSize: 14, fontWeight: 700 }}>Belum ada stiker GIF</h4>
-          <p style={{ margin: '0 0 14px', fontSize: 12, opacity: 0.72 }}>
-            Pilih salah satu contoh di atas atau klik tombol Tambah GIF untuk menaruh link GIF kamu sendiri.
+        <div className={styles.variantEmptyState} style={{ padding: '26px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <Sparkles size={26} style={{ opacity: 0.5, margin: '0 auto 8px', display: 'block', color: 'var(--brand-accent, #d79a87)' }} />
+          <h4 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#f5ebe6' }}>Belum ada stiker GIF</h4>
+          <p style={{ margin: '0 0 16px', fontSize: 12, color: '#a89a91', lineHeight: 1.5, maxWidth: 280 }}>
+            Pilih salah satu contoh di atas atau klik tombol di bawah untuk menaruh link GIF kamu sendiri.
           </p>
           <button
             type="button"
-            className={styles.generateVariantsButton}
             onClick={handleAddCustom}
-            style={{ maxWidth: 220, margin: '0 auto' }}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              minHeight: 40,
+              padding: '0 24px',
+              borderRadius: 11,
+              border: '1px solid rgba(215, 154, 135, 0.58)',
+              background: 'linear-gradient(135deg, #d79a87, #b9786d)',
+              color: '#171311',
+              fontSize: 12,
+              fontWeight: 800,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
           >
-            <Plus size={14} /> Tambah GIF Baru
+            <Plus size={15} /> Tambah GIF Baru
           </button>
         </div>
       ) : (
