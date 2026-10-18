@@ -46,16 +46,21 @@ const SAMPLE_GIFS: Array<{ label: string; url: string; preset: BrandGifPositionP
   },
 ];
 
-const POSITION_PRESETS: Array<{ id: BrandGifPositionPreset; label: string; title: string }> = [
-  { id: 'top-left', label: '↖ Kiri', title: 'Atas Kiri' },
-  { id: 'top-center', label: '↑ Tengah', title: 'Atas Tengah' },
-  { id: 'top-right', label: '↗ Kanan', title: 'Atas Kanan' },
-  { id: 'center-left', label: '← Kiri', title: 'Tengah Kiri' },
-  { id: 'center', label: '• Pusat', title: 'Tengah Layar' },
-  { id: 'center-right', label: '→ Kanan', title: 'Tengah Kanan' },
-  { id: 'bottom-left', label: '↙ Kiri', title: 'Bawah Kiri' },
-  { id: 'bottom-center', label: '↓ Tengah', title: 'Bawah Tengah' },
-  { id: 'bottom-right', label: '↘ Kanan', title: 'Bawah Kanan' },
+const POSITION_PRESETS: Array<{
+  id: BrandGifPositionPreset;
+  icon: string;
+  label: string;
+  title: string;
+}> = [
+  { id: 'top-left', icon: '↖', label: 'Atas Kiri', title: 'Atas Kiri' },
+  { id: 'top-center', icon: '↑', label: 'Atas', title: 'Atas Tengah' },
+  { id: 'top-right', icon: '↗', label: 'Atas Kanan', title: 'Atas Kanan' },
+  { id: 'center-left', icon: '←', label: 'Kiri', title: 'Tengah Kiri' },
+  { id: 'center', icon: '•', label: 'Tengah', title: 'Tengah Layar' },
+  { id: 'center-right', icon: '→', label: 'Kanan', title: 'Tengah Kanan' },
+  { id: 'bottom-left', icon: '↙', label: 'Bawah Kiri', title: 'Bawah Kiri' },
+  { id: 'bottom-center', icon: '↓', label: 'Bawah', title: 'Bawah Tengah' },
+  { id: 'bottom-right', icon: '↘', label: 'Bawah Kanan', title: 'Bawah Kanan' },
 ];
 
 export default function BrandGifStickersSection() {
@@ -72,6 +77,8 @@ export default function BrandGifStickersSection() {
       preset: 'top-right',
       width: 260,
       scope: 'hook',
+      offsetX: 0,
+      offsetY: 0,
     });
   };
 
@@ -82,6 +89,8 @@ export default function BrandGifStickersSection() {
       preset: sample.preset,
       width: 260,
       scope: 'hook',
+      offsetX: 0,
+      offsetY: 0,
     });
   };
 
@@ -297,7 +306,7 @@ function GifOverlayCard({
       {/* Grid Posisi 9-Titik */}
       <div style={{ marginTop: 14 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <span className={styles.fieldLabel} style={{ margin: 0 }}>Penempatan Dasar (9 Posisi Layar)</span>
+          <span className={styles.fieldLabel} style={{ margin: 0 }}>Penempatan Dasar (Preset Layar)</span>
           <span style={{ fontSize: 11, color: 'var(--brand-accent, #efb6a4)', fontWeight: 600 }}>
             {POSITION_PRESETS.find((p) => p.id === item.preset)?.title || item.preset}
           </span>
@@ -320,25 +329,27 @@ function GifOverlayCard({
               <button
                 key={pos.id}
                 type="button"
-                onClick={() => onUpdate({ preset: pos.id })}
-                title={pos.title}
+                onClick={() => onUpdate({ preset: pos.id, offsetX: 0, offsetY: 0 })}
+                title={`Pindahkan langsung ke ${pos.title} (reset geser ke 0)`}
                 style={{
-                  height: 32,
+                  height: 36,
                   borderRadius: 6,
                   border: isActive ? '1.5px solid var(--brand-accent, #e8789a)' : '1px solid rgba(255,255,255,0.08)',
                   background: isActive ? 'rgba(232, 120, 154, 0.22)' : 'rgba(255,255,255,0.03)',
                   color: isActive ? '#fff' : 'rgba(255,255,255,0.7)',
-                  fontSize: 10.5,
-                  fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: 3,
+                  gap: 4,
+                  padding: '2px 4px',
                 }}
               >
-                {pos.label}
+                <span style={{ fontSize: 11, opacity: 0.85 }}>{pos.icon}</span>
+                <span style={{ fontSize: 9.5, fontWeight: isActive ? 700 : 500, whiteSpace: 'nowrap' }}>
+                  {pos.label}
+                </span>
               </button>
             );
           })}
