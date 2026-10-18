@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import BrandStudio from '@/components/brand/BrandStudio';
+import BrandStudioClient from '@/components/brand/BrandStudioClient';
 
 export const metadata: Metadata = {
   title: 'Brand Video Studio · For You, Always',
@@ -7,6 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function BrandStudioPage() {
-  return <BrandStudio />;
+  return <BrandStudioClient />;
 }
-
