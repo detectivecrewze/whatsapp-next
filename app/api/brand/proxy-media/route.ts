@@ -21,7 +21,10 @@ export async function GET(req: NextRequest) {
       headers: {
         'User-Agent':
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+        // Prefer the animated GIF rendition from CDNs such as Tenor. Asking
+        // for WebP/AVIF can return a format that Remotion's GIF decoder cannot
+        // synchronize to the composition frame.
+        Accept: 'image/gif, */*;q=0.1',
       },
     });
 
@@ -32,8 +35,27 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const contentType = upstream.headers.get('content-type') || 'image/gif';
     const buffer = await upstream.arrayBuffer();
+    const bytes = new Uint8Array(buffer);
+    const isGif =
+      bytes.length >= 6 &&
+      bytes[0] === 0x47 &&
+      bytes[1] === 0x49 &&
+      bytes[2] === 0x46 &&
+      bytes[3] === 0x38 &&
+      (bytes[4] === 0x37 || bytes[4] === 0x39) &&
+      bytes[5] === 0x61;
+    const upstreamContentType = upstream.headers.get('content-type') || '';
+    // @remotion/gif validates the response MIME type before decoding. Some CDN
+    // endpoints serve valid GIF bytes with a generic or incorrect MIME header.
+    const contentType = isGif ? 'image/gif' : upstreamContentType || 'application/octet-stream';
+
+    if (!isGif) {
+      return NextResponse.json(
+        { error: 'URL tersebut tidak berisi file GIF yang valid. Gunakan direct link file .gif.' },
+        { status: 415 },
+      );
+    }
 
     return new NextResponse(buffer, {
       status: 200,

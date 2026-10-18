@@ -7,6 +7,37 @@ import {
 import { BrandVideo } from '@/remotion/brand/BrandVideo';
 import type { BrandVideoProps } from '@/types/brand';
 
+async function prepareGifOverlaysForRender(props: BrandVideoProps) {
+  const objectUrls: string[] = [];
+  const gifOverlays = await Promise.all((props.gifOverlays ?? []).map(async (item) => {
+    const source = item.url.trim();
+    if (!item.enabled || !source || /^(data:|blob:|\/|\.\/)/i.test(source)) return item;
+
+    const proxyUrl = source.includes('/api/brand/proxy-media')
+      ? source
+      : `/api/brand/proxy-media?url=${encodeURIComponent(source)}`;
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      const details = await response.json().catch(() => null) as { error?: string } | null;
+      throw new Error(`${item.label || 'GIF'}: ${details?.error || `gagal dimuat (${response.status})`}`);
+    }
+
+    const remoteGif = await response.blob();
+    if (!remoteGif.type.includes('image/gif')) {
+      throw new Error(`${item.label || 'GIF'} tidak dikenali sebagai GIF animasi. Periksa direct link GIF-nya.`);
+    }
+
+    const objectUrl = URL.createObjectURL(remoteGif);
+    objectUrls.push(objectUrl);
+    return { ...item, url: objectUrl };
+  }));
+
+  return {
+    props: { ...props, gifOverlays },
+    objectUrls,
+  };
+}
+
 export function brandVideoFileName(props: BrandVideoProps, suffix?: string) {
   const source = props.outputMode === 'hook' ? props.copy.hookTitle : props.copy.productName;
   const normalized = source
@@ -45,32 +76,38 @@ export async function renderBrandVideo(
 ) {
   const { renderMediaOnWeb } = await import('@remotion/web-renderer');
   const durationInFrames = getBrandDurationInFrames(props);
-  const result = await renderMediaOnWeb({
-    licenseKey: 'free-license',
-    composition: {
-      id: 'FYABrandVideo',
-      component: BrandVideo,
-      durationInFrames,
-      fps: BRAND_VIDEO_FPS,
-      width: BRAND_VIDEO_WIDTH,
-      height: BRAND_VIDEO_HEIGHT,
-      calculateMetadata: null,
-      defaultProps: props,
-    },
-    inputProps: props,
-    container: 'mp4',
-    videoCodec: 'h264',
-    audioCodec: 'aac',
-    audioBitrate: 192_000,
-    sampleRate: 48_000,
-    muted: false,
-    videoBitrate: 12_000_000,
-    hardwareAcceleration: 'prefer-hardware',
-    pageResponsiveness: 'medium',
-    delayRenderTimeoutInMilliseconds: 120_000,
-    onProgress: ({ progress }) => onProgress?.(Math.round(Math.max(0, Math.min(1, progress)) * 100)),
-  });
-  return result.getBlob();
+  const localized = await prepareGifOverlaysForRender(props);
+
+  try {
+    const result = await renderMediaOnWeb({
+      licenseKey: 'free-license',
+      composition: {
+        id: 'FYABrandVideo',
+        component: BrandVideo,
+        durationInFrames,
+        fps: BRAND_VIDEO_FPS,
+        width: BRAND_VIDEO_WIDTH,
+        height: BRAND_VIDEO_HEIGHT,
+        calculateMetadata: null,
+        defaultProps: localized.props,
+      },
+      inputProps: localized.props,
+      container: 'mp4',
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      audioBitrate: 192_000,
+      sampleRate: 48_000,
+      muted: false,
+      videoBitrate: 12_000_000,
+      hardwareAcceleration: 'prefer-hardware',
+      pageResponsiveness: 'medium',
+      delayRenderTimeoutInMilliseconds: 120_000,
+      onProgress: ({ progress }) => onProgress?.(Math.round(Math.max(0, Math.min(1, progress)) * 100)),
+    });
+    return result.getBlob();
+  } finally {
+    localized.objectUrls.forEach((url) => URL.revokeObjectURL(url));
+  }
 }
 
 export function downloadBrandVideo(blob: Blob, props: BrandVideoProps, suffix?: string) {

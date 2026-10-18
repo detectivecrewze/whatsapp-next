@@ -6,17 +6,21 @@ import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
+  FlipHorizontal2,
+  FlipVertical2,
   ExternalLink,
   Flame,
   Heart,
   MousePointerClick,
   Plus,
   RotateCcw,
+  RotateCw,
   Sparkles,
   Trash2,
 } from 'lucide-react';
 import { useBrandStudioStore } from '@/store/useBrandStudioStore';
 import type { BrandGifOverlayItem, BrandGifPositionPreset } from '@/types/brand';
+import { getBrandGifStartSeconds } from '@/lib/brandGifTiming';
 import styles from '@/app/brand/brand.module.css';
 
 const SAMPLE_GIFS: Array<{ label: string; url: string; preset: BrandGifPositionPreset; icon: typeof Sparkles }> = [
@@ -69,6 +73,18 @@ export default function BrandGifStickersSection() {
   const updateGifOverlay = useBrandStudioStore((state) => state.updateGifOverlay);
   const removeGifOverlay = useBrandStudioStore((state) => state.removeGifOverlay);
   const toggleGifOverlay = useBrandStudioStore((state) => state.toggleGifOverlay);
+  const matchGifOverlayLayout = useBrandStudioStore((state) => state.matchGifOverlayLayout);
+  const timing = useBrandStudioStore((state) => state.timing);
+  const outputMode = useBrandStudioStore((state) => state.outputMode);
+  const hasOverlappingGifPositions = gifOverlays.some((item, index) =>
+    item.enabled &&
+    gifOverlays.slice(index + 1).some((other) =>
+      other.enabled &&
+      item.preset === other.preset &&
+      item.offsetX === other.offsetX &&
+      item.offsetY === other.offsetY,
+    ),
+  );
 
   const handleAddCustom = () => {
     addGifOverlay({
@@ -139,6 +155,12 @@ export default function BrandGifStickersSection() {
         </div>
       </div>
 
+      {hasOverlappingGifPositions ? (
+        <p className={styles.gifOverlapWarning}>
+          Beberapa GIF memakai titik yang sama, jadi saling menutupi. Geser atau pilih posisi berbeda agar semuanya terlihat saat render.
+        </p>
+      ) : null}
+
       {gifOverlays.length === 0 ? (
         <div className={styles.variantEmptyState} style={{ padding: '26px 16px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Sparkles size={26} style={{ opacity: 0.5, margin: '0 auto 8px', display: 'block', color: 'var(--brand-accent, #d79a87)' }} />
@@ -171,16 +193,26 @@ export default function BrandGifStickersSection() {
         </div>
       ) : (
         <div style={{ display: 'grid', gap: 14 }}>
-          {gifOverlays.map((item, index) => (
+          {gifOverlays.map((item, index) => {
+            const duration = outputMode === 'hook' || item.scope === 'hook'
+              ? timing.hookSeconds
+              : timing.hookSeconds + timing.productSeconds + timing.storySeconds + timing.outroSeconds;
+            const maxStartSeconds = Math.max(0.1, duration - 0.25);
+            const startAtSeconds = Math.min(getBrandGifStartSeconds(item, index), maxStartSeconds);
+            return (
             <GifOverlayCard
               key={item.id}
               item={item}
               index={index}
+              maxStartSeconds={maxStartSeconds}
+              startAtSeconds={startAtSeconds}
               onUpdate={(updates) => updateGifOverlay(item.id, updates)}
               onRemove={() => removeGifOverlay(item.id)}
               onToggle={() => toggleGifOverlay(item.id)}
+              onMatchLayout={() => matchGifOverlayLayout(item.id)}
             />
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
@@ -190,21 +222,27 @@ export default function BrandGifStickersSection() {
 function GifOverlayCard({
   item,
   index,
+  maxStartSeconds,
+  startAtSeconds,
   onUpdate,
   onRemove,
   onToggle,
+  onMatchLayout,
 }: {
   item: BrandGifOverlayItem;
   index: number;
+  maxStartSeconds: number;
+  startAtSeconds: number;
   onUpdate: (updates: Partial<BrandGifOverlayItem>) => void;
   onRemove: () => void;
   onToggle: () => void;
+  onMatchLayout: () => void;
 }) {
   return (
     <section className={styles.mediaCard} style={{ opacity: item.enabled ? 1 : 0.65 }}>
       {/* Header */}
-      <div className={styles.mediaCardHeader}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+      <div className={`${styles.mediaCardHeader} ${styles.gifCardHeader}`}>
+        <div className={styles.gifCardInfo}>
           {item.url ? (
             <div
               style={{
@@ -223,7 +261,12 @@ function GifOverlayCard({
                 src={item.url}
                 crossOrigin="anonymous"
                 alt={item.label || 'GIF thumbnail'}
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain',
+                  transform: `rotate(${item.rotation ?? 0}deg) scaleX(${item.flipHorizontal ? -1 : 1}) scaleY(${item.flipVertical ? -1 : 1})`,
+                }}
               />
             </div>
           ) : (
@@ -254,7 +297,16 @@ function GifOverlayCard({
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div className={styles.gifCardActions}>
+          <button
+            type="button"
+            className={styles.clearButton}
+            onClick={onMatchLayout}
+            title="Gunakan ukuran dan posisi GIF ini untuk semua GIF"
+            style={{ padding: '6px 10px', fontSize: 10.5, whiteSpace: 'nowrap' }}
+          >
+            Terapkan ke semua
+          </button>
           <button
             type="button"
             className={styles.clearButton}
@@ -302,6 +354,27 @@ function GifOverlayCard({
             </a>
           ) : null}
         </div>
+      </div>
+
+      <div style={{ marginTop: 14, padding: '10px 12px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.06)', background: 'rgba(255,255,255,0.025)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginBottom: 5 }}>
+          <label className={styles.fieldLabel} style={{ margin: 0 }}>Mulai tampil</label>
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--brand-accent, #efb6a4)' }}>{startAtSeconds.toFixed(1)} dtk</span>
+        </div>
+        <input
+          type="range"
+          min={0}
+          max={maxStartSeconds}
+          step={0.1}
+          value={startAtSeconds}
+          onChange={(e) => onUpdate({ startAtSeconds: Number(e.target.value) })}
+          className={styles.slider}
+          style={{ width: '100%' }}
+          aria-label={`Atur waktu mulai ${item.label || `GIF ${index + 1}`}`}
+        />
+        <p style={{ margin: '3px 0 0', fontSize: 10.5, lineHeight: 1.45, color: '#a89a91' }}>
+          GIF muncul setelah jeda ini. Default dibuat bertahap agar awal video tidak langsung penuh.
+        </p>
       </div>
 
       {/* Grid Posisi 9-Titik */}
@@ -508,7 +581,7 @@ function GifOverlayCard({
           />
         </div>
 
-        {/* Rotasi & Transparansi */}
+          {/* Rotasi, balik arah tampilan, dan transparansi */}
         <div className={styles.twoColumns}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginBottom: 4 }}>
@@ -517,13 +590,22 @@ function GifOverlayCard({
             </div>
             <input
               type="range"
-              min={-45}
-              max={45}
-              step={1}
+              min={-180}
+              max={180}
+              step={5}
               value={item.rotation}
               onChange={(e) => onUpdate({ rotation: Number(e.target.value) })}
               className={styles.slider}
             />
+            <button
+              type="button"
+              className={styles.clearButton}
+              onClick={() => onUpdate({ rotation: ((item.rotation + 360) % 360) - 180 })}
+              style={{ marginTop: 6, padding: '5px 8px', fontSize: 10 }}
+              title="Putar GIF 180 derajat dengan satu klik"
+            >
+              <RotateCw size={12} /> Putar 180°
+            </button>
           </div>
 
           <div>
@@ -543,12 +625,33 @@ function GifOverlayCard({
           </div>
         </div>
 
-        {/* Reset fine-tuning */}
-        {(item.offsetX !== 0 || item.offsetY !== 0 || item.rotation !== 0 || item.opacity !== 1) && (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <button
             type="button"
             className={styles.clearButton}
-            onClick={() => onUpdate({ offsetX: 0, offsetY: 0, rotation: 0, opacity: 1 })}
+            aria-pressed={Boolean(item.flipHorizontal)}
+            onClick={() => onUpdate({ flipHorizontal: !item.flipHorizontal })}
+            style={{ padding: '6px 9px', fontSize: 10.5, borderColor: item.flipHorizontal ? 'var(--brand-accent, #d79a87)' : undefined }}
+          >
+            <FlipHorizontal2 size={13} /> Balik kiri-kanan
+          </button>
+          <button
+            type="button"
+            className={styles.clearButton}
+            aria-pressed={Boolean(item.flipVertical)}
+            onClick={() => onUpdate({ flipVertical: !item.flipVertical })}
+            style={{ padding: '6px 9px', fontSize: 10.5, borderColor: item.flipVertical ? 'var(--brand-accent, #d79a87)' : undefined }}
+          >
+            <FlipVertical2 size={13} /> Balik atas-bawah
+          </button>
+        </div>
+
+        {/* Reset fine-tuning */}
+        {(item.offsetX !== 0 || item.offsetY !== 0 || item.rotation !== 0 || item.opacity !== 1 || item.flipHorizontal || item.flipVertical) && (
+          <button
+            type="button"
+            className={styles.clearButton}
+            onClick={() => onUpdate({ offsetX: 0, offsetY: 0, rotation: 0, opacity: 1, flipHorizontal: false, flipVertical: false })}
             style={{ alignSelf: 'start', fontSize: 10.5, display: 'inline-flex', alignItems: 'center', gap: 5 }}
           >
             <RotateCcw size={12} /> Reset Geser & Rotasi

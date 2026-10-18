@@ -39,6 +39,7 @@ import type {
 
 export type BrandEditorSection =
   | 'templates'
+  | 'cloud-projects'
   | 'template-packs'
   | 'copy'
   | 'effects'
@@ -52,12 +53,14 @@ export type BrandEditorSection =
 
 interface BrandStudioStore extends BrandVideoProps {
   activeSection: BrandEditorSection;
+  activeCloudProjectId: string | null;
   activeHookPresetId: string | null;
   activeTemplatePackId: string | null;
   showSafeArea: boolean;
   contentGoal: BrandContentGoal;
   variants: BrandHookVariant[];
   setActiveSection: (section: BrandEditorSection) => void;
+  setActiveCloudProjectId: (id: string | null) => void;
   setShowSafeArea: (showSafeArea: boolean) => void;
   setOutputMode: (outputMode: BrandOutputMode) => void;
   setTemplate: (templateId: BrandTemplateId) => void;
@@ -85,6 +88,7 @@ interface BrandStudioStore extends BrandVideoProps {
   updateGifOverlay: (id: string, updates: Partial<BrandGifOverlayItem>) => void;
   removeGifOverlay: (id: string) => void;
   toggleGifOverlay: (id: string) => void;
+  matchGifOverlayLayout: (id: string) => void;
   setContentGoal: (contentGoal: BrandContentGoal) => void;
   generateVariants: () => void;
   toggleVariant: (variantId: BrandHookVariant['id']) => void;
@@ -111,12 +115,14 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
   ...initial,
   gifOverlays: [],
   activeSection: 'templates',
+  activeCloudProjectId: null,
   activeHookPresetId: null,
   activeTemplatePackId: null,
   showSafeArea: false,
   contentGoal: 'retention',
   variants: [],
   setActiveSection: (activeSection) => set({ activeSection }),
+  setActiveCloudProjectId: (activeCloudProjectId) => set({ activeCloudProjectId }),
   setShowSafeArea: (showSafeArea) => set({ showSafeArea }),
   setOutputMode: (outputMode) => set({
     outputMode,
@@ -359,6 +365,9 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
         offsetY: item?.offsetY ?? 0,
         width: item?.width ?? 260,
         rotation: item?.rotation ?? 0,
+        flipHorizontal: item?.flipHorizontal ?? false,
+        flipVertical: item?.flipVertical ?? false,
+        startAtSeconds: item?.startAtSeconds ?? Math.min(0.8 + (state.gifOverlays?.length ?? 0) * 0.55, 3.5),
         opacity: item?.opacity ?? 1,
         scope: item?.scope || 'hook',
       };
@@ -380,6 +389,24 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
         entry.id === id ? { ...entry, enabled: !entry.enabled } : entry,
       ),
     })),
+  matchGifOverlayLayout: (id) =>
+    set((state) => {
+      const reference = (state.gifOverlays ?? []).find((entry) => entry.id === id);
+      if (!reference) return {};
+      return {
+        gifOverlays: (state.gifOverlays ?? []).map((entry) =>
+          entry.id === id
+            ? entry
+            : {
+                ...entry,
+                preset: reference.preset,
+                offsetX: reference.offsetX,
+                offsetY: reference.offsetY,
+                width: reference.width,
+              },
+        ),
+      };
+    }),
   resetTemplate: () => {
     const { templateId, outputMode } = get();
     set({

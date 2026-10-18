@@ -12,6 +12,7 @@ import {
   useVideoConfig,
 } from 'remotion';
 import { BRAND_SFX_FILES } from '@/lib/brandTemplates';
+import { getBrandGifStartSeconds } from '@/lib/brandGifTiming';
 import {
   resolveBrandHookBeatDurations,
   resolveBrandHookEnabledBeats,
@@ -1062,11 +1063,14 @@ function BrandGifItem({ item }: { item: BrandGifOverlayItem }) {
 
   return (
     <Gif
+      id={item.id}
       src={safeUrl}
       width={targetWidth}
       height={targetHeight}
       fit="contain"
+      playbackRate={1}
       loopBehavior="loop"
+      delayRenderTimeoutInMilliseconds={120_000}
       onLoad={(info) => {
         if (info.width > 0 && info.height > 0) {
           setAspectRatio(info.height / info.width);
@@ -1096,6 +1100,7 @@ function BrandGifOverlays({
   outputMode: BrandOutputMode;
 }) {
   const frame = useCurrentFrame();
+  const { fps, durationInFrames } = useVideoConfig();
   if (!overlays || overlays.length === 0) return null;
 
   return (
@@ -1107,8 +1112,16 @@ function BrandGifOverlays({
         zIndex: 100,
       }}
     >
-      {overlays.map((item) => {
+      {overlays.map((item, index) => {
         if (!item.enabled || !item.url) return null;
+        const visibleDuration = item.scope === 'hook' || outputMode === 'hook'
+          ? hookFrames
+          : durationInFrames;
+        const startFrame = Math.min(
+          Math.round(getBrandGifStartSeconds(item, index) * fps),
+          Math.max(0, visibleDuration - 1),
+        );
+        if (frame < startFrame) return null;
         if (item.scope === 'hook' && outputMode !== 'hook' && frame >= hookFrames) {
           return null;
         }
@@ -1118,22 +1131,24 @@ function BrandGifOverlays({
         const top = `calc(${base.y}% + ${item.offsetY ?? 0}%)`;
 
         return (
-          <div
-            key={item.id}
-            style={{
+          <Sequence key={item.id} from={startFrame} layout="none" name={`GIF — ${item.label || index + 1}`}>
+            <div
+              style={{
               position: 'absolute',
               left,
               top,
-              transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg)`,
+              transform: `translate(-50%, -50%) rotate(${item.rotation ?? 0}deg) scaleX(${item.flipHorizontal ? -1 : 1}) scaleY(${item.flipVertical ? -1 : 1})`,
               width: `${item.width ?? 260}px`,
               opacity: item.opacity ?? 1,
+              zIndex: index + 1,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-            }}
-          >
-            <BrandGifItem item={item} />
-          </div>
+              }}
+            >
+              <BrandGifItem item={item} />
+            </div>
+          </Sequence>
         );
       })}
     </div>
