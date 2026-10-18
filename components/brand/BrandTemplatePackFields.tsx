@@ -13,6 +13,7 @@ import {
   BRAND_BEAT_MAX_SECONDS,
   BRAND_BEAT_MIN_SECONDS,
   resolveBrandHookBeatDurations,
+  resolveBrandHookEnabledBeats,
 } from '@/lib/brandBeatTiming';
 import type { BrandCopy } from '@/types/brand';
 import styles from '@/app/brand/brand.module.css';
@@ -34,8 +35,10 @@ export default function BrandTemplatePackFields() {
   const applyVisualTemplate = useBrandStudioStore((state) => state.applyVisualTemplate);
   const updateCopy = useBrandStudioStore((state) => state.updateCopy);
   const updateBeatDuration = useBrandStudioStore((state) => state.updateBeatDuration);
+  const setBeatEnabled = useBrandStudioStore((state) => state.setBeatEnabled);
   const setActiveSection = useBrandStudioStore((state) => state.setActiveSection);
   const beatDurations = resolveBrandHookBeatDurations(hook.beatDurations, timing.hookSeconds);
+  const enabledBeats = resolveBrandHookEnabledBeats(hook.enabledBeats);
   const editableBeats: Array<{
     label: string;
     mainKey: keyof BrandCopy;
@@ -152,17 +155,38 @@ export default function BrandTemplatePackFields() {
               </div>
             </summary>
             <div className={styles.templatePackQuickEditorBody}>
-              {editableBeats.map((beat, index) => (
-                <section className={styles.templatePackBeatEditor} key={beat.label}>
+              {editableBeats.map((beat, index) => {
+                const isOptionalBeat = index > 0;
+                const isEnabled = enabledBeats[index];
+
+                return (
+                <section
+                  className={`${styles.templatePackBeatEditor} ${!isEnabled ? styles.templatePackBeatEditorDisabled : ''}`}
+                  key={beat.label}
+                >
                   <header>
                     <strong>{beat.label}</strong>
-                    <span>{beatDurations[index].toFixed(1)}s</span>
+                    {isOptionalBeat ? (
+                      <label className={styles.templatePackBeatToggle}>
+                        <span>Aktif</span>
+                        <input
+                          type="checkbox"
+                          checked={isEnabled}
+                          aria-label={`Aktifkan ${beat.label}`}
+                          onChange={(event) => setBeatEnabled(index as 1 | 2, event.target.checked)}
+                        />
+                      </label>
+                    ) : (
+                      <span>Wajib</span>
+                    )}
                   </header>
+                  {!isEnabled ? <p className={styles.templatePackBeatOffNote}>Dimatikan · tidak tampil dan tidak memakai durasi.</p> : null}
                   <label>
                     <span>Teks utama</span>
                     <textarea
                       rows={2}
                       value={copy[beat.mainKey] ?? ''}
+                      disabled={!isEnabled}
                       onChange={(event) => updateCopy(beat.mainKey, event.target.value)}
                     />
                   </label>
@@ -171,6 +195,7 @@ export default function BrandTemplatePackFields() {
                     <textarea
                       rows={2}
                       value={copy[beat.accentKey] ?? ''}
+                      disabled={!isEnabled}
                       onChange={(event) => updateCopy(beat.accentKey, event.target.value)}
                     />
                   </label>
@@ -183,11 +208,13 @@ export default function BrandTemplatePackFields() {
                       max={BRAND_BEAT_MAX_SECONDS}
                       step={0.1}
                       value={beatDurations[index]}
+                      disabled={!isEnabled}
                       onChange={(event) => updateBeatDuration(index as 0 | 1 | 2, Number(event.target.value))}
                     />
                   </label>
                 </section>
-              ))}
+                );
+              })}
               <div className={styles.templatePackDurationTotal}>
                 <span>Total durasi hook</span>
                 <strong>{timing.hookSeconds.toFixed(1)} detik</strong>

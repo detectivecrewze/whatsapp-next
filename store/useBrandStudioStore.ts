@@ -15,8 +15,9 @@ import {
   BRAND_BEAT_MAX_SECONDS,
   BRAND_BEAT_MIN_SECONDS,
   resolveBrandHookBeatDurations,
+  resolveBrandHookEnabledBeats,
   splitBrandHookBeatDurations,
-  sumBrandHookBeatDurations,
+  sumActiveBrandHookBeatDurations,
 } from '@/lib/brandBeatTiming';
 import type {
   BrandAudioSettings,
@@ -24,6 +25,7 @@ import type {
   BrandCopy,
   BrandHookBackgroundSettings,
   BrandHookBeatDurations,
+  BrandHookEnabledBeats,
   BrandHookSettings,
   BrandHookVariant,
   BrandMediaSlot,
@@ -74,6 +76,7 @@ interface BrandStudioStore extends BrandVideoProps {
   ) => void;
   updateTiming: (key: keyof BrandTiming, value: number) => void;
   updateBeatDuration: (index: 0 | 1 | 2, value: number) => void;
+  setBeatEnabled: (index: 1 | 2, enabled: boolean) => void;
   updateAudio: (updates: Partial<BrandAudioSettings>) => void;
   setContentGoal: (contentGoal: BrandContentGoal) => void;
   generateVariants: () => void;
@@ -134,6 +137,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
         ...visual.hook,
         sequenceMode: state.hook.sequenceMode,
         beatDurations: state.hook.beatDurations,
+        enabledBeats: resolveBrandHookEnabledBeats(state.hook.enabledBeats),
       },
       activeHookPresetId: null,
       variants: [],
@@ -154,6 +158,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
         ...state.hook,
         ...preset.hook,
         beatDurations,
+        enabledBeats: [true, true, true],
         partMotions: {
           ...(state.hook.partMotions ?? {
             eyebrow: state.hook.motion,
@@ -195,6 +200,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
         ...state.hook,
         sequenceMode: pack.hook.sequenceMode ?? state.hook.sequenceMode,
         beatDurations,
+        enabledBeats: [true, true, true],
       },
       timing: { ...state.timing, hookSeconds: pack.hookSeconds },
       audio: { ...state.audio, ...pack.audio },
@@ -265,7 +271,33 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
 
       return {
         hook: { ...state.hook, beatDurations: next },
-        timing: { ...state.timing, hookSeconds: sumBrandHookBeatDurations(next) },
+        timing: {
+          ...state.timing,
+          hookSeconds: sumActiveBrandHookBeatDurations(
+            next,
+            resolveBrandHookEnabledBeats(state.hook.enabledBeats),
+          ),
+        },
+        activeHookPresetId: null,
+        variants: [],
+      };
+    }),
+  setBeatEnabled: (index, enabled) =>
+    set((state) => {
+      const durations = resolveBrandHookBeatDurations(
+        state.hook.beatDurations,
+        state.timing.hookSeconds,
+      );
+      const current = resolveBrandHookEnabledBeats(state.hook.enabledBeats);
+      const next = [...current] as BrandHookEnabledBeats;
+      next[index] = enabled;
+
+      return {
+        hook: { ...state.hook, enabledBeats: next },
+        timing: {
+          ...state.timing,
+          hookSeconds: sumActiveBrandHookBeatDurations(durations, next),
+        },
         activeHookPresetId: null,
         variants: [],
       };

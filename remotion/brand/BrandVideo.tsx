@@ -11,7 +11,10 @@ import {
   useVideoConfig,
 } from 'remotion';
 import { BRAND_SFX_FILES } from '@/lib/brandTemplates';
-import { resolveBrandHookBeatDurations } from '@/lib/brandBeatTiming';
+import {
+  resolveBrandHookBeatDurations,
+  resolveBrandHookEnabledBeats,
+} from '@/lib/brandBeatTiming';
 import type {
   BrandHookExit,
   BrandHookMotion,
@@ -468,34 +471,37 @@ function HookScene({ props }: { props: BrandVideoProps }) {
     props.hook.beatDurations,
     props.timing.hookSeconds,
   );
-  const beatDurationTotal = beatDurations.reduce((sum, value) => sum + value, 0);
-  const beatOneFrames = isThreeBeat
-    ? Math.min(
-        Math.max(1, durationInFrames - 2),
-        Math.max(1, Math.round(durationInFrames * (beatDurations[0] / beatDurationTotal))),
-      )
-    : durationInFrames;
-  const beatTwoFrames = isThreeBeat
-    ? Math.min(
-        Math.max(1, durationInFrames - beatOneFrames - 1),
-        Math.max(1, Math.round(durationInFrames * (beatDurations[1] / beatDurationTotal))),
-      )
-    : 0;
-  const beatThreeStart = beatOneFrames + beatTwoFrames;
-  const beatIndex = !isThreeBeat
-    ? 0
-    : frame < beatOneFrames
-      ? 0
-      : frame < beatThreeStart
-        ? 1
-        : 2;
-  const beatStart = beatIndex === 0 ? 0 : beatIndex === 1 ? beatOneFrames : beatThreeStart;
-  const beatFrame = frame - beatStart;
-  const beatDuration = beatIndex === 0
-    ? beatOneFrames
-    : beatIndex === 1
-      ? beatTwoFrames
-      : Math.max(1, durationInFrames - beatThreeStart);
+  const enabledBeats = resolveBrandHookEnabledBeats(props.hook.enabledBeats);
+  const activeBeatIndexes = (isThreeBeat ? [0, 1, 2].filter((index) => enabledBeats[index]) : [0]) as Array<0 | 1 | 2>;
+  const activeBeatDurationTotal = activeBeatIndexes.reduce<number>(
+    (total, beatIndex) => total + beatDurations[beatIndex],
+    0,
+  );
+  const beatTimeline: Array<{ beatIndex: 0 | 1 | 2; start: number; duration: number }> = [];
+  let remainingFrames = durationInFrames;
+  let currentStart = 0;
+
+  activeBeatIndexes.forEach((activeBeatIndex, index) => {
+    const remainingBeats = activeBeatIndexes.length - index - 1;
+    const isLastBeat = remainingBeats === 0;
+    const proportionalFrames = Math.max(
+      1,
+      Math.round(durationInFrames * (beatDurations[activeBeatIndex] / activeBeatDurationTotal)),
+    );
+    const duration = isLastBeat
+      ? Math.max(1, remainingFrames)
+      : Math.min(Math.max(1, remainingFrames - remainingBeats), proportionalFrames);
+
+    beatTimeline.push({ beatIndex: activeBeatIndex, start: currentStart, duration });
+    currentStart += duration;
+    remainingFrames -= duration;
+  });
+
+  const currentBeat = beatTimeline.find((beat) => frame < beat.start + beat.duration)
+    ?? beatTimeline[beatTimeline.length - 1]!;
+  const beatIndex = currentBeat.beatIndex;
+  const beatFrame = frame - currentBeat.start;
+  const beatDuration = currentBeat.duration;
   const currentTitle = beatIndex === 0
     ? props.copy.hookTitle
     : beatIndex === 1
@@ -514,7 +520,7 @@ function HookScene({ props }: { props: BrandVideoProps }) {
     ? 1
     : autoFitScale(currentTitle, currentAccent);
   const beatFadeOutStart = Math.max(7, beatDuration - 7);
-  const beatOpacity = isThreeBeat
+  const beatOpacity = activeBeatIndexes.length > 1
     ? interpolate(
         beatFrame,
         [0, 5, beatFadeOutStart, Math.max(beatFadeOutStart + 1, beatDuration - 1)],

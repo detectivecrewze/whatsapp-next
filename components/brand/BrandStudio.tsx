@@ -31,6 +31,7 @@ import {
   BRAND_BEAT_MAX_SECONDS,
   BRAND_BEAT_MIN_SECONDS,
   resolveBrandHookBeatDurations,
+  resolveBrandHookEnabledBeats,
   splitBrandHookBeatDurations,
 } from '@/lib/brandBeatTiming';
 import {
@@ -140,9 +141,11 @@ function CopyFields() {
   const updateCopy = useBrandStudioStore((state) => state.updateCopy);
   const updateHook = useBrandStudioStore((state) => state.updateHook);
   const updateTiming = useBrandStudioStore((state) => state.updateTiming);
+  const setBeatEnabled = useBrandStudioStore((state) => state.setBeatEnabled);
   const applyHookPreset = useBrandStudioStore((state) => state.applyHookPreset);
   const setShowSafeArea = useBrandStudioStore((state) => state.setShowSafeArea);
   const sequenceMode = hook.sequenceMode ?? 'single';
+  const enabledBeats = resolveBrandHookEnabledBeats(hook.enabledBeats);
   type CopyField = {
     key: keyof BrandCopy;
     label: string;
@@ -150,14 +153,15 @@ function CopyFields() {
     hint?: string;
     placeholder?: string;
     accent?: boolean;
+    beat?: 0 | 1 | 2;
   };
   const hookFields: CopyField[] = [
     { key: 'eyebrow', label: 'Brand kecil di atas' },
-    { key: 'hookTitle', label: sequenceMode === 'three-beat' ? 'Beat 1 · Hook utama' : 'Hook utama' },
-    { key: 'hookAccent', label: sequenceMode === 'three-beat' ? 'Beat 1 · Aksen' : 'Hook aksen / italic' },
+    { key: 'hookTitle', label: sequenceMode === 'three-beat' ? 'Beat 1 · Hook utama' : 'Hook utama', beat: 0 },
+    { key: 'hookAccent', label: sequenceMode === 'three-beat' ? 'Beat 1 · Aksen' : 'Hook aksen / italic', beat: 0 },
     ...(sequenceMode === 'three-beat'
       ? [
-          { key: 'hookBridge' as keyof BrandCopy, label: 'Beat 2 · Teks utama', multiline: true },
+          { key: 'hookBridge' as keyof BrandCopy, label: 'Beat 2 · Teks utama', multiline: true, beat: 1 as const },
           {
             key: 'hookBridgeAccent' as keyof BrandCopy,
             label: 'Beat 2 · Highlight warna',
@@ -165,8 +169,9 @@ function CopyFields() {
             hint: 'Opsional · tampil sebagai baris kedua dengan warna accent.',
             placeholder: 'Contoh: dan momen yang dibuat personal.',
             accent: true,
+            beat: 1 as const,
           },
-          { key: 'hookReveal' as keyof BrandCopy, label: 'Beat 3 · Teks utama', multiline: true },
+          { key: 'hookReveal' as keyof BrandCopy, label: 'Beat 3 · Teks utama', multiline: true, beat: 2 as const },
           {
             key: 'hookRevealAccent' as keyof BrandCopy,
             label: 'Beat 3 · Highlight warna',
@@ -174,6 +179,7 @@ function CopyFields() {
             hint: 'Opsional · kosongkan jika seluruh beat ingin satu warna.',
             placeholder: 'Contoh: bukan sekadar halaman.',
             accent: true,
+            beat: 2 as const,
           },
         ]
       : []),
@@ -235,6 +241,7 @@ function CopyFields() {
                   const nextHookSeconds = timing.hookSeconds < 4.5 ? 5.4 : timing.hookSeconds;
                   updateHook('sequenceMode', 'three-beat' as BrandHookSequenceMode);
                   updateHook('beatDurations', splitBrandHookBeatDurations(nextHookSeconds));
+                  updateHook('enabledBeats', [true, true, true]);
                   if (timing.hookSeconds < 4.5) updateTiming('hookSeconds', nextHookSeconds);
                 }}
               >
@@ -243,17 +250,43 @@ function CopyFields() {
               </button>
             </div>
           </Field>
+          {sequenceMode === 'three-beat' ? (
+            <div className={styles.beatEnableControls}>
+              <div>
+                <strong>Beat yang dipakai</strong>
+                <small>Matikan bagian yang belum ingin digunakan. Durasi total ikut menyesuaikan.</small>
+              </div>
+              {[1, 2].map((beatIndex) => (
+                <label className={styles.beatEnableToggle} key={beatIndex}>
+                  <span>Beat {beatIndex + 1} · {beatIndex === 1 ? 'Build-up' : 'Reveal'}</span>
+                  <input
+                    type="checkbox"
+                    checked={enabledBeats[beatIndex]}
+                    aria-label={`Aktifkan Beat ${beatIndex + 1}`}
+                    onChange={(event) => setBeatEnabled(beatIndex as 1 | 2, event.target.checked)}
+                  />
+                </label>
+              ))}
+            </div>
+          ) : null}
           <div className={styles.divider} />
         </>
       ) : null}
-      {fields.map((field) => (
-        <Field key={field.key} label={field.label} hint={field.hint}>
+      {fields.map((field) => {
+        const disabled = field.beat !== undefined && !enabledBeats[field.beat];
+        return (
+        <Field
+          key={field.key}
+          label={field.label}
+          hint={disabled ? 'Beat ini sedang dimatikan dan tidak ikut video.' : field.hint}
+        >
           {field.multiline ? (
             <textarea
               className={`${styles.textarea} ${field.accent ? styles.accentTextField : ''}`}
               value={copy[field.key] ?? ''}
               placeholder={field.placeholder}
               rows={field.accent ? 2 : 3}
+              disabled={disabled}
               onChange={(event) => updateCopy(field.key, event.target.value)}
             />
           ) : (
@@ -261,11 +294,13 @@ function CopyFields() {
               className={`${styles.input} ${field.accent ? styles.accentTextField : ''}`}
               value={copy[field.key] ?? ''}
               placeholder={field.placeholder}
+              disabled={disabled}
               onChange={(event) => updateCopy(field.key, event.target.value)}
             />
           )}
         </Field>
-      ))}
+        );
+      })}
       {outputMode === 'hook' ? (
         <>
           <div className={styles.divider} />
@@ -799,6 +834,7 @@ function TimingFields() {
   const updateBeatDuration = useBrandStudioStore((state) => state.updateBeatDuration);
   const isThreeBeat = hook.sequenceMode === 'three-beat';
   const beatDurations = resolveBrandHookBeatDurations(hook.beatDurations, timing.hookSeconds);
+  const enabledBeats = resolveBrandHookEnabledBeats(hook.enabledBeats);
   const beatLabels = ['Beat 1 · Hook', 'Beat 2 · Build-up', 'Beat 3 · Reveal'] as const;
   const campaignRows: Array<{ key: keyof BrandTiming; label: string; min: number; max: number }> = [
     {
@@ -831,10 +867,16 @@ function TimingFields() {
         <div className={styles.beatTimingGroup}>
           <div className={styles.beatTimingHeading}>
             <strong>Durasi per teks</strong>
-            <span>Total hook otomatis mengikuti ketiga beat.</span>
+            <span>Total hook otomatis hanya menghitung beat yang aktif.</span>
           </div>
-          {beatDurations.map((seconds, index) => (
-            <Field key={beatLabels[index]} label={`${beatLabels[index]} — ${seconds.toFixed(1)}s`}>
+          {beatDurations.map((seconds, index) => {
+            const isEnabled = enabledBeats[index];
+            return (
+            <Field
+              key={beatLabels[index]}
+              label={`${beatLabels[index]} — ${isEnabled ? `${seconds.toFixed(1)}s` : 'dimatikan'}`}
+              hint={!isEnabled ? 'Nyalakan lagi dari Naskah atau Template Pack untuk mengatur durasinya.' : undefined}
+            >
               <input
                 className={styles.slider}
                 type="range"
@@ -842,10 +884,12 @@ function TimingFields() {
                 max={BRAND_BEAT_MAX_SECONDS}
                 step={0.1}
                 value={seconds}
+                disabled={!isEnabled}
                 onChange={(event) => updateBeatDuration(index as 0 | 1 | 2, Number(event.target.value))}
               />
             </Field>
-          ))}
+            );
+          })}
         </div>
       ) : null}
       {rows.map((row, index) => (

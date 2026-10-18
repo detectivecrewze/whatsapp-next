@@ -1397,6 +1397,40 @@
   font-weight: 800;
 }
 
+.templatePackBeatEditorDisabled {
+  border-color: rgba(255, 255, 255, 0.045);
+  background: #10161b;
+}
+
+.templatePackBeatToggle {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.templatePackBeatToggle > span {
+  color: #9f968f !important;
+  font-size: 7px !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+}
+
+.templatePackBeatToggle input,
+.beatEnableToggle input {
+  width: 30px;
+  height: 17px;
+  margin: 0;
+  accent-color: #d79a87;
+  cursor: pointer;
+}
+
+.templatePackBeatOffNote {
+  margin: -1px 0 0;
+  color: #77716d;
+  font-size: 7.5px;
+  line-height: 1.35;
+}
+
 .templatePackBeatEditor label {
   display: grid;
   gap: 5px;
@@ -1427,6 +1461,15 @@
 
 .templatePackBeatEditor textarea:focus {
   border-color: rgba(215, 154, 135, 0.5);
+}
+
+.templatePackBeatEditor textarea:disabled,
+.templatePackBeatEditor input:disabled,
+.textarea:disabled,
+.input:disabled,
+.slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 
 .templatePackBeatDuration > span {
@@ -1463,6 +1506,46 @@
 .beatTimingHeading strong,
 .beatTimingHeading span {
   display: block;
+}
+
+.beatEnableControls {
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(215, 154, 135, 0.17);
+  border-radius: 12px;
+  padding: 11px;
+  background: rgba(215, 154, 135, 0.04);
+}
+
+.beatEnableControls > div > strong,
+.beatEnableControls > div > small {
+  display: block;
+}
+
+.beatEnableControls > div > strong {
+  color: #dfd5cf;
+  font-size: 9px;
+}
+
+.beatEnableControls > div > small {
+  margin-top: 3px;
+  color: #817772;
+  font-size: 7.5px;
+  line-height: 1.35;
+}
+
+.beatEnableToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.065);
+  border-radius: 9px;
+  padding: 8px 9px;
+  background: #171e24;
+  color: #c9c0ba;
+  font-size: 8px;
+  font-weight: 700;
 }
 
 .beatTimingHeading strong {
