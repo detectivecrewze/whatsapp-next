@@ -221,6 +221,7 @@ function GifOverlayCard({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={item.url}
+                crossOrigin="anonymous"
                 alt={item.label || 'GIF thumbnail'}
                 style={{ width: '100%', height: '100%', objectFit: 'contain' }}
               />

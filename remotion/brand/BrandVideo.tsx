@@ -1017,6 +1017,20 @@ function getGifPresetPosition(preset: BrandGifPositionPreset): { x: number; y: n
   }
 }
 
+function getSafeGifUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  if (
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:') ||
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('./')
+  ) {
+    return trimmed;
+  }
+  return `/api/brand/proxy-media?url=${encodeURIComponent(trimmed)}`;
+}
+
 function BrandGifOverlays({
   overlays,
   hookFrames,
@@ -1065,7 +1079,8 @@ function BrandGifOverlays({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={item.url}
+              src={getSafeGifUrl(item.url)}
+              crossOrigin="anonymous"
               alt={item.label || 'GIF Sticker'}
               style={{
                 width: '100%',
