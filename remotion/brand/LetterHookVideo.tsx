@@ -19,8 +19,10 @@ export interface LetterHookProps extends Record<string, unknown> {
   brandTag?: string;
   /** @deprecated backward compat */
   signature?: string;
-  /** Gaya visual brand mark: 'line' | 'minimal' | 'bracket' */
-  brandStyle?: 'line' | 'minimal' | 'bracket';
+  /** Gaya visual brand mark: 'line' | 'minimal' | 'bracket' | 'clean' */
+  brandStyle?: 'line' | 'minimal' | 'bracket' | 'clean';
+  /** Posisi penempatan brand mark: 'bottom' (bawah layar) | 'flow' (di bawah teks) */
+  brandPlacement?: 'bottom' | 'flow';
   /** Perataan teks: 'center' | 'left' */
   alignment?: 'center' | 'left';
   /** Warna latar */
@@ -89,28 +91,159 @@ export function LetterHookVideo(props: LetterHookProps) {
     { extrapolateLeft: 'clamp', extrapolateRight: 'clamp' },
   );
 
-  const bg         = props.background || '#0b1628';
-  const ink        = props.ink        || '#f3ece4';
-  const accent     = props.accentColor || '#4a9eff';
-  const muted      = props.mutedColor  || '#8899b8';
-  const brandText  = props.brandTag ?? props.signature;
-  const brandStyle = props.brandStyle || 'line';
-  const isLeft     = props.alignment === 'left';
-  const textAlign  = isLeft ? 'left' : 'center';
+  const bg             = props.background || '#0b1628';
+  const ink            = props.ink        || '#f3ece4';
+  const accent         = props.accentColor || '#4a9eff';
+  const muted          = props.mutedColor  || '#8899b8';
+  const brandText      = props.brandTag ?? props.signature;
+  const brandStyle     = props.brandStyle || 'line';
+  const brandPlacement = props.brandPlacement || 'bottom';
+  const isLeft         = props.alignment === 'left';
+  const textAlign      = isLeft ? 'left' : 'center';
 
-  // ── Safe zone: konten di tengah-atas, ~22% bawah + ~12% kanan bebas
-  const safeStyle: React.CSSProperties = {
+  // ── Safe zone untuk Blok Quote Utama (fokus tengah-atas layar)
+  const quoteStyle: React.CSSProperties = {
     position: 'absolute',
-    top: '10%',
-    left: isLeft ? '10%' : '7%',
+    top: '12%',
+    left: isLeft ? '10%' : '8%',
     right: isLeft ? '14%' : '12%',
-    bottom: '22%',
+    bottom: brandPlacement === 'bottom' ? '28%' : '22%',
     display: 'flex',
     flexDirection: 'column',
     alignItems: isLeft ? 'flex-start' : 'center',
     justifyContent: 'center',
     textAlign,
     gap: 0,
+  };
+
+  // ── Safe zone untuk Brand Watermark bawah layar (terpisah lega dari quote)
+  const brandWatermarkStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '22%', // ~420px dari bawah kanvas 1920 (tepat di atas UI caption TikTok)
+    left: isLeft ? '10%' : '8%',
+    right: isLeft ? '14%' : '12%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: isLeft ? 'flex-start' : 'center',
+    textAlign,
+    opacity: brandAnim.opacity,
+    transform: `translateY(${brandAnim.translateY}px)`,
+    userSelect: 'none',
+  };
+
+  // ── Render Brand Mark Content
+  const renderBrandMark = () => {
+    if (!brandText) return null;
+
+    if (brandStyle === 'line') {
+      return isLeft ? (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 28, height: 1, background: `${muted}55`, flexShrink: 0 }} />
+          <span
+            style={{
+              fontFamily: serif,
+              fontSize: 20,
+              fontWeight: 500,
+              letterSpacing: '0.28em',
+              wordSpacing: '0.35em',
+              textTransform: 'uppercase',
+              color: muted,
+              fontVariantNumeric: 'lining-nums',
+            }}
+          >
+            {brandText}
+          </span>
+        </div>
+      ) : (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
+          <div style={{ width: 26, height: 1, background: `linear-gradient(90deg, transparent, ${muted}55)`, flexShrink: 0 }} />
+          <span
+            style={{
+              fontFamily: serif,
+              fontSize: 20,
+              fontWeight: 500,
+              letterSpacing: '0.28em',
+              wordSpacing: '0.35em',
+              textTransform: 'uppercase',
+              color: muted,
+              fontVariantNumeric: 'lining-nums',
+            }}
+          >
+            {brandText}
+          </span>
+          <div style={{ width: 26, height: 1, background: `linear-gradient(90deg, ${muted}55, transparent)`, flexShrink: 0 }} />
+        </div>
+      );
+    }
+
+    if (brandStyle === 'minimal') {
+      return (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ color: accent, fontSize: 13, opacity: 0.85, transform: 'translateY(-1px)' }}>✦</span>
+          <span
+            style={{
+              fontFamily: serif,
+              fontSize: 20,
+              fontWeight: 500,
+              letterSpacing: '0.28em',
+              wordSpacing: '0.35em',
+              textTransform: 'uppercase',
+              color: muted,
+              fontVariantNumeric: 'lining-nums',
+            }}
+          >
+            {brandText}
+          </span>
+        </div>
+      );
+    }
+
+    if (brandStyle === 'bracket') {
+      return (
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ fontFamily: serif, fontSize: 19, color: `${muted}60`, fontWeight: 300, transform: 'translateY(-1px)' }}>[</span>
+          <span
+            style={{
+              fontFamily: serif,
+              fontSize: 19,
+              fontWeight: 500,
+              letterSpacing: '0.26em',
+              wordSpacing: '0.35em',
+              textTransform: 'uppercase',
+              color: muted,
+              fontVariantNumeric: 'lining-nums',
+            }}
+          >
+            {brandText}
+          </span>
+          <span style={{ fontFamily: serif, fontSize: 19, color: `${muted}60`, fontWeight: 300, transform: 'translateY(-1px)' }}>]</span>
+        </div>
+      );
+    }
+
+    if (brandStyle === 'clean') {
+      return (
+        <div style={{ display: 'inline-flex', alignItems: 'center' }}>
+          <span
+            style={{
+              fontFamily: serif,
+              fontSize: 20,
+              fontWeight: 500,
+              letterSpacing: '0.32em',
+              wordSpacing: '0.4em',
+              textTransform: 'uppercase',
+              color: muted,
+              fontVariantNumeric: 'lining-nums',
+              opacity: 0.9,
+            }}
+          >
+            {brandText}
+          </span>
+        </div>
+      );
+    }
+
+    return null;
   };
 
   return (
@@ -135,8 +268,8 @@ export function LetterHookVideo(props: LetterHookProps) {
         }}
       />
 
-      {/* ── Konten utama dalam safe zone ── */}
-      <div style={safeStyle}>
+      {/* ── Blok Quote Utama ── */}
+      <div style={quoteStyle}>
 
         {/* Layer 1 — Label kecil (ALL CAPS, tracked-out, lining nums) */}
         {props.label ? (
@@ -154,7 +287,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               textTransform: 'uppercase',
               textAlign,
               alignSelf: isLeft ? 'flex-start' : 'center',
-              marginBottom: 48,
+              marginBottom: 52,
             }}
           >
             {props.label}
@@ -177,7 +310,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               alignSelf: isLeft ? 'flex-start' : 'center',
               textWrap: 'balance',
               whiteSpace: 'pre-wrap',
-              marginBottom: props.highlight ? 44 : (brandText ? 42 : 0),
+              marginBottom: props.highlight ? 44 : 0,
             } as React.CSSProperties}
           >
             {props.line1}
@@ -200,15 +333,15 @@ export function LetterHookVideo(props: LetterHookProps) {
               alignSelf: isLeft ? 'flex-start' : 'center',
               textWrap: 'balance',
               whiteSpace: 'pre-wrap',
-              marginBottom: brandText ? 44 : 0,
+              marginBottom: brandPlacement === 'flow' && brandText ? 84 : 0,
             } as React.CSSProperties}
           >
             {props.highlight}
           </div>
         ) : null}
 
-        {/* Layer 4 — Brand Mark Minimalist */}
-        {brandText ? (
+        {/* Jika mode 'flow': brand mark tampil di bawah quote dengan jeda 84px yang lega */}
+        {brandPlacement === 'flow' && brandText ? (
           <div
             style={{
               opacity: brandAnim.opacity,
@@ -221,136 +354,18 @@ export function LetterHookVideo(props: LetterHookProps) {
               userSelect: 'none',
             }}
           >
-            {/* Style 1: Garis Halus (Editorial Bookend) */}
-            {brandStyle === 'line' && (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 16,
-                  maxWidth: '90%',
-                }}
-              >
-                <div
-                  style={{
-                    width: 36,
-                    height: 1,
-                    background: `linear-gradient(90deg, transparent, ${muted}50)`,
-                    flexShrink: 0,
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: serif,
-                    fontSize: 22,
-                    fontWeight: 500,
-                    letterSpacing: '0.26em',
-                    wordSpacing: '0.35em',
-                    textTransform: 'uppercase',
-                    color: muted,
-                    fontVariantNumeric: 'lining-nums',
-                  }}
-                >
-                  {brandText}
-                </span>
-                <div
-                  style={{
-                    width: 36,
-                    height: 1,
-                    background: `linear-gradient(90deg, ${muted}50, transparent)`,
-                    flexShrink: 0,
-                  }}
-                />
-              </div>
-            )}
-
-            {/* Style 2: Whisper Star / Minimal Imprint */}
-            {brandStyle === 'minimal' && (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 12,
-                }}
-              >
-                <span
-                  style={{
-                    color: accent,
-                    fontSize: 14,
-                    opacity: 0.85,
-                    transform: 'translateY(-1px)',
-                  }}
-                >
-                  ✦
-                </span>
-                <span
-                  style={{
-                    fontFamily: serif,
-                    fontSize: 22,
-                    fontWeight: 500,
-                    letterSpacing: '0.26em',
-                    wordSpacing: '0.35em',
-                    textTransform: 'uppercase',
-                    color: muted,
-                    fontVariantNumeric: 'lining-nums',
-                  }}
-                >
-                  {brandText}
-                </span>
-              </div>
-            )}
-
-            {/* Style 3: Archival Frame [ ] */}
-            {brandStyle === 'bracket' && (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: serif,
-                    fontSize: 21,
-                    color: `${muted}70`,
-                    fontWeight: 300,
-                    transform: 'translateY(-1px)',
-                  }}
-                >
-                  [
-                </span>
-                <span
-                  style={{
-                    fontFamily: serif,
-                    fontSize: 21,
-                    fontWeight: 500,
-                    letterSpacing: '0.24em',
-                    wordSpacing: '0.35em',
-                    textTransform: 'uppercase',
-                    color: muted,
-                    fontVariantNumeric: 'lining-nums',
-                  }}
-                >
-                  {brandText}
-                </span>
-                <span
-                  style={{
-                    fontFamily: serif,
-                    fontSize: 21,
-                    color: `${muted}70`,
-                    fontWeight: 300,
-                    transform: 'translateY(-1px)',
-                  }}
-                >
-                  ]
-                </span>
-              </div>
-            )}
+            {renderBrandMark()}
           </div>
         ) : null}
 
       </div>
+
+      {/* Jika mode 'bottom' (Default): brand watermark anchored di zona bawah aman TikTok, terpisah sangat lega dari quote */}
+      {brandPlacement === 'bottom' && brandText ? (
+        <div style={brandWatermarkStyle}>
+          {renderBrandMark()}
+        </div>
+      ) : null}
 
       {/* Subtle noise texture */}
       <svg

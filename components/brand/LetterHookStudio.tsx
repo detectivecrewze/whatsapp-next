@@ -41,10 +41,18 @@ const ACCENT_OPTIONS: Array<{ id: string; name: string; value: string; muted: st
 
 // ─── Brand mark style presets ────────────────────────────────────────────────
 
-const BRAND_STYLE_OPTIONS: Array<{ id: LetterHookProps['brandStyle']; name: string; preview: string }> = [
+const BRAND_STYLE_OPTIONS: Array<{ id: NonNullable<LetterHookProps['brandStyle']>; name: string; preview: string }> = [
   { id: 'line',    name: 'Garis Halus', preview: '── SURAT ──' },
-  { id: 'minimal', name: 'Minimal',     preview: '✦ SURAT' },
+  { id: 'minimal', name: 'Aksen ✦',    preview: '✦ SURAT' },
   { id: 'bracket', name: 'Archival',    preview: '[ SURAT ]' },
+  { id: 'clean',   name: 'Polos',       preview: 'SURAT' },
+];
+
+// ─── Brand mark placement presets ────────────────────────────────────────────
+
+const BRAND_PLACEMENT_OPTIONS: Array<{ id: NonNullable<LetterHookProps['brandPlacement']>; name: string; desc: string }> = [
+  { id: 'bottom', name: 'Bawah Layar (Watermark)', desc: 'Terpisah lega, di zona aman TikTok' },
+  { id: 'flow',   name: 'Di Bawah Teks',          desc: 'Mengalir di bawah kutipan dengan jeda lega' },
 ];
 
 // ─── Default props ────────────────────────────────────────────────────────────
@@ -55,6 +63,7 @@ const initialProps: LetterHookProps = {
   highlight: 'Justru pada orang yang paling kamu sayang.',
   brandTag: 'surat kehidupan',
   brandStyle: 'line',
+  brandPlacement: 'bottom',
   alignment: 'center',
   background: BG_OPTIONS[0].value,
   ink: '#f3ece4',
@@ -117,6 +126,7 @@ export default function LetterHookStudio() {
             ...savedProps,
             brandTag,
             brandStyle: savedProps.brandStyle ?? 'line',
+            brandPlacement: savedProps.brandPlacement ?? 'bottom',
             alignment: savedProps.alignment ?? 'center',
           }));
           if (savedProps.durationOverride != null) setDurationOverride(savedProps.durationOverride);
@@ -204,6 +214,7 @@ export default function LetterHookStudio() {
   const activeBg = BG_OPTIONS.find((b) => b.value === props.background) ?? BG_OPTIONS[0];
   const activeAccent = ACCENT_OPTIONS.find((o) => o.value === props.accentColor) ?? ACCENT_OPTIONS[0];
   const activeBrandStyle = props.brandStyle || 'line';
+  const activeBrandPlacement = props.brandPlacement || 'bottom';
   const activeAlignment = props.alignment || 'center';
 
   return (
@@ -329,6 +340,24 @@ export default function LetterHookStudio() {
                 ))}
               </div>
             </div>
+
+            {/* Pilihan Posisi Brand Mark */}
+            <div className={styles.brandPlacementRow}>
+              <span>Posisi Brand Mark:</span>
+              <div className={styles.brandPlacementSegment}>
+                {BRAND_PLACEMENT_OPTIONS.map((posOpt) => (
+                  <button
+                    type="button"
+                    key={posOpt.id}
+                    className={`${styles.placementBtn} ${activeBrandPlacement === posOpt.id ? styles.placementBtnActive : ''}`}
+                    onClick={() => update('brandPlacement', posOpt.id)}
+                    title={posOpt.desc}
+                  >
+                    <span>{posOpt.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
           </section>
 
           {/* ── WARNA & LATAR ── */}
@@ -424,14 +453,14 @@ export default function LetterHookStudio() {
           <div className={styles.previewHeader}>
             <div>
               <span>PREVIEW VIDEO</span>
-              <strong>Surat Kehidupan · {activeBg.name} · {activeAlignment === 'left' ? 'Rata Kiri' : 'Rata Tengah'}</strong>
+              <strong>Surat Kehidupan · {activeBg.name} · {activeAlignment === 'left' ? 'Rata Kiri' : 'Rata Tengah'} · {activeBrandPlacement === 'bottom' ? 'Watermark Bawah' : 'Di Bawah Teks'}</strong>
             </div>
             <small>9:16 · 1080p · {effectiveDuration.toFixed(1)}s</small>
           </div>
           <div className={styles.playerStage}>
             <div className={styles.playerFrame}>
               <Player
-                key={`${props.accentColor}-${props.background}-${props.brandStyle}-${activeAlignment}-${effectiveDuration}`}
+                key={`${props.accentColor}-${props.background}-${props.brandStyle}-${activeBrandPlacement}-${activeAlignment}-${effectiveDuration}`}
                 component={LetterHookVideo}
                 inputProps={propsWithDuration}
                 durationInFrames={durationInFrames}
