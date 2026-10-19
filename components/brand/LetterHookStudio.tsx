@@ -3,7 +3,16 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Player } from '@remotion/player';
-import { ArrowLeft, Download, Loader2, RotateCcw, Save, Sparkles } from 'lucide-react';
+import {
+  AlignCenter,
+  AlignLeft,
+  ArrowLeft,
+  Download,
+  Loader2,
+  RotateCcw,
+  Save,
+  Sparkles,
+} from 'lucide-react';
 import { LetterHookVideo, type LetterHookProps } from '@/remotion/brand/LetterHookVideo';
 import styles from '@/app/brand/letter-hook.module.css';
 
@@ -46,6 +55,7 @@ const initialProps: LetterHookProps = {
   highlight: 'Justru pada orang yang paling kamu sayang.',
   brandTag: 'surat kehidupan',
   brandStyle: 'line',
+  alignment: 'center',
   background: BG_OPTIONS[0].value,
   ink: '#f3ece4',
   accentColor: ACCENT_OPTIONS[0].value,
@@ -100,7 +110,6 @@ export default function LetterHookStudio() {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const savedProps = JSON.parse(saved) as Partial<LetterHookProps> & { durationOverride?: number };
-          // Pastikan brandTag tidak memakai default teks tanda tangan lama
           const rawTag = savedProps.brandTag ?? savedProps.signature;
           const brandTag = (!rawTag || rawTag.startsWith('—')) ? 'surat kehidupan' : rawTag;
           setProps((current) => ({
@@ -108,6 +117,7 @@ export default function LetterHookStudio() {
             ...savedProps,
             brandTag,
             brandStyle: savedProps.brandStyle ?? 'line',
+            alignment: savedProps.alignment ?? 'center',
           }));
           if (savedProps.durationOverride != null) setDurationOverride(savedProps.durationOverride);
         }
@@ -194,6 +204,7 @@ export default function LetterHookStudio() {
   const activeBg = BG_OPTIONS.find((b) => b.value === props.background) ?? BG_OPTIONS[0];
   const activeAccent = ACCENT_OPTIONS.find((o) => o.value === props.accentColor) ?? ACCENT_OPTIONS[0];
   const activeBrandStyle = props.brandStyle || 'line';
+  const activeAlignment = props.alignment || 'center';
 
   return (
     <main className={styles.shell}>
@@ -221,15 +232,40 @@ export default function LetterHookStudio() {
           <div className={styles.intro}>
             <div>
               <h1>Hook Quotes · Akun PBA</h1>
-              <p>Ketik teks, preview otomatis. Brand mark tampil minimalis di bawah kalimat sorotan.</p>
+              <p>Ketik teks, preview otomatis. Pilih perataan teks di tengah atau rata kiri seperti brand editorial.</p>
             </div>
           </div>
 
           {/* ── TEKS HOOK ── */}
           <section className={styles.textSection}>
             <div className={styles.sectionHeading}>
-              <div><span>01 · TEKS</span><h2>Isi hook-mu</h2></div>
+              <div><span>01 · TEKS &amp; TATA LETAK</span><h2>Isi teks &amp; perataan</h2></div>
               <Save size={15} className={styles.savedIcon} />
+            </div>
+
+            {/* Pilihan Perataan Teks (Alignment) */}
+            <div className={styles.alignmentRow}>
+              <span>Perataan Teks:</span>
+              <div className={styles.alignmentSegment}>
+                <button
+                  type="button"
+                  className={`${styles.alignBtn} ${activeAlignment === 'center' ? styles.alignBtnActive : ''}`}
+                  onClick={() => update('alignment', 'center')}
+                  title="Rata Tengah"
+                >
+                  <AlignCenter size={14} />
+                  <span>Rata Tengah</span>
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.alignBtn} ${activeAlignment === 'left' ? styles.alignBtnActive : ''}`}
+                  onClick={() => update('alignment', 'left')}
+                  title="Rata Kiri"
+                >
+                  <AlignLeft size={14} />
+                  <span>Rata Kiri</span>
+                </button>
+              </div>
             </div>
 
             <label className={styles.field}>
@@ -388,14 +424,14 @@ export default function LetterHookStudio() {
           <div className={styles.previewHeader}>
             <div>
               <span>PREVIEW VIDEO</span>
-              <strong>Surat Kehidupan · {activeBg.name}</strong>
+              <strong>Surat Kehidupan · {activeBg.name} · {activeAlignment === 'left' ? 'Rata Kiri' : 'Rata Tengah'}</strong>
             </div>
             <small>9:16 · 1080p · {effectiveDuration.toFixed(1)}s</small>
           </div>
           <div className={styles.playerStage}>
             <div className={styles.playerFrame}>
               <Player
-                key={`${props.accentColor}-${props.background}-${props.brandStyle}-${effectiveDuration}`}
+                key={`${props.accentColor}-${props.background}-${props.brandStyle}-${activeAlignment}-${effectiveDuration}`}
                 component={LetterHookVideo}
                 inputProps={propsWithDuration}
                 durationInFrames={durationInFrames}

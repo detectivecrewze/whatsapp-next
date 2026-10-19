@@ -21,6 +21,8 @@ export interface LetterHookProps extends Record<string, unknown> {
   signature?: string;
   /** Gaya visual brand mark: 'line' | 'minimal' | 'bracket' */
   brandStyle?: 'line' | 'minimal' | 'bracket';
+  /** Perataan teks: 'center' | 'left' */
+  alignment?: 'center' | 'left';
   /** Warna latar */
   background: string;
   /** Warna teks utama — default krem */
@@ -93,18 +95,21 @@ export function LetterHookVideo(props: LetterHookProps) {
   const muted      = props.mutedColor  || '#8899b8';
   const brandText  = props.brandTag ?? props.signature;
   const brandStyle = props.brandStyle || 'line';
+  const isLeft     = props.alignment === 'left';
+  const textAlign  = isLeft ? 'left' : 'center';
 
   // ── Safe zone: konten di tengah-atas, ~22% bawah + ~12% kanan bebas
   const safeStyle: React.CSSProperties = {
     position: 'absolute',
     top: '10%',
-    left: '7%',
-    right: '12%',
+    left: isLeft ? '10%' : '7%',
+    right: isLeft ? '14%' : '12%',
     bottom: '22%',
     display: 'flex',
     flexDirection: 'column',
-    alignItems: 'center',
+    alignItems: isLeft ? 'flex-start' : 'center',
     justifyContent: 'center',
+    textAlign,
     gap: 0,
   };
 
@@ -114,7 +119,9 @@ export function LetterHookVideo(props: LetterHookProps) {
       {/* Subtle radial vignette — memberikan kedalaman tanpa gangguan */}
       <AbsoluteFill
         style={{
-          background: `radial-gradient(ellipse at 50% 45%, transparent 42%, rgba(0,0,0,0.55) 100%)`,
+          background: isLeft
+            ? `radial-gradient(ellipse at 42% 45%, transparent 40%, rgba(0,0,0,0.55) 100%)`
+            : `radial-gradient(ellipse at 50% 45%, transparent 42%, rgba(0,0,0,0.55) 100%)`,
           pointerEvents: 'none',
         }}
       />
@@ -145,7 +152,8 @@ export function LetterHookVideo(props: LetterHookProps) {
               fontVariantNumeric: 'lining-nums',
               color: muted,
               textTransform: 'uppercase',
-              textAlign: 'center',
+              textAlign,
+              alignSelf: isLeft ? 'flex-start' : 'center',
               marginBottom: 48,
             }}
           >
@@ -165,7 +173,8 @@ export function LetterHookVideo(props: LetterHookProps) {
               fontWeight: 400,
               lineHeight: 1.38,
               color: ink,
-              textAlign: 'center',
+              textAlign,
+              alignSelf: isLeft ? 'flex-start' : 'center',
               textWrap: 'balance',
               whiteSpace: 'pre-wrap',
               marginBottom: props.highlight ? 44 : (brandText ? 42 : 0),
@@ -187,7 +196,8 @@ export function LetterHookVideo(props: LetterHookProps) {
               fontWeight: 600,
               lineHeight: 1.4,
               color: accent,
-              textAlign: 'center',
+              textAlign,
+              alignSelf: isLeft ? 'flex-start' : 'center',
               textWrap: 'balance',
               whiteSpace: 'pre-wrap',
               marginBottom: brandText ? 44 : 0,
@@ -197,7 +207,7 @@ export function LetterHookVideo(props: LetterHookProps) {
           </div>
         ) : null}
 
-        {/* Layer 4 — Brand Mark Minimalist (tanpa kotak / button kapsul) */}
+        {/* Layer 4 — Brand Mark Minimalist */}
         {brandText ? (
           <div
             style={{
@@ -205,8 +215,8 @@ export function LetterHookVideo(props: LetterHookProps) {
               transform: `translateY(${brandAnim.translateY}px)`,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
+              justifyContent: isLeft ? 'flex-start' : 'center',
+              textAlign,
               width: '100%',
               userSelect: 'none',
             }}
