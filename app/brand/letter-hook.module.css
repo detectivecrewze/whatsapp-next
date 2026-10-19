@@ -186,6 +186,229 @@
   color: #f4c5b4;
 }
 
+/* ── Background Mode Switcher ── */
+.bgModeSegment {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 14px;
+}
+.bgModeBtn {
+  min-height: 36px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 9px;
+  background: #151c22;
+  color: #a89f99;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+}
+.bgModeBtn:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  color: #f1e9e4;
+}
+.bgModeBtnActive {
+  border-color: rgba(226, 166, 145, 0.75) !important;
+  background: rgba(215, 154, 135, 0.14);
+  color: #f4eee9;
+}
+
+/* ── Media Background Section ── */
+.mediaCard {
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 12px;
+  padding: 12px;
+  background: #141a20;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.mediaCardHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.mediaIconBadge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(215, 154, 135, 0.12);
+  color: #dfa690;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.mediaHeaderInfo {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.mediaHeaderInfo strong {
+  font-size: 10px;
+  color: #eee5df;
+  font-weight: 700;
+}
+.mediaHeaderInfo small {
+  font-size: 8px;
+  color: #887e78;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mediaUploadBtn {
+  min-height: 36px;
+  border: 1px dashed rgba(215, 154, 135, 0.38);
+  border-radius: 9px;
+  background: rgba(215, 154, 135, 0.05);
+  color: #dfa690;
+  cursor: pointer;
+  font: inherit;
+  font-size: 9.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  transition: all 0.15s ease;
+  padding: 0 12px;
+}
+.mediaUploadBtn:hover {
+  border-color: rgba(215, 154, 135, 0.65);
+  background: rgba(215, 154, 135, 0.12);
+  color: #f5cfc1;
+}
+.mediaActionsRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+}
+.mediaDeleteBtn {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(220, 80, 80, 0.25);
+  border-radius: 8px;
+  background: rgba(220, 80, 80, 0.08);
+  color: #e58888;
+  cursor: pointer;
+  font: inherit;
+  font-size: 8.5px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+}
+.mediaDeleteBtn:hover {
+  border-color: rgba(220, 80, 80, 0.5);
+  background: rgba(220, 80, 80, 0.18);
+  color: #ffaaaa;
+}
+
+/* ── Visual Sliders & Settings Box ── */
+.mediaSettingsStack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 12px;
+}
+.settingItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.settingLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #bd8c7d;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.settingValueBadge {
+  font-size: 8.5px;
+  color: #e5dad4;
+  font-weight: 600;
+}
+.sliderControl {
+  width: 100%;
+  height: 4px;
+  appearance: none;
+  border-radius: 999px;
+  outline: none;
+  background: #252e37;
+  cursor: pointer;
+}
+.sliderControl::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  appearance: none;
+  border: 2px solid #141a20;
+  border-radius: 999px;
+  background: #dda28e;
+  box-shadow: 0 0 0 1px rgba(215, 154, 135, 0.35);
+  cursor: pointer;
+}
+.quickChipsRow {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.chipBtn {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 3px 7px;
+  background: #182028;
+  color: #928882;
+  cursor: pointer;
+  font: inherit;
+  font-size: 7.5px;
+  font-weight: 600;
+  transition: all 0.12s ease;
+}
+.chipBtn:hover {
+  border-color: rgba(215, 154, 135, 0.3);
+  color: #dfd5cf;
+}
+.chipBtnActive {
+  border-color: rgba(215, 154, 135, 0.6) !important;
+  background: rgba(215, 154, 135, 0.12);
+  color: #f4c5b4;
+}
+
+.twoColsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.selectInput {
+  width: 100%;
+  min-height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 8px;
+  outline: none;
+  background: #1a222a;
+  color: #eee5df;
+  font: inherit;
+  font-size: 9px;
+  padding: 0 8px;
+  cursor: pointer;
+}
+.selectInput:focus {
+  border-color: rgba(215, 154, 135, 0.5);
+}
+
 /* ── Color Groups (Background & Accent) ── */
 .colorGroup {
   margin-bottom: 16px;

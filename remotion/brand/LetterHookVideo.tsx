@@ -1,12 +1,31 @@
 import {
   AbsoluteFill,
   Easing,
+  Img,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
+import { Video } from '@remotion/media';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
+
+export type LetterHookBgMode = 'color' | 'media';
+export type LetterHookBgMotion = 'none' | 'slow-zoom' | 'drift';
+export type LetterHookMediaFit = 'cover' | 'contain';
+
+export interface LetterHookBgMedia {
+  src: string;
+  kind?: 'image' | 'video';
+  name?: string;
+  fit?: LetterHookMediaFit;
+  blur?: number; // 0 - 30px (default 8px)
+  overlayOpacity?: number; // 0.1 - 0.95 (default 0.65)
+  overlayColor?: string; // e.g. '#000000' or palette background
+  motion?: LetterHookBgMotion; // 'none' | 'slow-zoom' | 'drift'
+  focusX?: number; // 0 - 100%
+  focusY?: number; // 0 - 100%
+}
 
 export interface LetterHookProps extends Record<string, unknown> {
   /** "A THOUGHT AT 2 AM" — ketik biasa, tracked-out otomatis lewat CSS */
@@ -25,7 +44,7 @@ export interface LetterHookProps extends Record<string, unknown> {
   brandPlacement?: 'bottom' | 'flow';
   /** Perataan teks: 'center' | 'left' */
   alignment?: 'center' | 'left';
-  /** Warna latar */
+  /** Warna latar (atau warna tint overlay saat pakai foto media) */
   background: string;
   /** Warna teks utama — default krem */
   ink: string;
@@ -35,6 +54,10 @@ export interface LetterHookProps extends Record<string, unknown> {
   mutedColor: string;
   /** Durasi total video dalam detik */
   durationSeconds: number;
+  /** Mode background: 'color' (warna solid) | 'media' (foto movie / visual) */
+  bgMode?: LetterHookBgMode;
+  /** Pengaturan media latar belakang (foto/video, blur, overlay, motion) */
+  bgMedia?: LetterHookBgMedia;
 }
 
 // ─── Font ────────────────────────────────────────────────────────────────────
@@ -100,6 +123,45 @@ export function LetterHookVideo(props: LetterHookProps) {
   const brandPlacement = props.brandPlacement || 'bottom';
   const isLeft         = props.alignment === 'left';
   const textAlign      = isLeft ? 'left' : 'center';
+
+  // ── Background Media Settings ──
+  const isMediaBg = props.bgMode === 'media' && Boolean(props.bgMedia?.src);
+  const media = props.bgMedia;
+  const { durationInFrames } = useVideoConfig();
+
+  const mediaProgress = durationInFrames > 1
+    ? interpolate(frame, [0, durationInFrames - 1], [0, 1], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+      })
+    : 0;
+
+  const motionMode = media?.motion || 'slow-zoom';
+  let mediaScale = 1.05;
+  let mediaTranslateX = 0;
+  let mediaTranslateY = 0;
+
+  if (motionMode === 'slow-zoom') {
+    mediaScale = 1.04 + mediaProgress * 0.10;
+  } else if (motionMode === 'drift') {
+    mediaScale = 1.08;
+    mediaTranslateX = -20 + mediaProgress * 40;
+    mediaTranslateY = 14 - mediaProgress * 28;
+  } else {
+    mediaScale = 1.04;
+  }
+
+  const mediaBlur = media?.blur ?? 8;
+  const mediaFit = media?.fit || 'cover';
+  const focusX = media?.focusX ?? 50;
+  const focusY = media?.focusY ?? 50;
+  const overlayOpacity = media?.overlayOpacity ?? 0.65;
+  const overlayColor = media?.overlayColor || bg;
+
+  // Text shadow to ensure contrast over movie stills or atmospheric photos
+  const textShadow = isMediaBg
+    ? '0 2px 24px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.95)'
+    : undefined;
 
   // ── Safe zone untuk Blok Quote Utama (fokus tengah-atas layar)
   const quoteStyle: React.CSSProperties = {
@@ -249,6 +311,59 @@ export function LetterHookVideo(props: LetterHookProps) {
   return (
     <AbsoluteFill style={{ background: bg, overflow: 'hidden' }}>
 
+      {/* ── Background Media Layer (Foto Movie / Footage / Visual) ── */}
+      {isMediaBg && media?.src ? (
+        <AbsoluteFill style={{ overflow: 'hidden' }}>
+          {media.kind === 'video' ? (
+            <Video
+              src={media.src}
+              muted
+              loop
+              style={{
+                position: 'absolute',
+                inset: -40,
+                width: 'calc(100% + 80px)',
+                height: 'calc(100% + 80px)',
+                objectFit: mediaFit,
+                objectPosition: `${focusX}% ${focusY}%`,
+                transform: `scale(${mediaScale}) translate(${mediaTranslateX}px, ${mediaTranslateY}px)`,
+                filter: mediaBlur > 0 ? `blur(${mediaBlur}px)` : 'none',
+              }}
+            />
+          ) : (
+            <Img
+              src={media.src}
+              style={{
+                position: 'absolute',
+                inset: -40,
+                width: 'calc(100% + 80px)',
+                height: 'calc(100% + 80px)',
+                objectFit: mediaFit,
+                objectPosition: `${focusX}% ${focusY}%`,
+                transform: `scale(${mediaScale}) translate(${mediaTranslateX}px, ${mediaTranslateY}px)`,
+                filter: mediaBlur > 0 ? `blur(${mediaBlur}px)` : 'none',
+              }}
+            />
+          )}
+
+          {/* Color Tint & Darkness Dim Overlay */}
+          <AbsoluteFill
+            style={{
+              backgroundColor: overlayColor,
+              opacity: overlayOpacity,
+            }}
+          />
+
+          {/* Cinematic Center Light & Edge Falloff */}
+          <AbsoluteFill
+            style={{
+              background: 'radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0.12) 15%, rgba(0,0,0,0.68) 100%)',
+              pointerEvents: 'none',
+            }}
+          />
+        </AbsoluteFill>
+      ) : null}
+
       {/* Subtle radial vignette — memberikan kedalaman tanpa gangguan */}
       <AbsoluteFill
         style={{
@@ -287,6 +402,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               textTransform: 'uppercase',
               textAlign,
               alignSelf: isLeft ? 'flex-start' : 'center',
+              textShadow,
               marginBottom: 52,
             }}
           >
@@ -310,6 +426,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               alignSelf: isLeft ? 'flex-start' : 'center',
               textWrap: 'balance',
               whiteSpace: 'pre-wrap',
+              textShadow,
               marginBottom: props.highlight ? 44 : 0,
             } as React.CSSProperties}
           >
@@ -333,6 +450,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               alignSelf: isLeft ? 'flex-start' : 'center',
               textWrap: 'balance',
               whiteSpace: 'pre-wrap',
+              textShadow,
               marginBottom: brandPlacement === 'flow' && brandText ? 84 : 0,
             } as React.CSSProperties}
           >
@@ -352,6 +470,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               textAlign,
               width: '100%',
               userSelect: 'none',
+              filter: textShadow ? 'drop-shadow(0 2px 10px rgba(0,0,0,0.85))' : 'none',
             }}
           >
             {renderBrandMark()}
@@ -362,7 +481,12 @@ export function LetterHookVideo(props: LetterHookProps) {
 
       {/* Jika mode 'bottom' (Default): brand watermark anchored di zona bawah aman TikTok, terpisah sangat lega dari quote */}
       {brandPlacement === 'bottom' && brandText ? (
-        <div style={brandWatermarkStyle}>
+        <div
+          style={{
+            ...brandWatermarkStyle,
+            filter: textShadow ? 'drop-shadow(0 2px 10px rgba(0,0,0,0.85))' : 'none',
+          }}
+        >
           {renderBrandMark()}
         </div>
       ) : null}

@@ -8,12 +8,21 @@ import {
   AlignLeft,
   ArrowLeft,
   Download,
+  Film,
+  Image as ImageIcon,
   Loader2,
   RotateCcw,
   Save,
   Sparkles,
+  Trash2,
+  Upload,
 } from 'lucide-react';
 import { LetterHookVideo, type LetterHookProps } from '@/remotion/brand/LetterHookVideo';
+import {
+  clearBgMediaFromIndexedDB,
+  loadBgMediaFromIndexedDB,
+  saveBgMediaToIndexedDB,
+} from '@/lib/letterHookMediaStorage';
 import styles from '@/app/brand/letter-hook.module.css';
 
 const FPS = 30;
@@ -70,6 +79,19 @@ const initialProps: LetterHookProps = {
   accentColor: ACCENT_OPTIONS[0].value,
   mutedColor: ACCENT_OPTIONS[0].muted,
   durationSeconds: 7,
+  bgMode: 'color',
+  bgMedia: {
+    src: '',
+    name: '',
+    kind: 'image',
+    fit: 'cover',
+    blur: 8,
+    overlayOpacity: 0.65,
+    overlayColor: BG_OPTIONS[0].value,
+    motion: 'slow-zoom',
+    focusX: 50,
+    focusY: 50,
+  },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -112,37 +134,81 @@ export default function LetterHookStudio() {
   const durationInFrames = Math.max(FPS, Math.round(effectiveDuration * FPS));
   const propsWithDuration: LetterHookProps = { ...props, durationSeconds: effectiveDuration };
 
-  // ── Restore dari localStorage ──
+  // ── Restore dari localStorage & IndexedDB ──
   useEffect(() => {
-    const restore = window.setTimeout(() => {
+    let active = true;
+    const restore = window.setTimeout(async () => {
       try {
         const saved = localStorage.getItem(STORAGE_KEY);
+        let restoredBgMode: 'color' | 'media' = 'color';
+        let restoredBgMedia = initialProps.bgMedia;
+
         if (saved) {
           const savedProps = JSON.parse(saved) as Partial<LetterHookProps> & { durationOverride?: number };
           const rawTag = savedProps.brandTag ?? savedProps.signature;
           const brandTag = (!rawTag || rawTag.startsWith('—')) ? 'surat kehidupan' : rawTag;
+          restoredBgMode = savedProps.bgMode ?? 'color';
+          restoredBgMedia = {
+            ...initialProps.bgMedia!,
+            ...(savedProps.bgMedia || {}),
+            src: '',
+          };
+
+          if (active) {
+            setProps((current) => ({
+              ...current,
+              ...savedProps,
+              brandTag,
+              brandStyle: savedProps.brandStyle ?? 'line',
+              brandPlacement: savedProps.brandPlacement ?? 'bottom',
+              alignment: savedProps.alignment ?? 'center',
+              bgMode: restoredBgMode,
+              bgMedia: restoredBgMedia,
+            }));
+            if (savedProps.durationOverride != null) setDurationOverride(savedProps.durationOverride);
+          }
+        }
+
+        // Hydrate file media dari IndexedDB jika ada
+        const stored = await loadBgMediaFromIndexedDB();
+        if (stored && active) {
+          const url = URL.createObjectURL(stored.blob);
           setProps((current) => ({
             ...current,
-            ...savedProps,
-            brandTag,
-            brandStyle: savedProps.brandStyle ?? 'line',
-            brandPlacement: savedProps.brandPlacement ?? 'bottom',
-            alignment: savedProps.alignment ?? 'center',
+            bgMedia: {
+              ...(current.bgMedia || initialProps.bgMedia!),
+              src: url,
+              name: stored.name,
+              kind: stored.kind,
+            },
           }));
-          if (savedProps.durationOverride != null) setDurationOverride(savedProps.durationOverride);
         }
       } catch {
         localStorage.removeItem(STORAGE_KEY);
       }
       didRestore.current = true;
     }, 0);
-    return () => window.clearTimeout(restore);
+
+    return () => {
+      active = false;
+      window.clearTimeout(restore);
+    };
   }, []);
 
-  // ── Auto-save ke localStorage ──
+  // ── Auto-save ke localStorage (tanpa blob URL agar aman dari batas 5MB) ──
   useEffect(() => {
     if (didRestore.current) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...props, durationOverride }));
+      const toSave = {
+        ...props,
+        durationOverride,
+        bgMedia: props.bgMedia
+          ? {
+              ...props.bgMedia,
+              src: '', // disimpan di IndexedDB
+            }
+          : undefined,
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
     }
   }, [props, durationOverride]);
 
@@ -151,11 +217,79 @@ export default function LetterHookStudio() {
   }
 
   function selectBg(option: (typeof BG_OPTIONS)[number]) {
-    setProps((current) => ({ ...current, background: option.value }));
+    setProps((current) => ({
+      ...current,
+      background: option.value,
+      bgMedia: current.bgMedia
+        ? { ...current.bgMedia, overlayColor: option.value }
+        : undefined,
+    }));
   }
 
   function selectAccent(option: (typeof ACCENT_OPTIONS)[number]) {
     setProps((current) => ({ ...current, accentColor: option.value, mutedColor: option.muted }));
+  }
+
+  function updateBgMode(mode: 'color' | 'media') {
+    setProps((current) => ({ ...current, bgMode: mode }));
+  }
+
+  function updateBgMedia<K extends keyof NonNullable<LetterHookProps['bgMedia']>>(
+    key: K,
+    val: NonNullable<LetterHookProps['bgMedia']>[K],
+  ) {
+    setProps((current) => ({
+      ...current,
+      bgMedia: {
+        ...(current.bgMedia || initialProps.bgMedia!),
+        [key]: val,
+      },
+    }));
+  }
+
+  async function handleMediaUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (props.bgMedia?.src && props.bgMedia.src.startsWith('blob:')) {
+      URL.revokeObjectURL(props.bgMedia.src);
+    }
+
+    const objectUrl = URL.createObjectURL(file);
+    const kind: 'image' | 'video' = file.type.startsWith('video/') ? 'video' : 'image';
+
+    // Simpan ke IndexedDB agar tetap ada saat browser di-refresh
+    await saveBgMediaToIndexedDB(file, file.name, kind);
+
+    setProps((current) => ({
+      ...current,
+      bgMode: 'media',
+      bgMedia: {
+        ...(current.bgMedia || initialProps.bgMedia!),
+        src: objectUrl,
+        name: file.name,
+        kind,
+      },
+    }));
+    setStatus(`Media "${file.name}" berhasil dipasang.`);
+  }
+
+  async function handleRemoveMedia() {
+    if (props.bgMedia?.src && props.bgMedia.src.startsWith('blob:')) {
+      URL.revokeObjectURL(props.bgMedia.src);
+    }
+    await clearBgMediaFromIndexedDB();
+    setProps((current) => ({
+      ...current,
+      bgMode: 'color',
+      bgMedia: {
+        ...(current.bgMedia || initialProps.bgMedia!),
+        src: '',
+        name: '',
+      },
+    }));
+    setStatus('Background dikembalikan ke warna polos.');
   }
 
   // ── Export MP4 ──
@@ -204,7 +338,11 @@ export default function LetterHookStudio() {
     }
   }
 
-  function reset() {
+  async function reset() {
+    if (props.bgMedia?.src && props.bgMedia.src.startsWith('blob:')) {
+      URL.revokeObjectURL(props.bgMedia.src);
+    }
+    await clearBgMediaFromIndexedDB();
     setProps(initialProps);
     setDurationOverride(null);
     setStatus('Desain dikembalikan ke contoh awal.');
@@ -216,6 +354,8 @@ export default function LetterHookStudio() {
   const activeBrandStyle = props.brandStyle || 'line';
   const activeBrandPlacement = props.brandPlacement || 'bottom';
   const activeAlignment = props.alignment || 'center';
+  const activeBgMode = props.bgMode || 'color';
+  const activeBgMedia = props.bgMedia || initialProps.bgMedia!;
 
   return (
     <main className={styles.shell}>
@@ -363,33 +503,249 @@ export default function LetterHookStudio() {
           {/* ── WARNA & LATAR ── */}
           <section className={styles.themeSection}>
             <div className={styles.sectionHeading}>
-              <div><span>02 · WARNA &amp; LATAR</span><h2>Warna background &amp; sorotan</h2></div>
+              <div><span>02 · WARNA &amp; LATAR</span><h2>Latar belakang &amp; sorotan</h2></div>
             </div>
 
-            {/* Pilihan Warna Background */}
-            <div className={styles.colorGroup}>
-              <span className={styles.colorGroupLabel}>Warna Latar Belakang (Background)</span>
-              <div className={styles.bgGrid}>
-                {BG_OPTIONS.map((opt) => (
-                  <button
-                    type="button"
-                    key={opt.id}
-                    className={`${styles.bgCard} ${activeBg.id === opt.id ? styles.bgCardActive : ''}`}
-                    onClick={() => selectBg(opt)}
-                    aria-pressed={activeBg.id === opt.id}
-                    title={opt.desc}
-                  >
-                    <span className={styles.bgSwatch} style={{ background: opt.value }} />
-                    <div className={styles.bgInfo}>
-                      <strong>{opt.name}</strong>
-                      <small>{opt.desc}</small>
-                    </div>
-                  </button>
-                ))}
+            {/* Switcher Tipe Background: Warna Solid vs Foto / Movie Media */}
+            <div className={styles.bgModeSegment}>
+              <button
+                type="button"
+                className={`${styles.bgModeBtn} ${activeBgMode === 'color' ? styles.bgModeBtnActive : ''}`}
+                onClick={() => updateBgMode('color')}
+              >
+                <span>🎨 Warna Solid</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.bgModeBtn} ${activeBgMode === 'media' ? styles.bgModeBtnActive : ''}`}
+                onClick={() => updateBgMode('media')}
+              >
+                <Film size={14} />
+                <span>Foto / Movie Media</span>
+              </button>
+            </div>
+
+            {/* Jika Mode Warna Solid: Pilihan Warna Background Preset */}
+            {activeBgMode === 'color' ? (
+              <div className={styles.colorGroup}>
+                <span className={styles.colorGroupLabel}>Pilihan Warna Latar (Background)</span>
+                <div className={styles.bgGrid}>
+                  {BG_OPTIONS.map((opt) => (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      className={`${styles.bgCard} ${activeBg.id === opt.id ? styles.bgCardActive : ''}`}
+                      onClick={() => selectBg(opt)}
+                      aria-pressed={activeBg.id === opt.id}
+                      title={opt.desc}
+                    >
+                      <span className={styles.bgSwatch} style={{ background: opt.value }} />
+                      <div className={styles.bgInfo}>
+                        <strong>{opt.name}</strong>
+                        <small>{opt.desc}</small>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Jika Mode Media: Panel Upload & Kontrol Visual Movie/Photo */
+              <div className={styles.mediaCard}>
+                <div className={styles.mediaCardHeader}>
+                  <div className={styles.mediaIconBadge}>
+                    {activeBgMedia.kind === 'video' ? <Film size={16} /> : <ImageIcon size={16} />}
+                  </div>
+                  <div className={styles.mediaHeaderInfo}>
+                    <strong>{activeBgMedia.name || 'Belum ada media'}</strong>
+                    <small>
+                      {activeBgMedia.src
+                        ? `${activeBgMedia.kind === 'video' ? 'Video' : 'Foto'} terpasang`
+                        : 'Upload foto adegan film, screenshot, atau foto aesthetic'}
+                    </small>
+                  </div>
+                </div>
 
-            {/* Pilihan Warna Sorotan */}
+                {activeBgMedia.src ? (
+                  <div className={styles.mediaActionsRow}>
+                    <label className={styles.mediaUploadBtn}>
+                      <Upload size={14} />
+                      Ganti Foto / Video
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        hidden
+                        onChange={handleMediaUpload}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className={styles.mediaDeleteBtn}
+                      onClick={handleRemoveMedia}
+                      title="Hapus media background"
+                    >
+                      <Trash2 size={13} />
+                      Hapus
+                    </button>
+                  </div>
+                ) : (
+                  <label className={styles.mediaUploadBtn} style={{ minHeight: 46 }}>
+                    <Upload size={16} />
+                    Pilih Foto / Movie Screenshot
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      hidden
+                      onChange={handleMediaUpload}
+                    />
+                  </label>
+                )}
+
+                {/* Pengaturan Visual Efek Foto/Video */}
+                {activeBgMedia.src ? (
+                  <div className={styles.mediaSettingsStack}>
+
+                    {/* 1. Blur Slider & Quick Chips */}
+                    <div className={styles.settingItem}>
+                      <div className={styles.settingLabelRow}>
+                        <span>Blur Background</span>
+                        <span className={styles.settingValueBadge}>{activeBgMedia.blur ?? 8}px</span>
+                      </div>
+                      <input
+                        className={styles.sliderControl}
+                        type="range"
+                        min={0}
+                        max={30}
+                        step={1}
+                        value={activeBgMedia.blur ?? 8}
+                        onChange={(e) => updateBgMedia('blur', Number(e.target.value))}
+                      />
+                      <div className={styles.quickChipsRow}>
+                        {[
+                          { label: '0px (Jernih)', val: 0 },
+                          { label: '6px (Halus)', val: 6 },
+                          { label: '12px (Sinematik)', val: 12 },
+                          { label: '20px (Pekat)', val: 20 },
+                        ].map((chip) => (
+                          <button
+                            type="button"
+                            key={chip.val}
+                            className={`${styles.chipBtn} ${activeBgMedia.blur === chip.val ? styles.chipBtnActive : ''}`}
+                            onClick={() => updateBgMedia('blur', chip.val)}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 2. Overlay Opacity Slider & Quick Chips */}
+                    <div className={styles.settingItem}>
+                      <div className={styles.settingLabelRow}>
+                        <span>Lapisan Gelap (Dim / Kontras Teks)</span>
+                        <span className={styles.settingValueBadge}>
+                          {Math.round((activeBgMedia.overlayOpacity ?? 0.65) * 100)}%
+                        </span>
+                      </div>
+                      <input
+                        className={styles.sliderControl}
+                        type="range"
+                        min={0.10}
+                        max={0.95}
+                        step={0.05}
+                        value={activeBgMedia.overlayOpacity ?? 0.65}
+                        onChange={(e) => updateBgMedia('overlayOpacity', Number(e.target.value))}
+                      />
+                      <div className={styles.quickChipsRow}>
+                        {[
+                          { label: '45% (Terang)', val: 0.45 },
+                          { label: '65% (Seimbang)', val: 0.65 },
+                          { label: '85% (Fokus Teks)', val: 0.85 },
+                        ].map((chip) => (
+                          <button
+                            type="button"
+                            key={chip.val}
+                            className={`${styles.chipBtn} ${Math.abs((activeBgMedia.overlayOpacity ?? 0.65) - chip.val) < 0.02 ? styles.chipBtnActive : ''}`}
+                            onClick={() => updateBgMedia('overlayOpacity', chip.val)}
+                          >
+                            {chip.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. Gerakan Sinematik & Tampilan Fit */}
+                    <div className={styles.twoColsRow}>
+                      <div className={styles.settingItem}>
+                        <div className={styles.settingLabelRow}>
+                          <span>Gerakan (Motion)</span>
+                        </div>
+                        <select
+                          className={styles.selectInput}
+                          value={activeBgMedia.motion || 'slow-zoom'}
+                          onChange={(e) => updateBgMedia('motion', e.target.value as any)}
+                        >
+                          <option value="slow-zoom">Slow Zoom (Sinematik)</option>
+                          <option value="drift">Drift (Panning)</option>
+                          <option value="none">Diam (Static)</option>
+                        </select>
+                      </div>
+
+                      <div className={styles.settingItem}>
+                        <div className={styles.settingLabelRow}>
+                          <span>Tampilan Media</span>
+                        </div>
+                        <select
+                          className={styles.selectInput}
+                          value={activeBgMedia.fit || 'cover'}
+                          onChange={(e) => updateBgMedia('fit', e.target.value as any)}
+                        >
+                          <option value="cover">Penuhi Layar (Cover)</option>
+                          <option value="contain">Tampilkan Utuh (Fit)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* 4. Posisi Fokus Vertikal (Y) & Horizontal (X) */}
+                    <div className={styles.twoColsRow}>
+                      <div className={styles.settingItem}>
+                        <div className={styles.settingLabelRow}>
+                          <span>Fokus Vertikal (Y)</span>
+                          <span className={styles.settingValueBadge}>{activeBgMedia.focusY ?? 50}%</span>
+                        </div>
+                        <input
+                          className={styles.sliderControl}
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={activeBgMedia.focusY ?? 50}
+                          onChange={(e) => updateBgMedia('focusY', Number(e.target.value))}
+                        />
+                      </div>
+
+                      <div className={styles.settingItem}>
+                        <div className={styles.settingLabelRow}>
+                          <span>Fokus Horizontal (X)</span>
+                          <span className={styles.settingValueBadge}>{activeBgMedia.focusX ?? 50}%</span>
+                        </div>
+                        <input
+                          className={styles.sliderControl}
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={5}
+                          value={activeBgMedia.focusX ?? 50}
+                          onChange={(e) => updateBgMedia('focusX', Number(e.target.value))}
+                        />
+                      </div>
+                    </div>
+
+                  </div>
+                ) : null}
+              </div>
+            )}
+
+            {/* Pilihan Warna Sorotan (Highlight) */}
             <div className={styles.colorGroup}>
               <span className={styles.colorGroupLabel}>Warna Kalimat Sorotan (Highlight)</span>
               <div className={styles.accentGrid}>
@@ -408,7 +764,11 @@ export default function LetterHookStudio() {
               </div>
             </div>
 
-            <p className={styles.tabHint}>Warna label dan brand mark menyesuaikan otomatis agar kontras tetap tajam.</p>
+            <p className={styles.tabHint}>
+              {activeBgMode === 'media'
+                ? 'Tip: Naikkan blur dan kegelapan lapisan jika teks adegan film bertabrakan dengan gambar terang.'
+                : 'Warna label dan brand mark menyesuaikan otomatis agar kontras tetap tajam.'}
+            </p>
           </section>
 
           {/* ── TEMPO / DURASI ── */}
@@ -453,14 +813,16 @@ export default function LetterHookStudio() {
           <div className={styles.previewHeader}>
             <div>
               <span>PREVIEW VIDEO</span>
-              <strong>Surat Kehidupan · {activeBg.name} · {activeAlignment === 'left' ? 'Rata Kiri' : 'Rata Tengah'} · {activeBrandPlacement === 'bottom' ? 'Watermark Bawah' : 'Di Bawah Teks'}</strong>
+              <strong>
+                Surat Kehidupan · {activeBgMode === 'media' ? (activeBgMedia.name ? `Movie Media (${activeBgMedia.name})` : 'Foto Background') : activeBg.name} · {activeAlignment === 'left' ? 'Rata Kiri' : 'Rata Tengah'} · {activeBrandPlacement === 'bottom' ? 'Watermark' : 'Flow'}
+              </strong>
             </div>
             <small>9:16 · 1080p · {effectiveDuration.toFixed(1)}s</small>
           </div>
           <div className={styles.playerStage}>
             <div className={styles.playerFrame}>
               <Player
-                key={`${props.accentColor}-${props.background}-${props.brandStyle}-${activeBrandPlacement}-${activeAlignment}-${effectiveDuration}`}
+                key={`${props.accentColor}-${props.background}-${props.brandStyle}-${activeBrandPlacement}-${activeAlignment}-${effectiveDuration}-${activeBgMode}-${activeBgMedia.src}-${activeBgMedia.blur}-${activeBgMedia.overlayOpacity}-${activeBgMedia.motion}-${activeBgMedia.focusX}-${activeBgMedia.focusY}-${activeBgMedia.fit}`}
                 component={LetterHookVideo}
                 inputProps={propsWithDuration}
                 durationInFrames={durationInFrames}
