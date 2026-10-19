@@ -25,7 +25,8 @@ const initialProps: LetterHookProps = {
   label: 'A THOUGHT AT 2 AM',
   line1: 'Pernah nggak, merasa tidak pantas\npada orang yang paling kamu sayang?',
   highlight: 'Justru pada orang yang paling kamu sayang.',
-  signature: '— dari seseorang yang pernah merasakannya',
+  brandTag: 'surat kehidupan',
+  brandStyle: 'pill',
   background: '#0b1628',
   ink: '#f3ece4',
   accentColor: ACCENT_OPTIONS[0].value,
@@ -37,7 +38,8 @@ const initialProps: LetterHookProps = {
 
 /** Hitung durasi otomatis berdasarkan panjang teks */
 function autoDuration(p: LetterHookProps): number {
-  const totalChars = (p.label?.length ?? 0) + (p.line1?.length ?? 0) + (p.highlight?.length ?? 0) + (p.signature?.length ?? 0);
+  const brandVal = p.brandTag ?? p.signature ?? '';
+  const totalChars = (p.label?.length ?? 0) + (p.line1?.length ?? 0) + (p.highlight?.length ?? 0) + (brandVal.length ?? 0);
   // ~0.045 detik per karakter + 2.5 detik hold di akhir, min 5s max 12s
   return Math.min(12, Math.max(5, Math.round((totalChars * 0.045 + 2.5) * 2) / 2));
 }
@@ -80,7 +82,13 @@ export default function LetterHookStudio() {
         const saved = localStorage.getItem(STORAGE_KEY);
         if (saved) {
           const savedProps = JSON.parse(saved) as Partial<LetterHookProps> & { durationOverride?: number };
-          setProps((current) => ({ ...current, ...savedProps }));
+          const brandTag = savedProps.brandTag ?? (savedProps.signature && !savedProps.signature.includes('—') ? savedProps.signature : 'surat kehidupan');
+          setProps((current) => ({
+            ...current,
+            ...savedProps,
+            brandTag,
+            brandStyle: savedProps.brandStyle ?? 'pill',
+          }));
           if (savedProps.durationOverride != null) setDurationOverride(savedProps.durationOverride);
         }
       } catch {
@@ -187,7 +195,7 @@ export default function LetterHookStudio() {
           <div className={styles.intro}>
             <div>
               <h1>Hook Quotes · Akun PBA</h1>
-              <p>Ketik teks, preview otomatis. Tanda tangan dan label opsional — kosongkan kalau tidak perlu.</p>
+              <p>Ketik teks, preview otomatis. Brand tag tampil minimalis di bawah hook — kosongkan kalau tidak perlu.</p>
             </div>
           </div>
 
@@ -231,14 +239,45 @@ export default function LetterHookStudio() {
             </label>
 
             <label className={styles.field}>
-              Tanda tangan <span className={styles.fieldHint}>(opsional)</span>
+              Brand Tag / Watermark <span className={styles.fieldHint}>(opsional, nama akun/brand)</span>
               <input
-                value={props.signature}
-                onChange={(e) => update('signature', e.target.value)}
-                placeholder="— dari seseorang yang pernah merasakannya"
-                maxLength={90}
+                value={props.brandTag ?? props.signature ?? ''}
+                onChange={(e) => {
+                  update('brandTag', e.target.value);
+                  update('signature', e.target.value);
+                }}
+                placeholder="surat kehidupan"
+                maxLength={60}
               />
             </label>
+
+            {/* Pilihan gaya visual Brand Tag */}
+            <div className={styles.brandStyleSelector}>
+              <span className={styles.fieldHint}>Desain brand tag:</span>
+              <div className={styles.brandStyleGrid}>
+                <button
+                  type="button"
+                  className={`${styles.styleBtn} ${(props.brandStyle || 'pill') === 'pill' ? styles.styleBtnActive : ''}`}
+                  onClick={() => update('brandStyle', 'pill')}
+                >
+                  Capsule Pill
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.styleBtn} ${props.brandStyle === 'line' ? styles.styleBtnActive : ''}`}
+                  onClick={() => update('brandStyle', 'line')}
+                >
+                  Garis Halus
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.styleBtn} ${props.brandStyle === 'minimal' ? styles.styleBtnActive : ''}`}
+                  onClick={() => update('brandStyle', 'minimal')}
+                >
+                  Teks Polos ✦
+                </button>
+              </div>
+            </div>
           </section>
 
           {/* ── WARNA SOROTAN ── */}
@@ -260,7 +299,7 @@ export default function LetterHookStudio() {
                 </button>
               ))}
             </div>
-            <p className={styles.tabHint}>Warna label dan tanda tangan menyesuaikan otomatis.</p>
+            <p className={styles.tabHint}>Warna label dan aksen brand tag menyesuaikan otomatis.</p>
           </section>
 
           {/* ── TEMPO / DURASI ── */}
@@ -312,7 +351,7 @@ export default function LetterHookStudio() {
           <div className={styles.playerStage}>
             <div className={styles.playerFrame}>
               <Player
-                key={`${props.accentColor}-${effectiveDuration}`}
+                key={`${props.accentColor}-${props.brandStyle}-${effectiveDuration}`}
                 component={LetterHookVideo}
                 inputProps={propsWithDuration}
                 durationInFrames={durationInFrames}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import {
+  Caveat,
   Cormorant_Garamond,
   IBM_Plex_Mono,
   Inter,
@@ -10,6 +11,12 @@ import './globals.css';
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
+});
+
+const caveat = Caveat({
+  subsets: ['latin'],
+  variable: '--font-caveat',
   display: 'swap',
 });
 
@@ -58,7 +65,7 @@ export default function RootLayout({
   return (
     <html
       lang="id"
-      className={`${inter.variable} ${cormorant.variable} ${playfair.variable} ${ibmPlexMono.variable}`}
+      className={`${inter.variable} ${cormorant.variable} ${playfair.variable} ${ibmPlexMono.variable} ${caveat.variable}`}
     >
       <body className="font-sans bg-wa-bg text-white antialiased">
         {children}

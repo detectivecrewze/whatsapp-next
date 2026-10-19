@@ -1544,6 +1544,7 @@ export default function BrandStudio() {
         <nav className={styles.modeSwitch} aria-label="Pilih studio">
           <Link href="/" className={styles.modeLink}>WhatsApp Story</Link>
           <span className={styles.modeActive}>Brand Studio</span>
+          <Link href="/brand/surat" className={styles.modeLink}>Surat Kehidupan</Link>
         </nav>
 
         <div className={styles.topActions}>
@@ -1559,6 +1560,10 @@ export default function BrandStudio() {
       <div className={styles.workspace}>
         <aside className={styles.navigation}>
           <Link href="/" className={styles.backLink}><ArrowLeft size={15} /> Kembali ke WhatsApp</Link>
+          <Link href="/brand/surat" className={styles.letterHookLink} aria-label="Buka Surat Kehidupan Hook Maker" title="Surat Kehidupan · Hook puitis">
+            <span><Type size={15} /></span>
+            <div><strong>Surat Kehidupan</strong><small>Hook puitis & handwritten</small></div>
+          </Link>
           <div className={styles.projectCard}>
             <span>{currentTemplate.badge}</span>
             <strong>{state.outputMode === 'hook' ? state.copy.hookTitle : state.copy.productName}</strong>
