@@ -10,6 +10,17 @@ import styles from '@/app/brand/letter-hook.module.css';
 const FPS = 30;
 const STORAGE_KEY = 'fya-letter-hook-v2';
 
+// ─── Background color presets ────────────────────────────────────────────────
+
+const BG_OPTIONS: Array<{ id: string; name: string; value: string; desc: string }> = [
+  { id: 'navy',      name: 'Midnight Navy',  value: '#0b1628', desc: 'Biru malam puitis' },
+  { id: 'charcoal',  name: 'Obsidian Black', value: '#101216', desc: 'Hitam pekat netral' },
+  { id: 'burgundy',  name: 'Deep Burgundy',  value: '#1c0f16', desc: 'Plum anggur gelap' },
+  { id: 'forest',    name: 'Forest Emerald', value: '#0c1713', desc: 'Hijau lumut malam' },
+  { id: 'espresso',  name: 'Dark Espresso',  value: '#18110e', desc: 'Coklat kopi gelap' },
+  { id: 'twilight',  name: 'Slate Twilight', value: '#0e1820', desc: 'Abu kabut malam' },
+];
+
 // ─── Accent color presets ────────────────────────────────────────────────────
 
 const ACCENT_OPTIONS: Array<{ id: string; name: string; value: string; muted: string }> = [
@@ -26,7 +37,7 @@ const initialProps: LetterHookProps = {
   line1: 'Pernah nggak, merasa tidak pantas\npada orang yang paling kamu sayang?',
   highlight: 'Justru pada orang yang paling kamu sayang.',
   signature: '— dari seseorang yang pernah merasakannya',
-  background: '#0b1628',
+  background: BG_OPTIONS[0].value,
   ink: '#f3ece4',
   accentColor: ACCENT_OPTIONS[0].value,
   mutedColor: ACCENT_OPTIONS[0].muted,
@@ -102,6 +113,10 @@ export default function LetterHookStudio() {
     setProps((current) => ({ ...current, [key]: value }));
   }
 
+  function selectBg(option: (typeof BG_OPTIONS)[number]) {
+    setProps((current) => ({ ...current, background: option.value }));
+  }
+
   function selectAccent(option: (typeof ACCENT_OPTIONS)[number]) {
     setProps((current) => ({ ...current, accentColor: option.value, mutedColor: option.muted }));
   }
@@ -158,7 +173,8 @@ export default function LetterHookStudio() {
     setStatus('Desain dikembalikan ke contoh awal.');
   }
 
-  // Cari accent option yang aktif (untuk highlight pilihan)
+  // Cari preset yang aktif
+  const activeBg = BG_OPTIONS.find((b) => b.value === props.background) ?? BG_OPTIONS[0];
   const activeAccent = ACCENT_OPTIONS.find((o) => o.value === props.accentColor) ?? ACCENT_OPTIONS[0];
 
   return (
@@ -241,26 +257,55 @@ export default function LetterHookStudio() {
             </label>
           </section>
 
-          {/* ── WARNA SOROTAN ── */}
+          {/* ── WARNA & LATAR ── */}
           <section className={styles.themeSection}>
             <div className={styles.sectionHeading}>
-              <div><span>02 · WARNA</span><h2>Warna kalimat sorotan</h2></div>
+              <div><span>02 · WARNA &amp; LATAR</span><h2>Warna background &amp; sorotan</h2></div>
             </div>
-            <div className={styles.accentGrid}>
-              {ACCENT_OPTIONS.map((opt) => (
-                <button
-                  type="button"
-                  key={opt.id}
-                  className={`${styles.accentCard} ${activeAccent.id === opt.id ? styles.accentActive : ''}`}
-                  onClick={() => selectAccent(opt)}
-                  aria-pressed={activeAccent.id === opt.id}
-                >
-                  <span className={styles.accentDot} style={{ background: opt.value }} />
-                  <span>{opt.name}</span>
-                </button>
-              ))}
+
+            {/* Pilihan Warna Background */}
+            <div className={styles.colorGroup}>
+              <span className={styles.colorGroupLabel}>Warna Latar Belakang (Background)</span>
+              <div className={styles.bgGrid}>
+                {BG_OPTIONS.map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.id}
+                    className={`${styles.bgCard} ${activeBg.id === opt.id ? styles.bgCardActive : ''}`}
+                    onClick={() => selectBg(opt)}
+                    aria-pressed={activeBg.id === opt.id}
+                    title={opt.desc}
+                  >
+                    <span className={styles.bgSwatch} style={{ background: opt.value }} />
+                    <div className={styles.bgInfo}>
+                      <strong>{opt.name}</strong>
+                      <small>{opt.desc}</small>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
-            <p className={styles.tabHint}>Warna label dan tanda tangan menyesuaikan otomatis.</p>
+
+            {/* Pilihan Warna Sorotan */}
+            <div className={styles.colorGroup}>
+              <span className={styles.colorGroupLabel}>Warna Kalimat Sorotan (Highlight)</span>
+              <div className={styles.accentGrid}>
+                {ACCENT_OPTIONS.map((opt) => (
+                  <button
+                    type="button"
+                    key={opt.id}
+                    className={`${styles.accentCard} ${activeAccent.id === opt.id ? styles.accentActive : ''}`}
+                    onClick={() => selectAccent(opt)}
+                    aria-pressed={activeAccent.id === opt.id}
+                  >
+                    <span className={styles.accentDot} style={{ background: opt.value }} />
+                    <span>{opt.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <p className={styles.tabHint}>Warna teks utama tetap krem hangat, kontras tinggi dan nyaman di mata pembaca.</p>
           </section>
 
           {/* ── TEMPO / DURASI ── */}
@@ -305,14 +350,14 @@ export default function LetterHookStudio() {
           <div className={styles.previewHeader}>
             <div>
               <span>PREVIEW VIDEO</span>
-              <strong>Surat Kehidupan · Akun PBA</strong>
+              <strong>Surat Kehidupan · {activeBg.name}</strong>
             </div>
             <small>9:16 · 1080p · {effectiveDuration.toFixed(1)}s</small>
           </div>
           <div className={styles.playerStage}>
             <div className={styles.playerFrame}>
               <Player
-                key={`${props.accentColor}-${effectiveDuration}`}
+                key={`${props.accentColor}-${props.background}-${effectiveDuration}`}
                 component={LetterHookVideo}
                 inputProps={propsWithDuration}
                 durationInFrames={durationInFrames}
