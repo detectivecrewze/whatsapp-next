@@ -1,7 +1,7 @@
 import {
   AbsoluteFill,
+  CanvasImage,
   Easing,
-  Img,
   interpolate,
   useCurrentFrame,
   useVideoConfig,
@@ -319,6 +319,8 @@ export function LetterHookVideo(props: LetterHookProps) {
               src={media.src}
               muted
               loop
+              premountFor={fps}
+              objectFit={mediaFit}
               style={{
                 position: 'absolute',
                 inset: -40,
@@ -331,14 +333,15 @@ export function LetterHookVideo(props: LetterHookProps) {
               }}
             />
           ) : (
-            <Img
+            <CanvasImage
               src={media.src}
+              premountFor={fps}
+              fit={mediaFit}
               style={{
                 position: 'absolute',
                 inset: -40,
                 width: 'calc(100% + 80px)',
                 height: 'calc(100% + 80px)',
-                objectFit: mediaFit,
                 objectPosition: `${focusX}% ${focusY}%`,
                 transform: `scale(${mediaScale}) translate(${mediaTranslateX}px, ${mediaTranslateY}px)`,
                 filter: mediaBlur > 0 ? `blur(${mediaBlur}px)` : 'none',
@@ -491,27 +494,16 @@ export function LetterHookVideo(props: LetterHookProps) {
         </div>
       ) : null}
 
-      {/* Subtle noise texture */}
-      <svg
-        aria-hidden="true"
-        viewBox="0 0 100 100"
-        preserveAspectRatio="none"
+      {/* Subtle noise texture — aman dan kompatibel dengan offscreen canvas web-renderer */}
+      <AbsoluteFill
         style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
           opacity: 0.055,
           mixBlendMode: 'screen',
           pointerEvents: 'none',
+          backgroundImage:
+            'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'120\' height=\'120\' viewBox=\'0 0 120 120\'%3E%3Cfilter id=\'n\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'.8\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23n)\' opacity=\'.12\'/%3E%3C/svg%3E")',
         }}
-      >
-        <filter id="pba-noise" x="0" y="0" width="100%" height="100%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="2" stitchTiles="stitch" />
-          <feColorMatrix type="saturate" values="0" />
-        </filter>
-        <rect width="100%" height="100%" filter="url(#pba-noise)" fill="white" />
-      </svg>
+      />
 
     </AbsoluteFill>
   );

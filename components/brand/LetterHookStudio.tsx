@@ -7,6 +7,7 @@ import {
   AlignCenter,
   AlignLeft,
   ArrowLeft,
+  CheckCircle2,
   Download,
   Film,
   Image as ImageIcon,
@@ -15,7 +16,9 @@ import {
   Save,
   Sparkles,
   Trash2,
+  TriangleAlert,
   Upload,
+  X,
 } from 'lucide-react';
 import { LetterHookVideo, type LetterHookProps } from '@/remotion/brand/LetterHookVideo';
 import {
@@ -23,6 +26,12 @@ import {
   loadBgMediaFromIndexedDB,
   saveBgMediaToIndexedDB,
 } from '@/lib/letterHookMediaStorage';
+import {
+  assertLetterHookRenderSupport,
+  downloadLetterHookVideo,
+  letterHookFileName,
+  renderLetterHookVideo,
+} from '@/lib/renderLetterHookVideo';
 import styles from '@/app/brand/letter-hook.module.css';
 
 const FPS = 30;
@@ -103,21 +112,7 @@ function autoDuration(p: LetterHookProps): number {
   return Math.min(12, Math.max(5, Math.round((totalChars * 0.045 + 2.5) * 2) / 2));
 }
 
-function downloadFile(blob: Blob, label: string) {
-  const slug = label
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-    .slice(0, 40) || 'surat-kehidupan';
-  const url = URL.createObjectURL(blob);
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = `pba-${slug}.mp4`;
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
-}
+type ExportStatus = 'idle' | 'checking' | 'rendering' | 'done' | 'error';
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -125,8 +120,10 @@ export default function LetterHookStudio() {
   const [props, setProps] = useState<LetterHookProps>(initialProps);
   const [durationOverride, setDurationOverride] = useState<number | null>(null);
   const didRestore = useRef(false);
-  const [exporting, setExporting] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [exportStatus, setExportStatus] = useState<ExportStatus>('idle');
+  const [exportProgress, setExportProgress] = useState(0);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportSuccess, setExportSuccess] = useState<string | null>(null);
   const [status, setStatus] = useState('');
 
   // Durasi efektif: pakai override jika ada, atau hitung otomatis
@@ -294,47 +291,33 @@ export default function LetterHookStudio() {
 
   // ── Export MP4 ──
   async function exportVideo() {
-    if (exporting) return;
-    setExporting(true);
-    setProgress(0);
-    setStatus('Memeriksa dukungan export…');
+    if (exportStatus === 'checking' || exportStatus === 'rendering') return;
+    setExportStatus('checking');
+    setExportProgress(0);
+    setExportError(null);
+    setExportSuccess(null);
+    setStatus('Memeriksa dukungan export browser…');
+
     try {
-      const { canRenderMediaOnWeb, renderMediaOnWeb } = await import('@remotion/web-renderer');
-      const support = await canRenderMediaOnWeb({ container: 'mp4', videoCodec: 'h264', muted: true, width: 1080, height: 1920 });
-      if (!support.canRender) {
-        const issue = support.issues.find((entry) => entry.severity === 'error');
-        throw new Error(issue?.message || 'Browser belum mendukung export MP4. Coba Chrome atau Edge terbaru.');
-      }
-      setStatus('Membuat MP4 HD…');
-      const result = await renderMediaOnWeb({
-        licenseKey: 'free-license',
-        composition: {
-          id: 'FYALetterHook',
-          component: LetterHookVideo,
-          durationInFrames,
-          fps: FPS,
-          width: 1080,
-          height: 1920,
-          calculateMetadata: null,
-          defaultProps: propsWithDuration,
-        },
-        inputProps: propsWithDuration,
-        container: 'mp4',
-        videoCodec: 'h264',
-        muted: true,
-        videoBitrate: 12_000_000,
-        hardwareAcceleration: 'prefer-hardware',
-        pageResponsiveness: 'medium',
-        delayRenderTimeoutInMilliseconds: 120_000,
-        onProgress: ({ progress: next }) => setProgress(Math.round(Math.min(1, Math.max(0, next)) * 100)),
+      await assertLetterHookRenderSupport();
+      setExportStatus('rendering');
+      setStatus('Sedang rendering video MP4 HD…');
+
+      const blob = await renderLetterHookVideo(propsWithDuration, durationInFrames, (p) => {
+        setExportProgress(p);
       });
-      downloadFile(await result.getBlob(), props.line1 || props.label || 'surat-kehidupan');
-      setProgress(100);
+
+      downloadLetterHookVideo(blob, propsWithDuration);
+      setExportProgress(100);
+      setExportStatus('done');
+      const fileName = letterHookFileName(propsWithDuration);
+      setExportSuccess(`Video "${fileName}" berhasil dibuat dan diunduh.`);
       setStatus('MP4 HD berhasil dibuat.');
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Export video gagal.');
-    } finally {
-      setExporting(false);
+    } catch (caughtError) {
+      setExportStatus('error');
+      const message = caughtError instanceof Error ? caughtError.message : 'Export video gagal.';
+      setExportError(message);
+      setStatus(message);
     }
   }
 
@@ -369,17 +352,96 @@ export default function LetterHookStudio() {
           </span>
         </div>
         <div className={styles.actions}>
-          <button type="button" className={styles.reset} onClick={reset}><RotateCcw size={14} /> Reset</button>
-          <button type="button" className={styles.export} onClick={() => void exportVideo()} disabled={exporting}>
-            {exporting ? <Loader2 size={15} className={styles.spin} /> : <Download size={15} />}
-            {exporting ? `Export ${progress}%` : 'Export MP4 HD'}
+          <button
+            type="button"
+            className={styles.reset}
+            onClick={reset}
+            disabled={exportStatus === 'checking' || exportStatus === 'rendering'}
+          >
+            <RotateCcw size={14} /> Reset
+          </button>
+          <button
+            type="button"
+            className={styles.export}
+            onClick={() => void exportVideo()}
+            disabled={exportStatus === 'checking' || exportStatus === 'rendering'}
+          >
+            {exportStatus === 'checking' ? (
+              <>
+                <Loader2 size={15} className={styles.spin} />
+                <span>Memeriksa…</span>
+              </>
+            ) : exportStatus === 'rendering' ? (
+              <>
+                <Loader2 size={15} className={styles.spin} />
+                <span>Export {exportProgress}%</span>
+              </>
+            ) : exportStatus === 'done' ? (
+              <>
+                <CheckCircle2 size={15} />
+                <span>Export Lagi</span>
+              </>
+            ) : (
+              <>
+                <Download size={15} />
+                <span>Export MP4 HD</span>
+              </>
+            )}
           </button>
         </div>
+
+        {/* Topbar progress line during rendering */}
+        {exportStatus === 'rendering' ? (
+          <div className={styles.topProgressBar}>
+            <div
+              className={styles.topProgressIndicator}
+              style={{ width: `${Math.max(4, exportProgress)}%` }}
+            />
+          </div>
+        ) : null}
       </header>
 
       <div className={styles.workspace}>
         {/* ── EDITOR PANEL ── */}
         <section className={styles.editor}>
+          {/* Error Alert Banner */}
+          {exportError ? (
+            <div className={styles.alertBannerError}>
+              <TriangleAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <strong style={{ display: 'block', marginBottom: 2 }}>Export Video Gagal</strong>
+                <span>{exportError}</span>
+              </div>
+              <button
+                type="button"
+                className={styles.alertCloseBtn}
+                onClick={() => setExportError(null)}
+                title="Tutup pesan"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : null}
+
+          {/* Success Banner */}
+          {exportSuccess ? (
+            <div className={styles.alertBannerSuccess}>
+              <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ flex: 1 }}>
+                <strong style={{ display: 'block', marginBottom: 2 }}>Export Berhasil!</strong>
+                <span>{exportSuccess}</span>
+              </div>
+              <button
+                type="button"
+                className={styles.alertCloseBtn}
+                onClick={() => setExportSuccess(null)}
+                title="Tutup pesan"
+              >
+                <X size={14} />
+              </button>
+            </div>
+          ) : null}
+
           <div className={styles.intro}>
             <div>
               <h1>Hook Quotes · Akun PBA</h1>
