@@ -69,6 +69,9 @@ export async function renderLetterHookVideo(
   onProgress?: (progress: number) => void,
 ): Promise<Blob> {
   const { useMuted } = await assertLetterHookRenderSupport();
+  if (useMuted && props.voiceSrc) {
+    throw new Error('Browser ini belum mendukung audio AAC untuk MP4. Gunakan Chrome atau Edge terbaru agar voice ikut masuk ke video.');
+  }
 
   // Sanitasi props agar tidak ada media src kosong atau anomali
   const hasValidMedia = props.bgMode === 'media' && Boolean(props.bgMedia?.src && props.bgMedia.src.trim().length > 0);

@@ -4,6 +4,7 @@
 const DB_NAME = 'fya-pba-studio-db';
 const STORE_NAME = 'media-cache';
 const RECORD_KEY = 'letter-hook-bg-media';
+const VOICE_RECORD_KEY = 'letter-hook-voice';
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -28,6 +29,64 @@ export interface StoredBgMedia {
   name: string;
   kind: 'image' | 'video';
   updatedAt: number;
+}
+
+export interface StoredLetterHookVoice {
+  blob: Blob;
+  text: string;
+  voiceId: string;
+  model: string;
+  durationSeconds?: number;
+  updatedAt: number;
+}
+
+export async function saveLetterHookVoiceToIndexedDB(
+  blob: Blob,
+  text: string,
+  voiceId: string,
+  model: string,
+  durationSeconds?: number,
+): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).put({ blob, text, voiceId, model, durationSeconds, updatedAt: Date.now() }, VOICE_RECORD_KEY);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('[letterHookMediaStorage] Failed to save generated voice:', err);
+  }
+}
+
+export async function loadLetterHookVoiceFromIndexedDB(): Promise<StoredLetterHookVoice | null> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const request = tx.objectStore(STORE_NAME).get(VOICE_RECORD_KEY);
+    return await new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve((request.result as StoredLetterHookVoice | undefined) ?? null);
+      request.onerror = () => reject(request.error);
+    });
+  } catch (err) {
+    console.warn('[letterHookMediaStorage] Failed to load generated voice:', err);
+    return null;
+  }
+}
+
+export async function clearLetterHookVoiceFromIndexedDB(): Promise<void> {
+  try {
+    const db = await openDB();
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).delete(VOICE_RECORD_KEY);
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  } catch (err) {
+    console.warn('[letterHookMediaStorage] Failed to clear generated voice:', err);
+  }
 }
 
 export async function saveBgMediaToIndexedDB(

@@ -344,7 +344,24 @@ Format Output WAJIB JSON Murni:
     { "index": 2, "text": "[panicked][shouting] JANGAN BUKA PINTUNYA!" }
   ]
 }
+
 Respon HANYA string JSON murni tanpa pembungkus markdown backtick.`;
+}
+
+function buildBrandQuotePrompt(tone: string): string {
+  return 'Kamu adalah penulis naskah video kutipan pendek untuk personal brand account (PBA) bertema kehidupan, surat yang tak terkirim, kehilangan, proses pulih, dan perasaan yang sulit diucapkan.\n' +
+    'Tulis kutipan orisinal yang terasa manusiawi, sederhana, puitis, dan mudah dipahami saat didengar sekali. Nuansa yang diminta: ' + tone + '.\n\n' +
+    'ATURAN NASKAH:\n' +
+    '- Ini video quote 4–10 detik, bukan iklan, bukan showcase produk, dan bukan fake chat.\n' +
+    '- Buat satu gagasan emosional yang utuh, sekitar 8–22 kata total untuk line1 + highlight agar nyaman dibacakan dalam durasi pendek.\n' +
+    '- Hindari kata-kata klise, metafora bertumpuk, bahasa motivator, dan nasihat yang menggurui. Utamakan detail/perasaan yang spesifik dan relatable.\n' +
+    '- Jangan menyebut produk, digital gift, link, CTA, penonton, konten, brand, atau ajakan follow.\n' +
+    '- "label" opsional, maksimal 5 kata, singkat untuk seri/tema; isi string kosong jika tidak dibutuhkan.\n' +
+    '- Bagi kutipan secara natural: "line1" menjadi pembuka/pikiran utama, "highlight" menjadi penutup emosional atau kalimat yang paling kuat. "highlight" boleh kosong jika satu bagian sudah cukup.\n' +
+    '- "voiceText" harus menjadi versi lisan yang alami dari kutipan (gabungkan line1 dan highlight bila ada), tanpa membaca label atau brand mark.\n' +
+    '- Bahasa default Indonesia. Jika arahan user meminta bahasa lain, ikuti.\n\n' +
+    'Kembalikan hanya JSON valid dengan format persis:\n' +
+    '{"label":"...","line1":"...","highlight":"...","voiceText":"..."}';
 }
 
 async function requestGemini(
@@ -452,7 +469,8 @@ export async function POST(req: NextRequest) {
       provider = 'google', // Gemini is the primary writer; Qwen remains available as a fallback provider.
       geminiKeyCustom = '',
       qwenKeyCustom = '',
-      mode = 'create', // 'create' | 'improvise' | 'enhance_emotion'
+      mode = 'create', // 'create' | 'improvise' | 'enhance_emotion' | 'brand_quote'
+      tone = 'melankolis dan reflektif',
       storyType = 'drama_product',
       chatType = 'personal',
       revealType = 'none',
@@ -501,6 +519,9 @@ export async function POST(req: NextRequest) {
 
       systemInstruction = buildEnhanceEmotionPrompt(formattedHistory);
       userPrompt = `Tolong pertajam dan sisipkan ElevenLabs Audio Emotion Tags (seperti [scared][whispers], [laughing], [shouting], dll.) ke teks setiap pesan di atas!`;
+    } else if (mode === 'brand_quote') {
+      systemInstruction = buildBrandQuotePrompt(typeof tone === 'string' ? tone.slice(0, 60) : 'melankolis dan reflektif');
+      userPrompt = `Arah/tema kutipan dari user: ${String(prompt || '').trim() || 'tentang hal-hal yang sulit diucapkan kepada seseorang yang pernah dekat'}`;
     } else if (mode === 'improvise' && Array.isArray(existingMessages) && existingMessages.length > 0) {
       const formattedHistory = existingMessages
         .map((m: ExistingMessageBrief, idx: number) => {
@@ -573,6 +594,22 @@ export async function POST(req: NextRequest) {
     // ── Parse & return ───────────────────────────────────────────────────────
     try {
       const parsed = JSON.parse(rawText);
+      if (mode === 'brand_quote') {
+        const line1 = typeof parsed.line1 === 'string' ? parsed.line1.trim().slice(0, 220) : '';
+        const highlight = typeof parsed.highlight === 'string' ? parsed.highlight.trim().slice(0, 160) : '';
+        if (!line1) {
+          return NextResponse.json({ error: 'AI belum menghasilkan kutipan. Coba generate ulang.' }, { status: 502 });
+        }
+        const voiceText = typeof parsed.voiceText === 'string' && parsed.voiceText.trim()
+          ? parsed.voiceText.trim().slice(0, 380)
+          : [line1, highlight].filter(Boolean).join(' ');
+        return NextResponse.json({
+          label: typeof parsed.label === 'string' ? parsed.label.trim().slice(0, 64) : '',
+          line1,
+          highlight,
+          voiceText,
+        });
+      }
       if (normalizedChatType === 'group' && mode !== 'enhance_emotion') {
         const requestedMembers = normalizedGroupConfig?.members ?? [];
         const aiParticipants = Array.isArray(parsed.participants)

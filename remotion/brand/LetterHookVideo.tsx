@@ -6,13 +6,14 @@ import {
   useCurrentFrame,
   useVideoConfig,
 } from 'remotion';
-import { Video } from '@remotion/media';
+import { Audio, Video } from '@remotion/media';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
 export type LetterHookBgMode = 'color' | 'media';
 export type LetterHookBgMotion = 'none' | 'slow-zoom' | 'drift';
 export type LetterHookMediaFit = 'cover' | 'contain';
+export type LetterHookTextEffect = 'fade-up' | 'fade' | 'typewriter' | 'word-by-word';
 
 export interface LetterHookBgMedia {
   src: string;
@@ -58,6 +59,11 @@ export interface LetterHookProps extends Record<string, unknown> {
   bgMode?: LetterHookBgMode;
   /** Pengaturan media latar belakang (foto/video, blur, overlay, motion) */
   bgMedia?: LetterHookBgMedia;
+  /** Voice-over hasil generator, diputar saat preview dan ikut diekspor ke MP4. */
+  voiceSrc?: string;
+  voiceVolume?: number;
+  /** Cara teks kutipan muncul di layar. */
+  textEffect?: LetterHookTextEffect;
 }
 
 // ─── Font ────────────────────────────────────────────────────────────────────
@@ -87,6 +93,54 @@ function useLayerReveal(
   return { opacity, translateY };
 }
 
+function revealText(
+  text: string,
+  frame: number,
+  fps: number,
+  startSeconds: number,
+  endSeconds: number,
+  effect: LetterHookTextEffect,
+) {
+  const startFrame = Math.round(startSeconds * fps);
+  const endFrame = Math.max(startFrame + 1, Math.round(endSeconds * fps));
+  const progress = interpolate(frame, [startFrame, endFrame], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+
+  if (effect === 'typewriter') {
+    const characters = Array.from(text);
+    return { text: characters.slice(0, Math.ceil(progress * characters.length)).join(''), opacity: 1, translateY: 0 };
+  }
+
+  if (effect === 'word-by-word') {
+    const words = text.match(/\S+|\s+/gu) ?? [];
+    const wordCount = words.filter((part) => /\S/u.test(part)).length;
+    const visibleWords = Math.ceil(progress * wordCount);
+    let seen = 0;
+    const visibleText = words.map((part) => {
+      if (/\S/u.test(part)) seen += 1;
+      return seen <= visibleWords ? part : '';
+    }).join('');
+    return { text: visibleText, opacity: 1, translateY: 0 };
+  }
+
+  const revealFrames = Math.max(1, Math.round(fps * 0.6));
+  const opacity = interpolate(frame, [startFrame, startFrame + revealFrames], [0, 1], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+    easing: Easing.bezier(0.22, 1, 0.36, 1),
+  });
+  const translateY = effect === 'fade-up'
+    ? interpolate(frame, [startFrame, startFrame + revealFrames], [18, 0], {
+        extrapolateLeft: 'clamp',
+        extrapolateRight: 'clamp',
+        easing: Easing.bezier(0.22, 1, 0.36, 1),
+      })
+    : 0;
+  return { text, opacity, translateY };
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function LetterHookVideo(props: LetterHookProps) {
@@ -95,14 +149,20 @@ export function LetterHookVideo(props: LetterHookProps) {
 
   // Timing — setiap layer muncul berurutan dengan jeda puitis
   const labelStart     = Math.round(fps * 0.25);
-  const line1Start     = Math.round(fps * 0.85);
-  const highlightStart = Math.round(fps * 1.55);
+  const quoteStartSeconds = 0.35;
+  const quoteEndSeconds = Math.max(quoteStartSeconds + 0.2, (props.durationSeconds || 5) - 0.25);
+  const quoteSpan = quoteEndSeconds - quoteStartSeconds;
+  const lineLength = Array.from(props.line1 || '').length;
+  const highlightLength = Array.from(props.highlight || '').length;
+  const quoteLength = Math.max(1, lineLength + highlightLength);
+  const splitAt = quoteStartSeconds + quoteSpan * (lineLength / quoteLength);
   const brandStart     = Math.round(fps * 2.25);
   const fadeFrames     = 20; // ~0.67 detik @ 30fps
 
   const label     = useLayerReveal(frame, fps, labelStart, fadeFrames);
-  const line1Anim = useLayerReveal(frame, fps, line1Start, fadeFrames);
-  const hl        = useLayerReveal(frame, fps, highlightStart, fadeFrames);
+  const textEffect = props.textEffect || 'fade-up';
+  const line1Anim = revealText(props.line1, frame, fps, quoteStartSeconds, props.highlight ? splitAt : quoteEndSeconds, textEffect);
+  const hl = revealText(props.highlight, frame, fps, props.line1 ? splitAt : quoteStartSeconds, quoteEndSeconds, textEffect);
   const brandAnim = useLayerReveal(frame, fps, brandStart, fadeFrames);
 
   // Gentle vignette pulse setelah semua elemen hadir
@@ -160,7 +220,7 @@ export function LetterHookVideo(props: LetterHookProps) {
 
   // Text shadow to ensure contrast over movie stills or atmospheric photos
   const textShadow = isMediaBg
-    ? '0 2px 24px rgba(0,0,0,0.85), 0 1px 4px rgba(0,0,0,0.95)'
+    ? '0 1px 3px rgba(0,0,0,0.42)'
     : undefined;
 
   // ── Safe zone untuk Blok Quote Utama (fokus tengah-atas layar)
@@ -311,6 +371,8 @@ export function LetterHookVideo(props: LetterHookProps) {
   return (
     <AbsoluteFill style={{ background: bg, overflow: 'hidden' }}>
 
+      {props.voiceSrc ? <Audio src={props.voiceSrc} volume={props.voiceVolume ?? 1} /> : null}
+
       {/* ── Background Media Layer (Foto Movie / Footage / Visual) ── */}
       {isMediaBg && media?.src ? (
         <AbsoluteFill style={{ overflow: 'hidden' }}>
@@ -433,7 +495,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               marginBottom: props.highlight ? 44 : 0,
             } as React.CSSProperties}
           >
-            {props.line1}
+            {line1Anim.text}
           </div>
         ) : null}
 
@@ -457,7 +519,7 @@ export function LetterHookVideo(props: LetterHookProps) {
               marginBottom: brandPlacement === 'flow' && brandText ? 84 : 0,
             } as React.CSSProperties}
           >
-            {props.highlight}
+            {hl.text}
           </div>
         ) : null}
 
