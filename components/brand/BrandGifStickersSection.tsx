@@ -17,6 +17,7 @@ import {
   RotateCw,
   Sparkles,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { useBrandStudioStore } from '@/store/useBrandStudioStore';
 import type { BrandGifOverlayItem, BrandGifPositionPreset } from '@/types/brand';
@@ -67,6 +68,19 @@ const POSITION_PRESETS: Array<{
   { id: 'bottom-right', icon: '↘', label: 'Bawah Kanan', title: 'Bawah Kanan' },
 ];
 
+const MAX_LOCAL_GIF_BYTES = 50 * 1024 * 1024;
+
+function validateLocalGif(file: File) {
+  const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+  if (!isGif) return 'File harus berformat GIF (.gif).';
+  if (file.size > MAX_LOCAL_GIF_BYTES) return 'Ukuran GIF maksimal 50 MB.';
+  return '';
+}
+
+function cleanGifLabel(fileName: string) {
+  return fileName.replace(/\.gif$/i, '').replace(/[-_]+/g, ' ').trim() || 'GIF Lokal';
+}
+
 export default function BrandGifStickersSection() {
   const gifOverlays = useBrandStudioStore((state) => state.gifOverlays ?? []);
   const addGifOverlay = useBrandStudioStore((state) => state.addGifOverlay);
@@ -76,6 +90,7 @@ export default function BrandGifStickersSection() {
   const matchGifOverlayLayout = useBrandStudioStore((state) => state.matchGifOverlayLayout);
   const timing = useBrandStudioStore((state) => state.timing);
   const outputMode = useBrandStudioStore((state) => state.outputMode);
+  const [uploadError, setUploadError] = React.useState('');
   const hasOverlappingGifPositions = gifOverlays.some((item, index) =>
     item.enabled &&
     gifOverlays.slice(index + 1).some((other) =>
@@ -110,6 +125,33 @@ export default function BrandGifStickersSection() {
     });
   };
 
+  const handleAddLocal = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const error = validateLocalGif(file);
+    if (error) {
+      setUploadError(error);
+      return;
+    }
+    setUploadError('');
+    addGifOverlay({
+      url: URL.createObjectURL(file),
+      label: cleanGifLabel(file.name),
+      sourceFileName: file.name,
+      preset: 'top-right',
+      width: 260,
+      scope: 'hook',
+      offsetX: 0,
+      offsetY: 0,
+    });
+  };
+
+  const handleRemove = (item: BrandGifOverlayItem) => {
+    if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+    removeGifOverlay(item.id);
+  };
+
   return (
     <div className={styles.sectionStack}>
       <div className={styles.mediaCard} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -117,18 +159,26 @@ export default function BrandGifStickersSection() {
           <div>
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f5ebe6' }}>Stiker & GIF Overlay</h3>
             <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#a89a91', lineHeight: 1.45 }}>
-              Tempel animasi GIF di atas video preview dan hasil export MP4. Cukup paste link URL tanpa perlu upload.
+              Tempel animasi GIF dari link atau file lokal. GIF lokal ikut masuk ke preview, export MP4, dan Cloud Project.
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.effectPreviewButton}
-            onClick={handleAddCustom}
-            style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', whiteSpace: 'nowrap' }}
-          >
-            <Plus size={14} /> Tambah GIF
-          </button>
+          <div className={styles.gifAddActions}>
+            <label className={styles.effectPreviewButton} style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', whiteSpace: 'nowrap', cursor: 'pointer' }}>
+              <Upload size={14} /> Upload GIF
+              <input type="file" accept="image/gif,.gif" onChange={handleAddLocal} hidden />
+            </label>
+            <button
+              type="button"
+              className={styles.effectPreviewButton}
+              onClick={handleAddCustom}
+              style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', whiteSpace: 'nowrap' }}
+            >
+              <Plus size={14} /> Tambah URL
+            </button>
+          </div>
         </div>
+
+        {uploadError ? <p className={styles.gifUploadError}>{uploadError}</p> : null}
 
         {/* Quick Sample Presets */}
         <div style={{ paddingTop: 10, borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
@@ -166,7 +216,7 @@ export default function BrandGifStickersSection() {
           <Sparkles size={26} style={{ opacity: 0.5, margin: '0 auto 8px', display: 'block', color: 'var(--brand-accent, #d79a87)' }} />
           <h4 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#f5ebe6' }}>Belum ada stiker GIF</h4>
           <p style={{ margin: '0 0 16px', fontSize: 12, color: '#a89a91', lineHeight: 1.5, maxWidth: 280 }}>
-            Pilih salah satu contoh di atas atau klik tombol di bawah untuk menaruh link GIF kamu sendiri.
+            Pilih contoh, upload GIF dari perangkat, atau tambahkan link GIF kamu sendiri.
           </p>
           <button
             type="button"
@@ -188,7 +238,7 @@ export default function BrandGifStickersSection() {
               whiteSpace: 'nowrap',
             }}
           >
-            <Plus size={15} /> Tambah GIF Baru
+            <Plus size={15} /> Tambah Link GIF
           </button>
         </div>
       ) : (
@@ -207,7 +257,7 @@ export default function BrandGifStickersSection() {
               maxStartSeconds={maxStartSeconds}
               startAtSeconds={startAtSeconds}
               onUpdate={(updates) => updateGifOverlay(item.id, updates)}
-              onRemove={() => removeGifOverlay(item.id)}
+              onRemove={() => handleRemove(item)}
               onToggle={() => toggleGifOverlay(item.id)}
               onMatchLayout={() => matchGifOverlayLayout(item.id)}
             />
@@ -238,6 +288,32 @@ function GifOverlayCard({
   onToggle: () => void;
   onMatchLayout: () => void;
 }) {
+  const [fileError, setFileError] = React.useState('');
+
+  const handleLocalFile = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    const error = validateLocalGif(file);
+    if (error) {
+      setFileError(error);
+      return;
+    }
+    if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+    setFileError('');
+    onUpdate({
+      url: URL.createObjectURL(file),
+      label: cleanGifLabel(file.name),
+      sourceFileName: file.name,
+    });
+  };
+
+  const handleUrlChange = (url: string) => {
+    if (item.url.startsWith('blob:') && url !== item.url) URL.revokeObjectURL(item.url);
+    setFileError('');
+    onUpdate({ url, sourceFileName: undefined });
+  };
+
   return (
     <section className={styles.mediaCard} style={{ opacity: item.enabled ? 1 : 0.65 }}>
       {/* Header */}
@@ -294,6 +370,11 @@ function GifOverlayCard({
             <span style={{ fontSize: 11, opacity: 0.65, display: 'block' }}>
               Posisi: {item.preset} · {item.width}px · {item.scope === 'hook' ? 'Hook Only' : 'Full Video'}
             </span>
+            {item.sourceFileName ? (
+              <span className={styles.gifLocalFileName} title={item.sourceFileName}>
+                Asal file · {item.sourceFileName}
+              </span>
+            ) : null}
           </div>
         </div>
 
@@ -327,8 +408,15 @@ function GifOverlayCard({
         </div>
       </div>
 
-      {/* Input URL */}
+      {/* Input file / URL */}
       <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+        <label className={styles.gifLocalUploadButton}>
+          <Upload size={14} />
+          <span>{item.sourceFileName ? 'Ganti file GIF lokal' : 'Pilih GIF dari folder / perangkat'}</span>
+          <input type="file" accept="image/gif,.gif" onChange={handleLocalFile} hidden />
+        </label>
+        {fileError ? <p className={styles.gifUploadError}>{fileError}</p> : null}
+        <div className={styles.gifSourceDivider}><span>atau gunakan link</span></div>
         <label className={styles.fieldLabel}>
           Link URL GIF (Direct .gif / Giphy / Tenor)
         </label>
@@ -337,11 +425,11 @@ function GifOverlayCard({
             type="url"
             value={item.url}
             placeholder="https://media.giphy.com/media/.../giphy.gif"
-            onChange={(e) => onUpdate({ url: e.target.value })}
+            onChange={(e) => handleUrlChange(e.target.value)}
             className={styles.input}
             style={{ flex: 1 }}
           />
-          {item.url ? (
+          {item.url && !item.url.startsWith('blob:') ? (
             <a
               href={item.url}
               target="_blank"

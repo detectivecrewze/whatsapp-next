@@ -1527,6 +1527,9 @@ export default function BrandStudio() {
     if (state.heroMedia.src.startsWith('blob:')) URL.revokeObjectURL(state.heroMedia.src);
     if (state.detailMedia.src.startsWith('blob:')) URL.revokeObjectURL(state.detailMedia.src);
     if (state.audio.musicSrc.startsWith('blob:')) URL.revokeObjectURL(state.audio.musicSrc);
+    state.gifOverlays.forEach((item) => {
+      if (item.url.startsWith('blob:')) URL.revokeObjectURL(item.url);
+    });
     state.resetTemplate();
   }
 

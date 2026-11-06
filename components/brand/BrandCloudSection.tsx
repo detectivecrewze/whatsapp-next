@@ -46,6 +46,10 @@ async function persistProjectMedia(data: BrandVideoProps): Promise<BrandVideoPro
   next.heroMedia.src = await uploadTemporaryMedia(next.heroMedia.src, cache);
   next.detailMedia.src = await uploadTemporaryMedia(next.detailMedia.src, cache);
   next.audio.musicSrc = await uploadTemporaryMedia(next.audio.musicSrc, cache);
+  next.gifOverlays = await Promise.all((next.gifOverlays ?? []).map(async (item) => ({
+    ...item,
+    url: await uploadTemporaryMedia(item.url, cache),
+  })));
   return next;
 }
 
@@ -224,7 +228,7 @@ export default function BrandCloudSection() {
             {isSaving ? <Loader2 size={14} className={styles.brandCloudSpinner} /> : <Cloud size={14} />} Simpan sebagai baru
           </button>
         </div>
-        <p className={styles.brandCloudFootnote}>File gambar, video, atau backsound yang masih lokal akan ikut diunggah saat disimpan (maksimal 50 MB per file).</p>
+        <p className={styles.brandCloudFootnote}>File gambar, video, backsound, dan GIF lokal akan ikut diunggah saat disimpan (maksimal 50 MB per file).</p>
       </section>
 
       <section className={styles.mediaCard}>

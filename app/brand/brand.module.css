@@ -2115,6 +2115,76 @@
   white-space: nowrap;
 }
 
+.gifAddActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.gifLocalUploadButton {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px dashed rgba(215, 154, 135, 0.55);
+  border-radius: 10px;
+  padding: 0 14px;
+  background: rgba(215, 154, 135, 0.08);
+  color: #efc0ae;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.gifLocalUploadButton:hover {
+  border-color: rgba(239, 192, 174, 0.9);
+  background: rgba(215, 154, 135, 0.14);
+}
+
+.gifLocalFileName {
+  display: block;
+  margin-top: 3px;
+  overflow: hidden;
+  color: #91c9a6;
+  font-size: 10px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gifSourceDivider {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: #746d68;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.gifSourceDivider::before,
+.gifSourceDivider::after {
+  height: 1px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.07);
+  content: '';
+}
+
+.gifUploadError {
+  margin: 0;
+  border: 1px solid rgba(248, 81, 73, 0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(248, 81, 73, 0.08);
+  color: #f2a09b;
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
 .gifCardInfo > div:last-child {
   flex: 1 1 auto;
   min-width: 0;

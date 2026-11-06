@@ -172,6 +172,7 @@ export interface BrandGifOverlayItem {
   id: string;
   url: string;
   label?: string;
+  sourceFileName?: string;
   enabled: boolean;
   preset: BrandGifPositionPreset;
   offsetX: number; // percentage -50 to +50

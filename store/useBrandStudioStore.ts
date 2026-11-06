@@ -359,6 +359,7 @@ export const useBrandStudioStore = create<BrandStudioStore>()((set, get) => ({
         id: newId,
         url: item?.url || '',
         label: item?.label || 'GIF Sticker',
+        sourceFileName: item?.sourceFileName,
         enabled: item?.enabled ?? true,
         preset: item?.preset || 'top-right',
         offsetX: item?.offsetX ?? 0,
