@@ -2115,12 +2115,35 @@
   white-space: nowrap;
 }
 
+.gifHeroHeader {
+  display: grid;
+  gap: 12px;
+}
+
+.gifHeroCopy {
+  min-width: 0;
+}
+
+.gifHeroCopy p {
+  max-width: 100%;
+}
+
 .gifAddActions {
-  display: flex;
-  flex: 0 0 auto;
-  flex-wrap: wrap;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
+}
+
+.gifAddActions > * {
+  width: 100%;
+  min-width: 0;
+  justify-content: center;
+}
+
+@media (max-width: 420px) {
+  .gifAddActions {
+    grid-template-columns: 1fr;
+  }
 }
 
 .gifLocalUploadButton {

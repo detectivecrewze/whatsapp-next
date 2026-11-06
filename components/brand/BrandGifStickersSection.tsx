@@ -155,8 +155,8 @@ export default function BrandGifStickersSection() {
   return (
     <div className={styles.sectionStack}>
       <div className={styles.mediaCard} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
-          <div>
+        <div className={styles.gifHeroHeader}>
+          <div className={styles.gifHeroCopy}>
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#f5ebe6' }}>Stiker & GIF Overlay</h3>
             <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#a89a91', lineHeight: 1.45 }}>
               Tempel animasi GIF dari link atau file lokal. GIF lokal ikut masuk ke preview, export MP4, dan Cloud Project.
